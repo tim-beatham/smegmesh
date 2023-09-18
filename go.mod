@@ -39,4 +39,5 @@ require (
 	golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/zeromq/goczmq.v4 v4.1.0 // indirect
 )

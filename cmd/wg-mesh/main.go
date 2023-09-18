@@ -2,11 +2,25 @@ package main
 
 import (
 	"fmt"
+	"net/rpc"
 	"os"
 
 	"github.com/akamensky/argparse"
-	meshtypes "github.com/tim-beatham/wgmesh/pkg/wg-mesh"
 )
+
+const SockAddr = "/tmp/wgmesh_ipc.sock"
+
+func createNewMesh(client *rpc.Client) {
+	var reply string
+	err := client.Call("Mesh.CreateNewMesh", "", &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
 
 func main() {
 	parser := argparse.NewParser("wg-mesh",
@@ -20,13 +34,13 @@ func main() {
 		return
 	}
 
-	if newMeshCmd.Happened() {
-		mesh, err := meshtypes.NewWgMesh()
+	client, err := rpc.DialHTTP("unix", SockAddr)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
-		if err != nil {
-			fmt.Println("Could not generate new WgMesh")
-		} else {
-			fmt.Println(mesh.SharedKey.String())
-		}
+	if newMeshCmd.Happened() {
+		createNewMesh(client)
 	}
 }
