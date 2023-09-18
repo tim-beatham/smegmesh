@@ -1,0 +1,3 @@
+type WgMesh {
+    sharedKey string
+}
