@@ -9,10 +9,10 @@ import (
  * Represents a WireGuard node
  */
 type MeshNode struct {
-	Host     string
-	CtrlPort string
-	WgPort   string
-	WgHost   string
+	HostEndpoint string
+	WgEndpoint   string
+	PublicKey    string
+	WgHost       string
 }
 
 type Mesh struct {
@@ -29,4 +29,5 @@ type MeshCtrlServer struct {
 	Port   int
 	Client *wgctrl.Client
 	Meshes map[string]Mesh
+	IfName string
 }

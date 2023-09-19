@@ -44,7 +44,7 @@ func CreateClient(ifName string) (*wgctrl.Client, error) {
 		return nil, err
 	}
 
-	wgListenPort := 5000
+	wgListenPort := 51820
 	privateKey, err := wgtypes.GeneratePrivateKey()
 
 	if err != nil {

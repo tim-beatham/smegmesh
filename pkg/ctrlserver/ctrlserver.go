@@ -1,9 +1,12 @@
 package ctrlserver
 
 import (
+	"errors"
+	"fmt"
+	"math/rand"
+	"net"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -12,12 +15,11 @@ import (
  * Create a new control server instance running
  * on the provided port.
  */
-func NewCtrlServer(host string, port int, wgClient *wgctrl.Client) *MeshCtrlServer {
+func NewCtrlServer(wgClient *wgctrl.Client, ifName string) *MeshCtrlServer {
 	ctrlServer := new(MeshCtrlServer)
-	ctrlServer.Port = port
 	ctrlServer.Meshes = make(map[string]Mesh)
-	ctrlServer.Host = host
 	ctrlServer.Client = wgClient
+	ctrlServer.IfName = ifName
 	return ctrlServer
 }
 
@@ -28,19 +30,6 @@ func NewCtrlServer(host string, port int, wgClient *wgctrl.Client) *MeshCtrlServ
 func (server *MeshCtrlServer) IsInMesh(meshId string) bool {
 	_, inMesh := server.Meshes[meshId]
 	return inMesh
-}
-
-func (server *MeshCtrlServer) GetEndpoint() string {
-	return server.Host + ":" + strconv.Itoa(server.Port)
-}
-
-/*
- * Run the gin server instance
- */
-func (server *MeshCtrlServer) Run() bool {
-	r := gin.Default()
-	r.Run(server.GetEndpoint())
-	return true
 }
 
 func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
@@ -57,4 +46,102 @@ func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 
 	server.Meshes[key.String()] = mesh
 	return &mesh, nil
+}
+
+type AddHostArgs struct {
+	HostEndpoint string
+	PublicKey    string
+	MeshId       string
+	WgEndpoint   string
+}
+
+func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
+	nodes, contains := server.Meshes[args.MeshId]
+
+	if !contains {
+		return errors.New("Node does not exist in the mesh")
+	}
+
+	_, contains = nodes.Nodes[args.HostEndpoint]
+
+	if contains {
+		return errors.New("The node already has an endpoint in the mesh network")
+	}
+
+	fmt.Println(args.WgEndpoint)
+
+	node := MeshNode{
+		HostEndpoint: args.HostEndpoint,
+		WgEndpoint:   args.WgEndpoint,
+		PublicKey:    args.PublicKey,
+		WgHost:       "10.0.0." + strconv.Itoa(rand.Intn(253)+1) + "/32",
+	}
+
+	err := addWgPeer(server.IfName, server.Client, node)
+
+	if err == nil {
+		nodes.Nodes[args.MeshId] = node
+	} else {
+		fmt.Println(err.Error())
+	}
+
+	return err
+}
+
+func (server *MeshCtrlServer) GetDevice() *wgtypes.Device {
+	dev, err := server.Client.Device(server.IfName)
+
+	if err != nil {
+		return nil
+	}
+
+	return dev
+}
+
+func addWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
+	peer := make([]wgtypes.PeerConfig, 1)
+
+	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
+
+	if err != nil {
+		return err
+	}
+
+	peerEndpoint, err := net.ResolveUDPAddr("udp", node.WgEndpoint)
+
+	if err != nil {
+		fmt.Println("err")
+		return err
+	}
+
+	allowedIps := make([]net.IPNet, 1)
+	_, ipnet, err := net.ParseCIDR(node.WgHost)
+
+	if err != nil {
+		return err
+	}
+
+	allowedIps[0] = *ipnet
+
+	peer[0] = wgtypes.PeerConfig{
+		PublicKey:  peerPublic,
+		Endpoint:   peerEndpoint,
+		AllowedIPs: allowedIps,
+	}
+
+	cfg := wgtypes.Config{
+		Peers: peer,
+	}
+
+	err = client.ConfigureDevice(ifName, cfg)
+
+	dev, _ := client.Device(ifName)
+
+	fmt.Println(dev.Peers[0].Endpoint)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

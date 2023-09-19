@@ -3,14 +3,17 @@ package ipc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	ipcRpc "net/rpc"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver/rpc"
+	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	ipctypes "github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"google.golang.org/grpc"
@@ -59,13 +62,41 @@ func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := c.GetMesh(ctx, &rpc.GetMeshRequest{MeshId: args.MeshId})
+	dev := n.Server.GetDevice()
+
+	joinMeshReq := rpc.JoinMeshRequest{
+		MeshId:    args.MeshId,
+		HostPort:  8080,
+		PublicKey: dev.PublicKey.String(),
+		WgPort:    int32(dev.ListenPort),
+	}
+
+	r, err := c.JoinMesh(ctx, &joinMeshReq)
 
 	if err != nil {
 		return err
 	}
 
-	*reply = r.GetMeshId()
+	*reply = strconv.FormatBool(r.GetSuccess())
+	return nil
+}
+
+func (n Mesh) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
+	mesh, contains := n.Server.Meshes[meshId]
+
+	if contains {
+		nodes := make([]ctrlserver.MeshNode, len(mesh.Nodes))
+
+		i := 0
+		for _, n := range mesh.Nodes {
+			fmt.Println(n.PublicKey)
+			nodes[i] = n
+			i += 1
+		}
+
+		*reply = ipc.GetMeshReply{Nodes: nodes}
+	} else {
+	}
 	return nil
 }
 

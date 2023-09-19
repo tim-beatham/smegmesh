@@ -12,16 +12,16 @@ import (
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
-func createNewMesh(client *ipcRpc.Client) {
+func createNewMesh(client *ipcRpc.Client) string {
 	var reply string
 	err := client.Call("Mesh.CreateNewMesh", "", &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err.Error()
 	}
 
-	fmt.Println(reply)
+	joinMesh(client, reply, "localhost")
+	return reply
 }
 
 func listMeshes(client *ipcRpc.Client) {
@@ -30,7 +30,7 @@ func listMeshes(client *ipcRpc.Client) {
 	err := client.Call("Mesh.ListMeshes", "", &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		err.Error()
 		return
 	}
 
@@ -39,7 +39,7 @@ func listMeshes(client *ipcRpc.Client) {
 	}
 }
 
-func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) {
+func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) string {
 	var reply string
 
 	args := ipc.JoinMeshArgs{MeshId: meshId, IpAdress: ipAddress}
@@ -47,11 +47,29 @@ func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) {
 	err := client.Call("Mesh.JoinMesh", &args, &reply)
 
 	if err != nil {
+		return err.Error()
+	}
+
+	return reply
+}
+
+func getMesh(client *ipcRpc.Client, meshId string) {
+	reply := new(ipc.GetMeshReply)
+
+	err := client.Call("Mesh.GetMesh", &meshId, &reply)
+
+	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
-	fmt.Println(reply)
+	for _, node := range reply.Nodes {
+		fmt.Println("Public Key: " + node.PublicKey)
+		fmt.Println("WireGuard Endpoint: " + node.HostEndpoint)
+		fmt.Println("Control Endpoint: " + node.WgEndpoint)
+		fmt.Println("Wg IP: " + node.WgHost)
+		fmt.Println("---")
+	}
 }
 
 func main() {
@@ -61,9 +79,12 @@ func main() {
 	newMeshCmd := parser.NewCommand("new-mesh", "Create a new mesh")
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
+	getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
 
 	var meshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var ipAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
+
+	var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -79,7 +100,7 @@ func main() {
 	}
 
 	if newMeshCmd.Happened() {
-		createNewMesh(client)
+		fmt.Println(createNewMesh(client))
 	}
 
 	if listMeshCmd.Happened() {
@@ -87,6 +108,10 @@ func main() {
 	}
 
 	if joinMeshCmd.Happened() {
-		joinMesh(client, *meshId, *ipAddress)
+		fmt.Println(joinMesh(client, *meshId, *ipAddress))
+	}
+
+	if getMeshCmd.Happened() {
+		getMesh(client, *getMeshId)
 	}
 }
