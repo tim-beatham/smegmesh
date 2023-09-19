@@ -1,21 +1,23 @@
 package ctrlserver
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 /*
  * Create a new control server instance running
  * on the provided port.
  */
-func NewCtrlServer(host string, port int) *MeshCtrlServer {
+func NewCtrlServer(host string, port int, wgClient *wgctrl.Client) *MeshCtrlServer {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Port = port
-	ctrlServer.Meshes = make(map[string]MeshNode)
+	ctrlServer.Meshes = make(map[string]Mesh)
 	ctrlServer.Host = host
+	ctrlServer.Client = wgClient
 	return ctrlServer
 }
 
@@ -37,12 +39,22 @@ func (server *MeshCtrlServer) GetEndpoint() string {
  */
 func (server *MeshCtrlServer) Run() bool {
 	r := gin.Default()
-	r.GET("/hello", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "hello",
-		})
-	})
-
 	r.Run(server.GetEndpoint())
 	return true
+}
+
+func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
+	key, err := wgtypes.GenerateKey()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var mesh Mesh = Mesh{
+		SharedKey: &key,
+		Nodes:     make(map[string]MeshNode),
+	}
+
+	server.Meshes[key.String()] = mesh
+	return &mesh, nil
 }

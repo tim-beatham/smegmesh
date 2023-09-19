@@ -7,34 +7,45 @@ import (
 	"net/rpc"
 	"os"
 
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 type Mesh struct {
+	Server *ctrlserver.MeshCtrlServer
 }
 
 /*
  * Create a new WireGuard mesh network
  */
 func (n Mesh) CreateNewMesh(name *string, reply *string) error {
-	key, err := wgtypes.GenerateKey()
+	wg.CreateInterface("wgmesh")
+
+	mesh, err := n.Server.CreateMesh()
 
 	if err != nil {
 		return err
 	}
 
-	*reply = key.String()
+	*reply = mesh.SharedKey.String()
 	return nil
 }
 
-func RunIpcHandler() error {
+func (n Mesh) ListMeshes(name *string, reply *map[string]ctrlserver.Mesh) error {
+    meshes := n.Server.Meshes
+    *reply = meshes
+    return nil
+}
+
+func RunIpcHandler(server *ctrlserver.MeshCtrlServer) error {
 	if err := os.RemoveAll(SockAddr); err != nil {
 		return errors.New("Could not find to address")
 	}
 
 	newMeshIpc := new(Mesh)
+	newMeshIpc.Server = server
 	rpc.Register(newMeshIpc)
 	rpc.HandleHTTP()
 
