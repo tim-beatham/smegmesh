@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"net/rpc"
+	ipcRpc "net/rpc"
 	"os"
 
 	"github.com/akamensky/argparse"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/wgmesh/pkg/ipc"
 )
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
-func createNewMesh(client *rpc.Client) {
+func createNewMesh(client *ipcRpc.Client) {
 	var reply string
 	err := client.Call("Mesh.CreateNewMesh", "", &reply)
 
@@ -23,7 +24,7 @@ func createNewMesh(client *rpc.Client) {
 	fmt.Println(reply)
 }
 
-func listMeshes(client *rpc.Client) {
+func listMeshes(client *ipcRpc.Client) {
 	var reply map[string]ctrlserver.Mesh
 
 	err := client.Call("Mesh.ListMeshes", "", &reply)
@@ -38,8 +39,19 @@ func listMeshes(client *rpc.Client) {
 	}
 }
 
-func joinMesh(client *rpc.Client, meshId string, ipAddress string) {
-	fmt.Println(meshId + " " + ipAddress)
+func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) {
+	var reply string
+
+	args := ipc.JoinMeshArgs{MeshId: meshId, IpAdress: ipAddress}
+
+	err := client.Call("Mesh.JoinMesh", &args, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
 }
 
 func main() {
@@ -50,8 +62,8 @@ func main() {
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
 
-	var meshId *string = joinMeshCmd.StringPositional(&argparse.Options{Required: true})
-	var ipAddress *string = joinMeshCmd.StringPositional(&argparse.Options{Required: true})
+	var meshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var ipAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -60,7 +72,7 @@ func main() {
 		return
 	}
 
-	client, err := rpc.DialHTTP("unix", SockAddr)
+	client, err := ipcRpc.DialHTTP("unix", SockAddr)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

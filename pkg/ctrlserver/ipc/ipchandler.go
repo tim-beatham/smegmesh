@@ -1,14 +1,20 @@
 package ipc
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
-	"net/rpc"
+	ipcRpc "net/rpc"
 	"os"
+	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/wgmesh/pkg/ctrlserver/rpc"
+	ipctypes "github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
@@ -34,9 +40,33 @@ func (n Mesh) CreateNewMesh(name *string, reply *string) error {
 }
 
 func (n Mesh) ListMeshes(name *string, reply *map[string]ctrlserver.Mesh) error {
-    meshes := n.Server.Meshes
-    *reply = meshes
-    return nil
+	meshes := n.Server.Meshes
+	*reply = meshes
+	return nil
+}
+
+func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
+	conn, err := grpc.Dial(args.IpAdress+":8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	c := rpc.NewMeshCtrlServerClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := c.GetMesh(ctx, &rpc.GetMeshRequest{MeshId: args.MeshId})
+
+	if err != nil {
+		return err
+	}
+
+	*reply = r.GetMeshId()
+	return nil
 }
 
 func RunIpcHandler(server *ctrlserver.MeshCtrlServer) error {
@@ -46,8 +76,8 @@ func RunIpcHandler(server *ctrlserver.MeshCtrlServer) error {
 
 	newMeshIpc := new(Mesh)
 	newMeshIpc.Server = server
-	rpc.Register(newMeshIpc)
-	rpc.HandleHTTP()
+	ipcRpc.Register(newMeshIpc)
+	ipcRpc.HandleHTTP()
 
 	l, e := net.Listen("unix", SockAddr)
 	if e != nil {
