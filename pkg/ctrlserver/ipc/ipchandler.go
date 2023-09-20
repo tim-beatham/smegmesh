@@ -27,19 +27,6 @@ type Mesh struct {
 	Server *ctrlserver.MeshCtrlServer
 }
 
-// Get preferred outbound ip of this machine
-func GetOutboundIP() (*net.UDPAddr, error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-
-	return localAddr, nil
-}
-
 /*
  * Create a new WireGuard mesh network
  */
@@ -108,12 +95,10 @@ func updateMesh(n *Mesh, meshId string, endPoint string) error {
 		ctrlserver.AddWgPeer(n.Server.IfName, n.Server.Client, meshNode)
 	}
 
-	cfg := wgtypes.Config{}
-
-	n.Server.Client.ConfigureDevice(n.Server.IfName)
-
 	return nil
 }
+
+func (n Mesh) JoinOtherMesh
 
 func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 	conn, err := grpc.Dial(args.IpAdress+":8080", grpc.WithTransportCredentials(insecure.NewCredentials()))

@@ -66,10 +66,10 @@ func (m *meshCtrlServer) JoinMesh(ctx context.Context, request *JoinMeshRequest)
 	}
 
 	addHostArgs := ctrlserver.AddHostArgs{
-		HostEndpoint: "[" + hostIp + "]" + ":" + strconv.Itoa(int(request.HostPort)),
+		HostEndpoint: hostIp + ":" + strconv.Itoa(int(request.HostPort)),
 		PublicKey:    request.PublicKey,
 		MeshId:       request.MeshId,
-		WgEndpoint:   "[" + hostIp + "]" + ":" + strconv.Itoa(int(request.WgPort)),
+		WgEndpoint:   hostIp + ":" + strconv.Itoa(int(request.WgPort)),
 	}
 
 	err = m.server.AddHost(addHostArgs)

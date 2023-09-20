@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -32,6 +33,20 @@ func (server *MeshCtrlServer) IsInMesh(meshId string) bool {
 	return inMesh
 }
 
+func (server *MeshCtrlServer) addSelfToMesh(meshId string) error {
+	ipAddr := lib.GetOutboundIP()
+
+	node := MeshNode{
+		HostEndpoint: ipAddr.String() + ":8080",
+		PublicKey:    server.GetDevice().PrivateKey.String(),
+		WgEndpoint:   ipAddr.String() + ":51820",
+		WgHost:       "10.0.0.1/32",
+	}
+
+	server.Meshes[meshId].Nodes[node.HostEndpoint] = node
+	return nil
+}
+
 func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 	key, err := wgtypes.GenerateKey()
 
@@ -45,6 +60,7 @@ func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 	}
 
 	server.Meshes[key.String()] = mesh
+	server.addSelfToMesh(mesh.SharedKey.String())
 	return &mesh, nil
 }
 
