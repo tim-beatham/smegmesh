@@ -77,10 +77,10 @@ func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 		WgHost:       "10.0.0." + strconv.Itoa(rand.Intn(253)+1) + "/32",
 	}
 
-	err := addWgPeer(server.IfName, server.Client, node)
+	err := AddWgPeer(server.IfName, server.Client, node)
 
 	if err == nil {
-		nodes.Nodes[args.MeshId] = node
+		nodes.Nodes[args.HostEndpoint] = node
 	} else {
 		fmt.Println(err.Error())
 	}
@@ -98,7 +98,7 @@ func (server *MeshCtrlServer) GetDevice() *wgtypes.Device {
 	return dev
 }
 
-func addWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
+func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	peer := make([]wgtypes.PeerConfig, 1)
 
 	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
@@ -135,9 +135,13 @@ func addWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 
 	err = client.ConfigureDevice(ifName, cfg)
 
-	dev, _ := client.Device(ifName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
-	fmt.Println(dev.Peers[0].Endpoint)
+	dev, err := client.Device(ifName)
+
+	fmt.Println("Number of peers: " + strconv.Itoa(len(dev.Peers)))
 
 	if err != nil {
 		return err

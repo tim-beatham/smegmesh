@@ -21,6 +21,7 @@ func nodeToRpcNode(node ctrlserver.MeshNode) *MeshNode {
 	return &MeshNode{
 		PublicKey:  node.PublicKey,
 		WgEndpoint: node.WgEndpoint,
+		WgHost:     node.WgHost,
 		Endpoint:   node.HostEndpoint,
 	}
 }

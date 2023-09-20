@@ -20,7 +20,6 @@ func createNewMesh(client *ipcRpc.Client) string {
 		return err.Error()
 	}
 
-	joinMesh(client, reply, "localhost")
 	return reply
 }
 

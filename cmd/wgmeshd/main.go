@@ -29,4 +29,6 @@ func main() {
 	if err := grpc.Serve(lis); err != nil {
 		fmt.Print(err.Error())
 	}
+
+	defer wgClient.Close()
 }

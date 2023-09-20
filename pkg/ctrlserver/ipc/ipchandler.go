@@ -16,6 +16,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	ipctypes "github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -24,6 +25,19 @@ const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 type Mesh struct {
 	Server *ctrlserver.MeshCtrlServer
+}
+
+// Get preferred outbound ip of this machine
+func GetOutboundIP() (*net.UDPAddr, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr, nil
 }
 
 /*
@@ -45,6 +59,59 @@ func (n Mesh) CreateNewMesh(name *string, reply *string) error {
 func (n Mesh) ListMeshes(name *string, reply *map[string]ctrlserver.Mesh) error {
 	meshes := n.Server.Meshes
 	*reply = meshes
+	return nil
+}
+
+func updateMesh(n *Mesh, meshId string, endPoint string) error {
+	conn, err := grpc.Dial(endPoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+	c := rpc.NewMeshCtrlServerClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	getMeshReq := rpc.GetMeshRequest{
+		MeshId: meshId,
+	}
+
+	r, err := c.GetMesh(ctx, &getMeshReq)
+
+	if err != nil {
+		return err
+	}
+
+	key, err := wgtypes.ParseKey(meshId)
+	if err != nil {
+		return err
+	}
+
+	mesh := new(ctrlserver.Mesh)
+	mesh.Nodes = make(map[string]ctrlserver.MeshNode)
+	mesh.SharedKey = &key
+	n.Server.Meshes[meshId] = *mesh
+
+	for _, node := range r.GetMeshNode() {
+		meshNode := ctrlserver.MeshNode{
+			PublicKey:    node.PublicKey,
+			HostEndpoint: node.Endpoint,
+			WgEndpoint:   node.WgEndpoint,
+			WgHost:       node.WgHost,
+		}
+
+		n.Server.Meshes[meshId].Nodes[node.Endpoint] = meshNode
+
+		ctrlserver.AddWgPeer(n.Server.IfName, n.Server.Client, meshNode)
+	}
+
+	cfg := wgtypes.Config{}
+
+	n.Server.Client.ConfigureDevice(n.Server.IfName)
+
 	return nil
 }
 
@@ -75,6 +142,10 @@ func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 
 	if err != nil {
 		return err
+	}
+
+	if r.GetSuccess() {
+		updateMesh(&n, args.MeshId, args.IpAdress+":8080")
 	}
 
 	*reply = strconv.FormatBool(r.GetSuccess())
