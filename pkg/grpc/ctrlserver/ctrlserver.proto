@@ -1,0 +1,37 @@
+syntax = "proto3";
+package rpctypes;
+
+option go_package = "pkg/ctrlserver/rpc";
+
+service MeshCtrlServer {
+    rpc GetMesh(GetMeshRequest) returns (GetMeshReply) {}
+    rpc JoinMesh(JoinMeshRequest) returns (JoinMeshReply) {}
+}
+
+message MeshNode {
+    string publicKey = 1;
+    string wgEndpoint = 2;
+    string endpoint = 3;
+    string wgHost = 4;
+}
+
+message GetMeshRequest {
+    string meshId = 1;
+}
+
+message GetMeshReply {
+    string meshId = 1;
+    repeated MeshNode meshNode = 2;
+}
+
+message JoinMeshRequest {
+    string meshId = 1;
+    int32 hostPort = 2;
+    string publicKey = 3;
+    int32 wgPort = 4;
+}
+
+message JoinMeshReply {
+    bool success = 1;
+    optional string meshIp = 2;
+}
