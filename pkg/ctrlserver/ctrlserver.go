@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -75,7 +76,7 @@ func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 	nodes, contains := server.Meshes[args.MeshId]
 
 	if !contains {
-		return errors.New("Node does not exist in the mesh")
+		return errors.New("The mesh: " + args.MeshId + " does not exist")
 	}
 
 	_, contains = nodes.Nodes[args.HostEndpoint]
@@ -164,4 +165,22 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	}
 
 	return nil
+}
+
+func (s *MeshCtrlServer) EnableInterface(meshId string) error {
+	mesh, contains := s.Meshes[meshId]
+
+	if !contains {
+		return errors.New("Mesh does not exist")
+	}
+
+	endPoint := lib.GetOutboundIP().String() + ":8080"
+
+	node, contains := mesh.Nodes[endPoint]
+
+	if !contains {
+		return errors.New("Node does not exist in the mesh")
+	}
+
+	return wg.EnableInterface(s.IfName, node.WgHost)
 }

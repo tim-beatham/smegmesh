@@ -25,8 +25,6 @@ type Mesh struct {
  * is running
  */
 type MeshCtrlServer struct {
-	Host   string
-	Port   int
 	Client *wgctrl.Client
 	Meshes map[string]Mesh
 	IfName string

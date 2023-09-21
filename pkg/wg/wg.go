@@ -59,3 +59,27 @@ func CreateClient(ifName string) (*wgctrl.Client, error) {
 	client.ConfigureDevice(ifName, cfg)
 	return client, nil
 }
+
+func EnableInterface(ifName string, ip string) error {
+	cmd := exec.Command("/usr/bin/ip", "link", "set", "up", "dev", ifName)
+
+	if err := cmd.Run(); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	hostIp, _, err := net.ParseCIDR(ip)
+
+	if err != nil {
+		return err
+	}
+
+	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/24", "dev", "wgmesh")
+
+	if err := cmd.Run(); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	return nil
+}

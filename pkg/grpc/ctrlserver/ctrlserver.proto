@@ -29,6 +29,7 @@ message JoinMeshRequest {
     int32 hostPort = 2;
     string publicKey = 3;
     int32 wgPort = 4;
+    string wgIp = 5;
 }
 
 message JoinMeshReply {

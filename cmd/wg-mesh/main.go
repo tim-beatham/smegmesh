@@ -29,7 +29,7 @@ func listMeshes(client *ipcRpc.Client) {
 	err := client.Call("Mesh.ListMeshes", "", &reply)
 
 	if err != nil {
-		err.Error()
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -71,6 +71,19 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 	}
 }
 
+func enableInterface(client *ipcRpc.Client, meshId string) {
+	var reply string
+
+	err := client.Call("Mesh.EnableInterface", &meshId, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
 func main() {
 	parser := argparse.NewParser("wg-mesh",
 		"wg-mesh Manipulate WireGuard meshes")
@@ -79,11 +92,13 @@ func main() {
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
 	getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
+	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 
 	var meshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var ipAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
 
 	var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -112,5 +127,9 @@ func main() {
 
 	if getMeshCmd.Happened() {
 		getMesh(client, *getMeshId)
+	}
+
+	if enableInterfaceCmd.Happened() {
+		enableInterface(client, *enableInterfaceMeshId)
 	}
 }

@@ -212,6 +212,17 @@ func (n Mesh) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	return nil
 }
 
+func (n Mesh) EnableInterface(meshId string, reply *string) error {
+	err := n.Server.EnableInterface(meshId)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = "up"
+	return nil
+}
+
 func RunIpcHandler(server *ctrlserver.MeshCtrlServer) error {
 	if err := os.RemoveAll(SockAddr); err != nil {
 		return errors.New("Could not find to address")
