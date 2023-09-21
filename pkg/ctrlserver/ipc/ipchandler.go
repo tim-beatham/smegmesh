@@ -8,6 +8,7 @@ import (
 	"net/http"
 	ipcRpc "net/rpc"
 	"os"
+	"slices"
 	"strconv"
 	"time"
 
@@ -90,15 +91,65 @@ func updateMesh(n *Mesh, meshId string, endPoint string) error {
 			WgHost:       node.WgHost,
 		}
 
-		n.Server.Meshes[meshId].Nodes[node.Endpoint] = meshNode
-
+		n.Server.Meshes[meshId].Nodes[meshNode.HostEndpoint] = meshNode
 		ctrlserver.AddWgPeer(n.Server.IfName, n.Server.Client, meshNode)
 	}
 
 	return nil
 }
 
-func (n Mesh) JoinOtherMesh
+func updatePeer(n *Mesh, node ctrlserver.MeshNode, wgHost string, meshId string) error {
+	conn, err := grpc.Dial(node.HostEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	c := rpc.NewMeshCtrlServerClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	dev := n.Server.GetDevice()
+	joinMeshReq := rpc.JoinMeshRequest{
+		MeshId:    meshId,
+		HostPort:  8080,
+		PublicKey: dev.PublicKey.String(),
+		WgPort:    int32(dev.ListenPort),
+		WgIp:      wgHost,
+	}
+
+	r, err := c.JoinMesh(ctx, &joinMeshReq)
+
+	if err != nil {
+		return err
+	}
+
+	if !r.GetSuccess() {
+		return errors.New("Could not join the mesh")
+	}
+
+	return nil
+}
+
+func updatePeers(n *Mesh, meshId string, wgHost string, nodesToExclude []string) error {
+	for _, node := range n.Server.Meshes[meshId].Nodes {
+		nodeEndpoint := node.HostEndpoint
+
+		if !slices.Contains(nodesToExclude, nodeEndpoint) {
+			// Best effort service
+			err := updatePeer(n, node, wgHost, meshId)
+
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+		}
+	}
+
+	return nil
+}
 
 func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 	conn, err := grpc.Dial(args.IpAdress+":8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -116,6 +167,8 @@ func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 
 	dev := n.Server.GetDevice()
 
+	fmt.Print("Pub Key:" + dev.PublicKey.String())
+
 	joinMeshReq := rpc.JoinMeshRequest{
 		MeshId:    args.MeshId,
 		HostPort:  8080,
@@ -132,6 +185,8 @@ func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 	if r.GetSuccess() {
 		updateMesh(&n, args.MeshId, args.IpAdress+":8080")
 	}
+
+	err = updatePeers(&n, args.MeshId, r.GetMeshIp(), make([]string, 0))
 
 	*reply = strconv.FormatBool(r.GetSuccess())
 	return nil
@@ -152,6 +207,7 @@ func (n Mesh) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 
 		*reply = ipc.GetMeshReply{Nodes: nodes}
 	} else {
+		return errors.New("mesh does not exist")
 	}
 	return nil
 }

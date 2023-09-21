@@ -4,6 +4,7 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 
@@ -65,21 +66,30 @@ func (m *meshCtrlServer) JoinMesh(ctx context.Context, request *JoinMeshRequest)
 		return nil, err
 	}
 
+	wgIp := request.WgIp
+
+	if wgIp == "" {
+		wgIp = "10.0.0." + strconv.Itoa(rand.Intn(253)+1) + "/32"
+	}
+
+	fmt.Println("Join server public key: " + request.PublicKey)
+	fmt.Println("Request: " + request.MeshId)
+
 	addHostArgs := ctrlserver.AddHostArgs{
 		HostEndpoint: hostIp + ":" + strconv.Itoa(int(request.HostPort)),
 		PublicKey:    request.PublicKey,
 		MeshId:       request.MeshId,
 		WgEndpoint:   hostIp + ":" + strconv.Itoa(int(request.WgPort)),
+		WgIp:         wgIp,
 	}
 
 	err = m.server.AddHost(addHostArgs)
 
 	if err != nil {
-		return &JoinMeshReply{Success: false}, nil
+		return nil, err
 	}
 
-	fmt.Println("success!")
-	return &JoinMeshReply{Success: true}, nil
+	return &JoinMeshReply{Success: true, MeshIp: &wgIp}, nil
 }
 
 func NewRpcServer(ctlServer *ctrlserver.MeshCtrlServer) *grpc.Server {

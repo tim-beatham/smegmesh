@@ -3,7 +3,6 @@ package ctrlserver
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"strconv"
 
@@ -38,7 +37,7 @@ func (server *MeshCtrlServer) addSelfToMesh(meshId string) error {
 
 	node := MeshNode{
 		HostEndpoint: ipAddr.String() + ":8080",
-		PublicKey:    server.GetDevice().PrivateKey.String(),
+		PublicKey:    server.GetDevice().PublicKey.String(),
 		WgEndpoint:   ipAddr.String() + ":51820",
 		WgHost:       "10.0.0.1/32",
 	}
@@ -69,6 +68,7 @@ type AddHostArgs struct {
 	PublicKey    string
 	MeshId       string
 	WgEndpoint   string
+	WgIp         string
 }
 
 func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
@@ -84,13 +84,11 @@ func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 		return errors.New("The node already has an endpoint in the mesh network")
 	}
 
-	fmt.Println(args.WgEndpoint)
-
 	node := MeshNode{
 		HostEndpoint: args.HostEndpoint,
 		WgEndpoint:   args.WgEndpoint,
 		PublicKey:    args.PublicKey,
-		WgHost:       "10.0.0." + strconv.Itoa(rand.Intn(253)+1) + "/32",
+		WgHost:       args.WgIp,
 	}
 
 	err := AddWgPeer(server.IfName, server.Client, node)
@@ -118,6 +116,8 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	peer := make([]wgtypes.PeerConfig, 1)
 
 	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
+	fmt.Println("node.PublicKey: " + node.PublicKey)
+	fmt.Println("peerPublic: " + peerPublic.String())
 
 	if err != nil {
 		return err
