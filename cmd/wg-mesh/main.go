@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	ipcRpc "net/rpc"
 	"os"
 
@@ -29,7 +30,6 @@ func listMeshes(client *ipcRpc.Client) {
 	err := client.Call("Mesh.ListMeshes", "", &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
 		return
 	}
 
@@ -58,7 +58,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 	err := client.Call("Mesh.GetMesh", &meshId, &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Panic(err.Error())
 		return
 	}
 
@@ -77,7 +77,7 @@ func enableInterface(client *ipcRpc.Client, meshId string) {
 	err := client.Call("Mesh.EnableInterface", &meshId, &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		(err.Error())
 		return
 	}
 

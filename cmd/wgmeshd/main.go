@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net"
 
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
@@ -10,24 +10,25 @@ import (
 	wg "github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
+const ifName = "wgmesh"
+
 func main() {
-	wgClient, err := wg.CreateClient("wgmesh")
+	wgClient, err := wg.CreateClient(ifName)
 
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatalf("Could not create interface %s\n", ifName)
 	}
 
 	ctrlServer := ctrlserver.NewCtrlServer(wgClient, "wgmesh")
 
-	fmt.Println("Running IPC Handler")
+	log.Println("Running IPC Handler")
 	go ipc.RunIpcHandler(ctrlServer)
 
 	grpc := rpc.NewRpcServer(ctrlServer)
 
 	lis, err := net.Listen("tcp", ":8080")
 	if err := grpc.Serve(lis); err != nil {
-		fmt.Print(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	defer wgClient.Close()

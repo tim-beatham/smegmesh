@@ -11,7 +11,6 @@ func main() {
 	client, err := wgctrl.New()
 
 	if err != nil {
-		fmt.Println("Error creating device")
 		return
 	}
 
@@ -19,7 +18,6 @@ func main() {
 	var listenPort int = 5109
 
 	if err != nil {
-		fmt.Println("Error creating private key")
 		return
 	}
 
@@ -31,14 +29,12 @@ func main() {
 	err = client.ConfigureDevice("utun9", cfg)
 
 	if err != nil {
-		fmt.Println(err.Error())
 		return
 	}
 
 	devices, err := client.Devices()
 
 	if err != nil {
-		fmt.Println("unable to retrieve devices")
 		return
 	}
 

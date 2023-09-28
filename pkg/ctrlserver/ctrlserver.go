@@ -2,9 +2,7 @@ package ctrlserver
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
@@ -33,20 +31,6 @@ func (server *MeshCtrlServer) IsInMesh(meshId string) bool {
 	return inMesh
 }
 
-func (server *MeshCtrlServer) addSelfToMesh(meshId string) error {
-	ipAddr := lib.GetOutboundIP()
-
-	node := MeshNode{
-		HostEndpoint: ipAddr.String() + ":8080",
-		PublicKey:    server.GetDevice().PublicKey.String(),
-		WgEndpoint:   ipAddr.String() + ":51820",
-		WgHost:       "10.0.0.1/32",
-	}
-
-	server.Meshes[meshId].Nodes[node.HostEndpoint] = node
-	return nil
-}
-
 func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 	key, err := wgtypes.GenerateKey()
 
@@ -60,7 +44,6 @@ func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 	}
 
 	server.Meshes[key.String()] = mesh
-	server.addSelfToMesh(mesh.SharedKey.String())
 	return &mesh, nil
 }
 
@@ -96,8 +79,6 @@ func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 
 	if err == nil {
 		nodes.Nodes[args.HostEndpoint] = node
-	} else {
-		fmt.Println(err.Error())
 	}
 
 	return err
@@ -117,8 +98,6 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	peer := make([]wgtypes.PeerConfig, 1)
 
 	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
-	fmt.Println("node.PublicKey: " + node.PublicKey)
-	fmt.Println("peerPublic: " + peerPublic.String())
 
 	if err != nil {
 		return err
@@ -127,7 +106,6 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	peerEndpoint, err := net.ResolveUDPAddr("udp", node.WgEndpoint)
 
 	if err != nil {
-		fmt.Println("err")
 		return err
 	}
 
@@ -151,14 +129,6 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	}
 
 	err = client.ConfigureDevice(ifName, cfg)
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	dev, err := client.Device(ifName)
-
-	fmt.Println("Number of peers: " + strconv.Itoa(len(dev.Peers)))
 
 	if err != nil {
 		return err

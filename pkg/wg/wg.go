@@ -20,7 +20,6 @@ func CreateInterface(ifName string) error {
 		cmd := exec.Command("/usr/bin/ip", "link", "add", "dev", ifName, "type", "wireguard")
 
 		if err := cmd.Run(); err != nil {
-			fmt.Println(err.Error())
 			return err
 		}
 	}
@@ -74,10 +73,9 @@ func EnableInterface(ifName string, ip string) error {
 		return err
 	}
 
-	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/24", "dev", "wgmesh")
+	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", "wgmesh")
 
 	if err := cmd.Run(); err != nil {
-		fmt.Println(err.Error())
 		return err
 	}
 

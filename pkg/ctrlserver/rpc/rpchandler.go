@@ -3,8 +3,6 @@ package rpc
 import (
 	context "context"
 	"errors"
-	"fmt"
-	"math/rand"
 	"net"
 	"strconv"
 
@@ -58,7 +56,6 @@ func (m *meshCtrlServer) GetMesh(ctx context.Context, request *GetMeshRequest) (
 
 func (m *meshCtrlServer) JoinMesh(ctx context.Context, request *JoinMeshRequest) (*JoinMeshReply, error) {
 	p, _ := peer.FromContext(ctx)
-	fmt.Println(p.Addr.String())
 
 	hostIp, _, err := net.SplitHostPort(p.Addr.String())
 
@@ -69,11 +66,8 @@ func (m *meshCtrlServer) JoinMesh(ctx context.Context, request *JoinMeshRequest)
 	wgIp := request.WgIp
 
 	if wgIp == "" {
-		wgIp = "10.0.0." + strconv.Itoa(rand.Intn(253)+1) + "/32"
+		return nil, errors.New("Haven't provided a valid IP address")
 	}
-
-	fmt.Println("Join server public key: " + request.PublicKey)
-	fmt.Println("Request: " + request.MeshId)
 
 	addHostArgs := ctrlserver.AddHostArgs{
 		HostEndpoint: hostIp + ":" + strconv.Itoa(int(request.HostPort)),

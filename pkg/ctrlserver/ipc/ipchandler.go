@@ -3,7 +3,6 @@ package ipc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	ipcRpc "net/rpc"
@@ -16,6 +15,9 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver/rpc"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	ipctypes "github.com/tim-beatham/wgmesh/pkg/ipc"
+	"github.com/tim-beatham/wgmesh/pkg/lib"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/slaac"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
@@ -28,13 +30,28 @@ type Mesh struct {
 	Server *ctrlserver.MeshCtrlServer
 }
 
+const MeshIfName = "wgmesh"
+
 /*
  * Create a new WireGuard mesh network
  */
 func (n Mesh) CreateNewMesh(name *string, reply *string) error {
-	wg.CreateInterface("wgmesh")
+	wg.CreateInterface(MeshIfName)
 
 	mesh, err := n.Server.CreateMesh()
+	ula, _ := slaac.NewULA(n.Server.GetDevice().PublicKey, "0")
+
+	outBoundIp := lib.GetOutboundIP().String()
+
+	addHostArgs := ctrlserver.AddHostArgs{
+		HostEndpoint: outBoundIp + ":8080",
+		PublicKey:    n.Server.GetDevice().PublicKey.String(),
+		WgEndpoint:   outBoundIp + ":51820",
+		WgIp:         ula.CGA.GetIpv6().String() + "/128",
+		MeshId:       mesh.SharedKey.String(),
+	}
+
+	n.Server.AddHost(addHostArgs)
 
 	if err != nil {
 		return err
@@ -113,6 +130,7 @@ func updatePeer(n *Mesh, node ctrlserver.MeshNode, wgHost string, meshId string)
 	defer cancel()
 
 	dev := n.Server.GetDevice()
+
 	joinMeshReq := rpc.JoinMeshRequest{
 		MeshId:    meshId,
 		HostPort:  8080,
@@ -143,7 +161,7 @@ func updatePeers(n *Mesh, meshId string, wgHost string, nodesToExclude []string)
 			err := updatePeer(n, node, wgHost, meshId)
 
 			if err != nil {
-				fmt.Println(err.Error())
+				return err
 			}
 		}
 	}
@@ -166,14 +184,16 @@ func (n Mesh) JoinMesh(args *ipctypes.JoinMeshArgs, reply *string) error {
 	defer cancel()
 
 	dev := n.Server.GetDevice()
+	ula, _ := slaac.NewULA(dev.PublicKey, "0")
 
-	fmt.Print("Pub Key:" + dev.PublicKey.String())
+	logging.InfoLog.Println("WgIP: " + ula.CGA.GetIpv6().String())
 
 	joinMeshReq := rpc.JoinMeshRequest{
 		MeshId:    args.MeshId,
 		HostPort:  8080,
 		PublicKey: dev.PublicKey.String(),
 		WgPort:    int32(dev.ListenPort),
+		WgIp:      ula.CGA.GetIpv6().String() + "/128",
 	}
 
 	r, err := c.JoinMesh(ctx, &joinMeshReq)
@@ -200,7 +220,6 @@ func (n Mesh) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 
 		i := 0
 		for _, n := range mesh.Nodes {
-			fmt.Println(n.PublicKey)
 			nodes[i] = n
 			i += 1
 		}
