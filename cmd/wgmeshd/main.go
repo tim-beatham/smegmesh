@@ -5,8 +5,9 @@ import (
 	"net"
 
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver/rpc"
+	"github.com/tim-beatham/wgmesh/pkg/ipc"
+	"github.com/tim-beatham/wgmesh/pkg/robin"
+	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	wg "github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
@@ -22,9 +23,12 @@ func main() {
 	ctrlServer := ctrlserver.NewCtrlServer(wgClient, "wgmesh")
 
 	log.Println("Running IPC Handler")
-	go ipc.RunIpcHandler(ctrlServer)
 
-	grpc := rpc.NewRpcServer(ctrlServer)
+	robinIpc := robin.NewRobinIpc(ctrlServer)
+	robinRpc := robin.NewRobinRpc(ctrlServer)
+
+	go ipc.RunIpcHandler(robinIpc)
+	grpc := rpc.NewRpcServer(*&robinRpc)
 
 	lis, err := net.Listen("tcp", ":8080")
 	if err := grpc.Serve(lis); err != nil {

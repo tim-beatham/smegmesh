@@ -1,23 +1,23 @@
-package rpc
+package robin
 
 import (
-	context "context"
+	"context"
 	"errors"
 	"net"
 	"strconv"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"google.golang.org/grpc"
+	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"google.golang.org/grpc/peer"
 )
 
-type meshCtrlServer struct {
-	UnimplementedMeshCtrlServerServer
+type RobinRpc struct {
+	rpc.UnimplementedMeshCtrlServerServer
 	server *ctrlserver.MeshCtrlServer
 }
 
-func nodeToRpcNode(node ctrlserver.MeshNode) *MeshNode {
-	return &MeshNode{
+func nodeToRpcNode(node ctrlserver.MeshNode) *rpc.MeshNode {
+	return &rpc.MeshNode{
 		PublicKey:  node.PublicKey,
 		WgEndpoint: node.WgEndpoint,
 		WgHost:     node.WgHost,
@@ -25,9 +25,9 @@ func nodeToRpcNode(node ctrlserver.MeshNode) *MeshNode {
 	}
 }
 
-func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*MeshNode {
+func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*rpc.MeshNode {
 	n := len(nodes)
-	meshNodes := make([]*MeshNode, n)
+	meshNodes := make([]*rpc.MeshNode, n)
 
 	var i int = 0
 
@@ -39,14 +39,14 @@ func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*MeshNode {
 	return meshNodes
 }
 
-func (m *meshCtrlServer) GetMesh(ctx context.Context, request *GetMeshRequest) (*GetMeshReply, error) {
+func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*rpc.GetMeshReply, error) {
 	mesh, contains := m.server.Meshes[request.MeshId]
 
 	if !contains {
 		return nil, errors.New("Element is not in the mesh")
 	}
 
-	reply := GetMeshReply{
+	reply := rpc.GetMeshReply{
 		MeshId:   request.MeshId,
 		MeshNode: nodesToRpcNodes(mesh.Nodes),
 	}
@@ -54,7 +54,7 @@ func (m *meshCtrlServer) GetMesh(ctx context.Context, request *GetMeshRequest) (
 	return &reply, nil
 }
 
-func (m *meshCtrlServer) JoinMesh(ctx context.Context, request *JoinMeshRequest) (*JoinMeshReply, error) {
+func (m *RobinRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (*rpc.JoinMeshReply, error) {
 	p, _ := peer.FromContext(ctx)
 
 	hostIp, _, err := net.SplitHostPort(p.Addr.String())
@@ -83,12 +83,9 @@ func (m *meshCtrlServer) JoinMesh(ctx context.Context, request *JoinMeshRequest)
 		return nil, err
 	}
 
-	return &JoinMeshReply{Success: true, MeshIp: &wgIp}, nil
+	return &rpc.JoinMeshReply{Success: true, MeshIp: &wgIp}, nil
 }
 
-func NewRpcServer(ctlServer *ctrlserver.MeshCtrlServer) *grpc.Server {
-	server := &meshCtrlServer{server: ctlServer}
-	grpc := grpc.NewServer()
-	RegisterMeshCtrlServerServer(grpc, server)
-	return grpc
+func NewRobinRpc(ctrlServer *ctrlserver.MeshCtrlServer) *RobinRpc {
+	return &RobinRpc{server: ctrlServer}
 }

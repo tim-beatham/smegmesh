@@ -1,3 +1,8 @@
+/*
+ * ctrlserver controls the WireGuard mesh. Contains an IpcHandler for
+ * handling commands fired by wgmesh command.
+ * Contains an RpcHandler for handling commands fired by another server.
+ */
 package ctrlserver
 
 import (
@@ -11,8 +16,10 @@ import (
 )
 
 /*
- * Create a new control server instance running
- * on the provided port.
+ * NewCtrlServer creates a new instance of the ctrlserver.
+ * It is associated with a WireGuard client and an interface.
+ * wgClient: Represents the WireGuard control client.
+ * ifName: WireGuard interface name
  */
 func NewCtrlServer(wgClient *wgctrl.Client, ifName string) *MeshCtrlServer {
 	ctrlServer := new(MeshCtrlServer)
@@ -23,14 +30,18 @@ func NewCtrlServer(wgClient *wgctrl.Client, ifName string) *MeshCtrlServer {
 }
 
 /*
- * Given the meshid returns true if the node is in the mesh
+ * MeshExists returns true if the client is part of the mesh
  * false otherwise.
  */
-func (server *MeshCtrlServer) IsInMesh(meshId string) bool {
+func (server *MeshCtrlServer) MeshExists(meshId string) bool {
 	_, inMesh := server.Meshes[meshId]
 	return inMesh
 }
 
+/*
+ * CreateMesh creates a new mesh instance, adds it to the map
+ * of meshes and returns the newly created mesh.
+ */
 func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 	key, err := wgtypes.GenerateKey()
 
@@ -47,14 +58,26 @@ func (server *MeshCtrlServer) CreateMesh() (*Mesh, error) {
 	return &mesh, nil
 }
 
+/*
+ * AddHostArgs parameters needed to add
+ * a host to the mesh network
+ */
 type AddHostArgs struct {
+	// HostEndpoint: Public IP and port of the gRPC server the node is running
 	HostEndpoint string
-	PublicKey    string
-	MeshId       string
-	WgEndpoint   string
-	WgIp         string
+	// PubilcKey: WireGuard public key of the device
+	PublicKey string
+	// MeshId: Mesh ID of the node the the host is joining
+	MeshId string
+	// WgEndpoint: Public IP and port of the WireGuard server that is running
+	WgEndpoint string
+	// WgIp: SLAAC generated WireGuard IP of the node
+	WgIp string
 }
 
+/*
+ * AddHost adds a host to the mesh
+ */
 func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 	nodes, contains := server.Meshes[args.MeshId]
 
@@ -75,7 +98,7 @@ func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 		WgHost:       args.WgIp,
 	}
 
-	err := AddWgPeer(server.IfName, server.Client, node)
+	err := server.AddWgPeer(node)
 
 	if err == nil {
 		nodes.Nodes[args.HostEndpoint] = node
@@ -84,6 +107,10 @@ func (server *MeshCtrlServer) AddHost(args AddHostArgs) error {
 	return err
 }
 
+/*
+ * GetDevice gets the WireGuard client associated with the
+ * interface name.
+ */
 func (server *MeshCtrlServer) GetDevice() *wgtypes.Device {
 	dev, err := server.Client.Device(server.IfName)
 
@@ -94,7 +121,10 @@ func (server *MeshCtrlServer) GetDevice() *wgtypes.Device {
 	return dev
 }
 
-func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
+/*
+ * AddWgPeer Updates the WireGuard configuration to include the peer
+ */
+func (server *MeshCtrlServer) AddWgPeer(node MeshNode) error {
 	peer := make([]wgtypes.PeerConfig, 1)
 
 	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
@@ -128,7 +158,7 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 		Peers: peer,
 	}
 
-	err = client.ConfigureDevice(ifName, cfg)
+	server.Client.ConfigureDevice(server.IfName, cfg)
 
 	if err != nil {
 		return err
@@ -137,6 +167,9 @@ func AddWgPeer(ifName string, client *wgctrl.Client, node MeshNode) error {
 	return nil
 }
 
+/*
+ * EnableInterface: Enables the given WireGuard interface.
+ */
 func (s *MeshCtrlServer) EnableInterface(meshId string) error {
 	mesh, contains := s.Meshes[meshId]
 

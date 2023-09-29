@@ -13,9 +13,9 @@ import (
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
-func createNewMesh(client *ipcRpc.Client) string {
+func createMesh(client *ipcRpc.Client) string {
 	var reply string
-	err := client.Call("Mesh.CreateNewMesh", "", &reply)
+	err := client.Call("RobinIpc.CreateMesh", "", &reply)
 
 	if err != nil {
 		return err.Error()
@@ -27,7 +27,7 @@ func createNewMesh(client *ipcRpc.Client) string {
 func listMeshes(client *ipcRpc.Client) {
 	var reply map[string]ctrlserver.Mesh
 
-	err := client.Call("Mesh.ListMeshes", "", &reply)
+	err := client.Call("RobinIpc.ListMeshes", "", &reply)
 
 	if err != nil {
 		return
@@ -43,7 +43,7 @@ func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) string {
 
 	args := ipc.JoinMeshArgs{MeshId: meshId, IpAdress: ipAddress}
 
-	err := client.Call("Mesh.JoinMesh", &args, &reply)
+	err := client.Call("RobinIpc.JoinMesh", &args, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -55,7 +55,7 @@ func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) string {
 func getMesh(client *ipcRpc.Client, meshId string) {
 	reply := new(ipc.GetMeshReply)
 
-	err := client.Call("Mesh.GetMesh", &meshId, &reply)
+	err := client.Call("RobinIpc.GetMesh", &meshId, &reply)
 
 	if err != nil {
 		log.Panic(err.Error())
@@ -74,7 +74,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 func enableInterface(client *ipcRpc.Client, meshId string) {
 	var reply string
 
-	err := client.Call("Mesh.EnableInterface", &meshId, &reply)
+	err := client.Call("RobinIpc.EnableInterface", &meshId, &reply)
 
 	if err != nil {
 		(err.Error())
@@ -114,7 +114,7 @@ func main() {
 	}
 
 	if newMeshCmd.Happened() {
-		fmt.Println(createNewMesh(client))
+		fmt.Println(createMesh(client))
 	}
 
 	if listMeshCmd.Happened() {
