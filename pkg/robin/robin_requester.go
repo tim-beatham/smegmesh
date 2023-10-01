@@ -64,7 +64,12 @@ func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
 	defer conn.Close()
 	c := rpc.NewMeshCtrlServerClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, err := n.Server.AddToken(context.Background(), endPoint, meshId)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	getMeshReq := rpc.GetMeshRequest{
@@ -103,6 +108,18 @@ func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
 }
 
 func updatePeer(n *RobinIpc, node ctrlserver.MeshNode, wgHost string, meshId string) error {
+	token, err := n.Authenticate(meshId, node.HostEndpoint)
+
+	if err != nil {
+		return err
+	}
+
+	err = n.Server.TokenManager.AddToken(meshId, node.HostEndpoint, token)
+
+	if err != nil {
+		return err
+	}
+
 	conn, err := n.Server.Conn.Connect(node.HostEndpoint)
 
 	if err != nil {
@@ -113,7 +130,12 @@ func updatePeer(n *RobinIpc, node ctrlserver.MeshNode, wgHost string, meshId str
 
 	c := rpc.NewMeshCtrlServerClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, err := n.Server.AddToken(context.Background(), node.HostEndpoint, meshId)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	dev := n.Server.GetDevice()
@@ -156,7 +178,45 @@ func updatePeers(n *RobinIpc, meshId string, wgHost string, nodesToExclude []str
 	return nil
 }
 
+func (n *RobinIpc) Authenticate(meshId, endpoint string) (string, error) {
+	conn, err := n.Server.Conn.Connect(endpoint)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer conn.Close()
+
+	c := rpc.NewAuthenticationClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	authRequest := rpc.JoinAuthMeshRequest{
+		MeshId: meshId,
+		Alias:  lib.GetOutboundIP().String(),
+	}
+
+	reply, err := c.JoinMesh(ctx, &authRequest)
+
+	if err != nil {
+		return "", err
+	}
+
+	logging.InfoLog.Printf("Token: %s\n", *reply.Token)
+
+	return *reply.Token, err
+}
+
 func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
+	token, err := n.Authenticate(args.MeshId, args.IpAdress+":8080")
+
+	if err != nil {
+		return err
+	}
+
+	n.Server.TokenManager.AddToken(args.MeshId, args.IpAdress+":8080", token)
+
 	conn, err := n.Server.Conn.Connect(args.IpAdress + ":8080")
 
 	if err != nil {
@@ -167,7 +227,12 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 	c := rpc.NewMeshCtrlServerClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, err := n.Server.AddToken(context.Background(), args.IpAdress+":8080", args.MeshId)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	dev := n.Server.GetDevice()

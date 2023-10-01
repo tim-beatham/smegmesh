@@ -6,6 +6,7 @@
 package ctrlserver
 
 import (
+	"context"
 	"errors"
 	"net"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"google.golang.org/grpc/metadata"
 )
 
 /*
@@ -31,6 +33,7 @@ func NewCtrlServer(wgClient *wgctrl.Client, conn *conn.WgCtrlConnection, ifName 
 	ctrlServer.Conn = conn
 	ctrlServer.IfName = ifName
 	ctrlServer.JwtManager = auth.NewJwtManager("bob123", 24*time.Hour)
+	ctrlServer.TokenManager = auth.NewTokenManager()
 	return ctrlServer
 }
 
@@ -191,4 +194,14 @@ func (s *MeshCtrlServer) EnableInterface(meshId string) error {
 	}
 
 	return wg.EnableInterface(s.IfName, node.WgHost)
+}
+
+func (s *MeshCtrlServer) AddToken(ctx context.Context, endpoint, meshId string) (context.Context, error) {
+	token, err := s.TokenManager.GetToken(meshId, endpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata.AppendToOutgoingContext(ctx, "authorization", token), nil
 }

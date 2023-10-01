@@ -35,7 +35,7 @@ func main() {
 	devices, err := client.Devices()
 
 	if err != nil {
-		return
+	return
 	}
 
 	fmt.Printf("Number of devices: %d\n", len(devices))

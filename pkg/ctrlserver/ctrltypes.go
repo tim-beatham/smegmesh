@@ -32,4 +32,5 @@ type MeshCtrlServer struct {
 	IfName     string
 	Conn       *conn.WgCtrlConnection
 	JwtManager *auth.JwtManager
+	TokenManager *auth.TokenManager
 }

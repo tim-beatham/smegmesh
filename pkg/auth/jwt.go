@@ -3,9 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -22,7 +25,7 @@ type JwtMesh struct {
 // JwtManager manages jwt tokens indicating a session
 // between this host and another within a specific mesh
 type JwtManager struct {
-	secretKey     string
+	secretKey     []byte
 	tokenDuration time.Duration
 	// meshes contains all the meshes that we have sessions with
 	meshes map[string]*JwtMesh
@@ -37,7 +40,7 @@ type JwtNode struct {
 
 func NewJwtManager(secretKey string, tokenDuration time.Duration) *JwtManager {
 	meshes := make(map[string]*JwtMesh)
-	return &JwtManager{secretKey, tokenDuration, meshes}
+	return &JwtManager{[]byte(secretKey), tokenDuration, meshes}
 }
 
 func (m *JwtManager) CreateClaims(meshId string, alias string) (*string, error) {
@@ -52,13 +55,17 @@ func (m *JwtManager) CreateClaims(meshId string, alias string) (*string, error) 
 	mesh, contains := m.meshes[meshId]
 
 	if !contains {
-		return nil, errors.New("The specified mesh does not exist")
+		mesh = new(JwtMesh)
+		mesh.meshId = meshId
+		mesh.nodes = make(map[string]interface{})
+		mesh.nodes[meshId] = mesh
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, node)
-	signedString, err := token.SignedString([]byte(m.secretKey))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, node)
+	signedString, err := token.SignedString(m.secretKey)
 
 	if err != nil {
+		fmt.Println(err.Error())
 		return nil, err
 	}
 
@@ -74,7 +81,7 @@ func (m *JwtManager) CreateClaims(meshId string, alias string) (*string, error) 
 
 func (m *JwtManager) Verify(accessToken string) (*JwtNode, bool) {
 	token, err := jwt.ParseWithClaims(accessToken, &JwtNode{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(m.secretKey), nil
+		return m.secretKey, nil
 	})
 
 	if err != nil {
@@ -96,6 +103,11 @@ func (m *JwtManager) GetAuthInterceptor() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
+
+		if strings.Contains(info.FullMethod, "Auth") {
+			return handler(ctx, req)
+		}
+
 		md, ok := metadata.FromIncomingContext(ctx)
 
 		if !ok {
@@ -103,6 +115,10 @@ func (m *JwtManager) GetAuthInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		values := md["authorization"]
+
+		for _, w := range values {
+			logging.InfoLog.Printf(w)
+		}
 
 		if len(values) == 0 {
 			return nil, status.Errorf(codes.Unauthenticated, "authorization token is not provided")
