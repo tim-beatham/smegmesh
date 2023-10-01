@@ -2,8 +2,8 @@ package rpc
 
 import grpc "google.golang.org/grpc"
 
-func NewRpcServer(server MeshCtrlServerServer) *grpc.Server {
-	grpc := grpc.NewServer()
-	RegisterMeshCtrlServerServer(grpc, server)
-	return grpc
+func NewRpcServer(rpcServer *grpc.Server, server MeshCtrlServerServer, auth AuthenticationServer) *grpc.Server {
+	RegisterMeshCtrlServerServer(rpcServer, server)
+	RegisterAuthenticationServer(rpcServer, auth)
+	return rpcServer
 }

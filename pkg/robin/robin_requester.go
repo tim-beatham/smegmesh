@@ -15,8 +15,6 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/slaac"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type RobinIpc struct {
@@ -57,7 +55,7 @@ func (n *RobinIpc) ListMeshes(name string, reply *map[string]ctrlserver.Mesh) er
 }
 
 func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
-	conn, err := grpc.Dial(endPoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := n.Server.Conn.Connect(endPoint)
 
 	if err != nil {
 		return err
@@ -105,7 +103,7 @@ func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
 }
 
 func updatePeer(n *RobinIpc, node ctrlserver.MeshNode, wgHost string, meshId string) error {
-	conn, err := grpc.Dial(node.HostEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := n.Server.Conn.Connect(node.HostEndpoint)
 
 	if err != nil {
 		return err
@@ -159,7 +157,7 @@ func updatePeers(n *RobinIpc, meshId string, wgHost string, nodesToExclude []str
 }
 
 func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
-	conn, err := grpc.Dial(args.IpAdress+":8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := n.Server.Conn.Connect(args.IpAdress + ":8080")
 
 	if err != nil {
 		return err

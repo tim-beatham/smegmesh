@@ -8,7 +8,10 @@ package ctrlserver
 import (
 	"errors"
 	"net"
+	"time"
 
+	"github.com/tim-beatham/wgmesh/pkg/auth"
+	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -21,11 +24,13 @@ import (
  * wgClient: Represents the WireGuard control client.
  * ifName: WireGuard interface name
  */
-func NewCtrlServer(wgClient *wgctrl.Client, ifName string) *MeshCtrlServer {
+func NewCtrlServer(wgClient *wgctrl.Client, conn *conn.WgCtrlConnection, ifName string) *MeshCtrlServer {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Meshes = make(map[string]Mesh)
 	ctrlServer.Client = wgClient
+	ctrlServer.Conn = conn
 	ctrlServer.IfName = ifName
+	ctrlServer.JwtManager = auth.NewJwtManager("bob123", 24*time.Hour)
 	return ctrlServer
 }
 

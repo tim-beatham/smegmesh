@@ -1,6 +1,8 @@
 package ctrlserver
 
 import (
+	"github.com/tim-beatham/wgmesh/pkg/auth"
+	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -25,7 +27,9 @@ type Mesh struct {
  * is running
  */
 type MeshCtrlServer struct {
-	Client *wgctrl.Client
-	Meshes map[string]Mesh
-	IfName string
+	Client     *wgctrl.Client
+	Meshes     map[string]Mesh
+	IfName     string
+	Conn       *conn.WgCtrlConnection
+	JwtManager *auth.JwtManager
 }
