@@ -3,79 +3,122 @@
 package conn
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
+	"time"
 
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/metadata"
 )
 
 // PeerConnection interfacing for a secure connection between
 // two peers.
 type PeerConnection interface {
 	Connect() error
+	Close() error
+	Authenticate(meshId string) error
+	GetClient() (*grpc.ClientConn, error)
+	CreateAuthContext(meshId string) (context.Context, error)
 }
 
 type WgCtrlConnection struct {
-	serverConfig *tls.Config
 	clientConfig *tls.Config
 	conn         *grpc.ClientConn
+	endpoint     string
+	// tokens maps a meshID to the corresponding token
+	tokens map[string]string
 }
 
-type NewConnectionsParams struct {
-	CertificatePath      string
-	PrivateKey           string
-	SkipCertVerification bool
+var keepAliveParams = keepalive.ClientParameters{
+	Time:                5 * time.Minute,
+	Timeout:             time.Second,
+	PermitWithoutStream: true,
 }
 
-func NewConnection(params *NewConnectionsParams) (*WgCtrlConnection, error) {
-	cert, err := tls.LoadX509KeyPair(params.CertificatePath, params.PrivateKey)
+func NewWgCtrlConnection(clientConfig *tls.Config, server string) (*WgCtrlConnection, error) {
+	var conn WgCtrlConnection
+	conn.tokens = make(map[string]string)
+	conn.clientConfig = clientConfig
+	conn.endpoint = server
+	return &conn, nil
+}
+
+func (c *WgCtrlConnection) Authenticate(meshId string) error {
+	conn, err := grpc.Dial(c.endpoint,
+		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)))
+
+	defer conn.Close()
 
 	if err != nil {
-		logging.ErrorLog.Printf("Failed to load key pair: %s\n", err.Error())
-		logging.ErrorLog.Printf("Certificate Path: %s\n", params.CertificatePath)
-		logging.ErrorLog.Printf("Private Key Path: %s\n", params.PrivateKey)
-		return nil, err
+		return err
 	}
 
-	serverAuth := tls.RequireAndVerifyClientCert
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 
-	if params.SkipCertVerification {
-		serverAuth = tls.RequireAnyClientCert
+	client := rpc.NewAuthenticationClient(conn)
+	defer cancel()
+
+	authRequest := rpc.JoinAuthMeshRequest{
+		MeshId: meshId,
+		Alias:  lib.GetOutboundIP().String(),
 	}
 
-	tlsConfig := &tls.Config{
-		ClientAuth:   serverAuth,
-		Certificates: []tls.Certificate{cert},
+	reply, err := client.JoinMesh(ctx, &authRequest)
+
+	if err != nil {
+		return err
 	}
 
-	clientConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: params.SkipCertVerification,
-	}
-
-	wgConnection := WgCtrlConnection{serverConfig: tlsConfig, clientConfig: clientConfig}
-
-	return &wgConnection, nil
+	c.tokens[meshId] = *reply.Token
+	return nil
 }
 
-// Connect: Connects to a new gRPC peer given the address of the other server
-func (c *WgCtrlConnection) Connect(server string) (*grpc.ClientConn, error) {
-	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)))
+// ConnectWithToken: Connects to a new gRPC peer given the address of the other server.
+func (c *WgCtrlConnection) Connect() error {
+	conn, err := grpc.Dial(c.endpoint,
+		grpc.WithKeepaliveParams(keepAliveParams),
+		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)),
+	)
 
 	if err != nil {
 		logging.ErrorLog.Printf("Could not connect: %s\n", err.Error())
-		return nil, err
+		return err
 	}
 
-	return conn, nil
+	c.conn = conn
+	return nil
 }
 
-// Listen: listens to incoming messages
-func (c *WgCtrlConnection) Listen(i grpc.UnaryServerInterceptor) *grpc.Server {
-	server := grpc.NewServer(
-		grpc.UnaryInterceptor(i),
-		grpc.Creds(credentials.NewTLS(c.serverConfig)),
-	)
-	return server
+// Close: Closes the client connections
+func (c *WgCtrlConnection) Close() error {
+	return c.conn.Close()
+}
+
+// GetClient: Gets the client connection
+func (c *WgCtrlConnection) GetClient() (*grpc.ClientConn, error) {
+	var err error = nil
+
+	if c.conn == nil {
+		err = errors.New("The client's config does not exist")
+	}
+
+	return c.conn, err
+}
+
+// TODO: Implement a mechanism to attach a security token
+func (c *WgCtrlConnection) CreateAuthContext(meshId string) (context.Context, error) {
+	token, ok := c.tokens[meshId]
+
+	if !ok {
+		return nil, errors.New("MeshID: " + meshId + " does not exist")
+	}
+
+	ctx := context.Background()
+	return metadata.AppendToOutgoingContext(ctx, "authorization", token), nil
 }

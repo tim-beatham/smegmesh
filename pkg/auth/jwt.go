@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,6 +45,8 @@ func NewJwtManager(secretKey string, tokenDuration time.Duration) *JwtManager {
 }
 
 func (m *JwtManager) CreateClaims(meshId string, alias string) (*string, error) {
+	logging.InfoLog.Println("MeshID: " + meshId)
+	logging.InfoLog.Println("Token Duration: " + strconv.Itoa(int(m.tokenDuration)))
 	node := JwtNode{
 		MeshId: meshId,
 		Alias:  alias,

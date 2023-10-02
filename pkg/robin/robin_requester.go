@@ -21,10 +21,8 @@ type RobinIpc struct {
 	Server *ctrlserver.MeshCtrlServer
 }
 
-const MeshIfName = "wgmesh"
-
 func (n *RobinIpc) CreateMesh(name string, reply *string) error {
-	wg.CreateInterface(MeshIfName)
+	wg.CreateInterface(n.Server.IfName)
 
 	mesh, err := n.Server.CreateMesh()
 	ula, _ := slaac.NewULA(n.Server.GetDevice().PublicKey, "0")
@@ -55,21 +53,23 @@ func (n *RobinIpc) ListMeshes(name string, reply *map[string]ctrlserver.Mesh) er
 }
 
 func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
-	conn, err := n.Server.Conn.Connect(endPoint)
+	peerConn, err := n.Server.ConnectionManager.GetConnection(endPoint)
 
 	if err != nil {
 		return err
 	}
 
-	defer conn.Close()
+	conn, err := peerConn.GetClient()
+
 	c := rpc.NewMeshCtrlServerClient(conn)
 
-	ctx, err := n.Server.AddToken(context.Background(), endPoint, meshId)
+	authContext, err := peerConn.CreateAuthContext(meshId)
+
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(authContext, time.Second)
 	defer cancel()
 
 	getMeshReq := rpc.GetMeshRequest{
@@ -108,34 +108,33 @@ func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
 }
 
 func updatePeer(n *RobinIpc, node ctrlserver.MeshNode, wgHost string, meshId string) error {
-	token, err := n.Authenticate(meshId, node.HostEndpoint)
+	err := n.Authenticate(meshId, node.HostEndpoint)
 
 	if err != nil {
 		return err
 	}
 
-	err = n.Server.TokenManager.AddToken(meshId, node.HostEndpoint, token)
+	peerConnection, err := n.Server.ConnectionManager.GetConnection(node.HostEndpoint)
 
 	if err != nil {
 		return err
 	}
 
-	conn, err := n.Server.Conn.Connect(node.HostEndpoint)
+	conn, err := peerConnection.GetClient()
 
 	if err != nil {
 		return err
 	}
-
-	defer conn.Close()
 
 	c := rpc.NewMeshCtrlServerClient(conn)
 
-	ctx, err := n.Server.AddToken(context.Background(), node.HostEndpoint, meshId)
+	authContext, err := peerConnection.CreateAuthContext(meshId)
+
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(authContext, time.Second)
 	defer cancel()
 
 	dev := n.Server.GetDevice()
@@ -178,61 +177,51 @@ func updatePeers(n *RobinIpc, meshId string, wgHost string, nodesToExclude []str
 	return nil
 }
 
-func (n *RobinIpc) Authenticate(meshId, endpoint string) (string, error) {
-	conn, err := n.Server.Conn.Connect(endpoint)
+func (n *RobinIpc) Authenticate(meshId, endpoint string) error {
+	peerConnection, err := n.Server.ConnectionManager.AddConnection(endpoint)
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	defer conn.Close()
-
-	c := rpc.NewAuthenticationClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	authRequest := rpc.JoinAuthMeshRequest{
-		MeshId: meshId,
-		Alias:  lib.GetOutboundIP().String(),
-	}
-
-	reply, err := c.JoinMesh(ctx, &authRequest)
+	err = peerConnection.Authenticate(meshId)
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	logging.InfoLog.Printf("Token: %s\n", *reply.Token)
-
-	return *reply.Token, err
+	err = peerConnection.Connect()
+	return err
 }
 
 func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
-	token, err := n.Authenticate(args.MeshId, args.IpAdress+":8080")
+	err := n.Authenticate(args.MeshId, args.IpAdress+":8080")
 
 	if err != nil {
 		return err
 	}
 
-	n.Server.TokenManager.AddToken(args.MeshId, args.IpAdress+":8080", token)
-
-	conn, err := n.Server.Conn.Connect(args.IpAdress + ":8080")
+	peerConnection, err := n.Server.ConnectionManager.GetConnection(args.IpAdress + ":8080")
 
 	if err != nil {
 		return err
 	}
 
-	defer conn.Close()
+	client, err := peerConnection.GetClient()
 
-	c := rpc.NewMeshCtrlServerClient(conn)
-
-	ctx, err := n.Server.AddToken(context.Background(), args.IpAdress+":8080", args.MeshId)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	c := rpc.NewMeshCtrlServerClient(client)
+
+	authContext, err := peerConnection.CreateAuthContext(args.MeshId)
+
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(authContext, time.Second)
 	defer cancel()
 
 	dev := n.Server.GetDevice()

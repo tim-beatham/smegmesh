@@ -6,19 +6,24 @@
 package ctrlserver
 
 import (
-	"context"
 	"errors"
 	"net"
-	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/auth"
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"google.golang.org/grpc/metadata"
 )
+
+type NewCtrlServerParams struct {
+	WgClient     *wgctrl.Client
+	Conf         *conf.WgMeshConfiguration
+	AuthProvider rpc.AuthenticationServer
+	CtrlProvider rpc.MeshCtrlServerServer
+}
 
 /*
  * NewCtrlServer creates a new instance of the ctrlserver.
@@ -26,15 +31,42 @@ import (
  * wgClient: Represents the WireGuard control client.
  * ifName: WireGuard interface name
  */
-func NewCtrlServer(wgClient *wgctrl.Client, conn *conn.WgCtrlConnection, ifName string) *MeshCtrlServer {
+func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Meshes = make(map[string]Mesh)
-	ctrlServer.Client = wgClient
-	ctrlServer.Conn = conn
-	ctrlServer.IfName = ifName
-	ctrlServer.JwtManager = auth.NewJwtManager("bob123", 24*time.Hour)
-	ctrlServer.TokenManager = auth.NewTokenManager()
-	return ctrlServer
+	ctrlServer.Client = params.WgClient
+	ctrlServer.IfName = params.Conf.IfName
+
+	connManagerParams := conn.NewConnectionManagerParams{
+		CertificatePath:      params.Conf.CertificatePath,
+		PrivateKey:           params.Conf.PrivateKeyPath,
+		SkipCertVerification: params.Conf.SkipCertVerification,
+	}
+
+	connMgr, err := conn.NewConnectionManager(&connManagerParams)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ctrlServer.ConnectionManager = connMgr
+
+	connServerParams := conn.NewConnectionServerParams{
+		CertificatePath:      params.Conf.CertificatePath,
+		PrivateKey:           params.Conf.PrivateKeyPath,
+		SkipCertVerification: params.Conf.SkipCertVerification,
+		AuthProvider:         params.AuthProvider,
+		CtrlProvider:         params.CtrlProvider,
+	}
+
+	connServer, err := conn.NewConnectionServer(&connServerParams)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ctrlServer.ConnectionServer = connServer
+	return ctrlServer, nil
 }
 
 /*
@@ -194,14 +226,4 @@ func (s *MeshCtrlServer) EnableInterface(meshId string) error {
 	}
 
 	return wg.EnableInterface(s.IfName, node.WgHost)
-}
-
-func (s *MeshCtrlServer) AddToken(ctx context.Context, endpoint, meshId string) (context.Context, error) {
-	token, err := s.TokenManager.GetToken(meshId, endpoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return metadata.AppendToOutgoingContext(ctx, "authorization", token), nil
 }

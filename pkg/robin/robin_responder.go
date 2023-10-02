@@ -13,7 +13,7 @@ import (
 
 type RobinRpc struct {
 	rpc.UnimplementedMeshCtrlServerServer
-	server *ctrlserver.MeshCtrlServer
+	Server *ctrlserver.MeshCtrlServer
 }
 
 func nodeToRpcNode(node ctrlserver.MeshNode) *rpc.MeshNode {
@@ -40,7 +40,7 @@ func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*rpc.MeshNode {
 }
 
 func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*rpc.GetMeshReply, error) {
-	mesh, contains := m.server.Meshes[request.MeshId]
+	mesh, contains := m.Server.Meshes[request.MeshId]
 
 	if !contains {
 		return nil, errors.New("Element is not in the mesh")
@@ -77,15 +77,11 @@ func (m *RobinRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (
 		WgIp:         wgIp,
 	}
 
-	err = m.server.AddHost(addHostArgs)
+	err = m.Server.AddHost(addHostArgs)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &rpc.JoinMeshReply{Success: true, MeshIp: &wgIp}, nil
-}
-
-func NewRobinRpc(ctrlServer *ctrlserver.MeshCtrlServer) *RobinRpc {
-	return &RobinRpc{server: ctrlServer}
 }

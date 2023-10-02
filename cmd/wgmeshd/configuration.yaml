@@ -1,3 +1,4 @@
 certificatePath: "../../cert/cert.pem"
 privateKeyPath: "../../cert/key.pem"
 skipCertVerification: true
+ifName: "wgmesh"

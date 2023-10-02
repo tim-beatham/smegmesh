@@ -2,56 +2,52 @@ package main
 
 import (
 	"log"
-	"net"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/conn"
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/middleware"
 	"github.com/tim-beatham/wgmesh/pkg/robin"
-	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	wg "github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
-const ifName = "wgmesh"
-
 func main() {
-	wgClient, err := wg.CreateClient(ifName)
-
-	if err != nil {
-		log.Fatalf("Could not create interface %s\n", ifName)
-	}
-
 	conf, err := conf.ParseConfiguration("./configuration.yaml")
-
-	newConnParams := conn.NewConnectionsParams{
-		CertificatePath:      conf.CertificatePath,
-		PrivateKey:           conf.PrivateKeyPath,
-		SkipCertVerification: conf.SkipCertVerification,
+	if err != nil {
+		log.Fatalln("Could not parse configuration")
 	}
 
-	conn, err := conn.NewConnection(&newConnParams)
+	wgClient, err := wg.CreateClient(conf.IfName)
+
+	var robinRpc robin.RobinRpc
+	var robinIpc robin.RobinIpc
+	var authProvider middleware.AuthRpcProvider
+
+	ctrlServerParams := ctrlserver.NewCtrlServerParams{
+		WgClient:     wgClient,
+		Conf:         conf,
+		AuthProvider: &authProvider,
+		CtrlProvider: &robinRpc,
+	}
+
+	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
+	authProvider.Manager = ctrlServer.ConnectionServer.JwtManager
+	robinRpc.Server = ctrlServer
+	robinIpc.Server = ctrlServer
 
 	if err != nil {
-		return
+		logging.ErrorLog.Fatalln(err.Error())
 	}
-
-	ctrlServer := ctrlserver.NewCtrlServer(wgClient, conn, "wgmesh")
 
 	log.Println("Running IPC Handler")
 
-	robinIpc := robin.NewRobinIpc(ctrlServer)
-	robinRpc := robin.NewRobinRpc(ctrlServer)
+	go ipc.RunIpcHandler(&robinIpc)
 
-	go ipc.RunIpcHandler(robinIpc)
+	err = ctrlServer.ConnectionServer.Listen()
 
-	grpc := conn.Listen(ctrlServer.JwtManager.GetAuthInterceptor())
-	rpc.NewRpcServer(grpc, robinRpc, middleware.NewAuthProvider(ctrlServer))
-
-	lis, err := net.Listen("tcp", ":8080")
-	if err := grpc.Serve(lis); err != nil {
-		log.Fatal(err.Error())
+	if err != nil {
+		logging.ErrorLog.Fatalln(err.Error())
 	}
 
 	defer wgClient.Close()
