@@ -1,7 +1,7 @@
 syntax = "proto3";
 package rpctypes;
 
-option go_package = "pkg/ctrlserver/rpc";
+option go_package = "pkg/rpc";
 
 service MeshCtrlServer {
     rpc GetMesh(GetMeshRequest) returns (GetMeshReply) {}
