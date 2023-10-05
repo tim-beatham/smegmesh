@@ -5,6 +5,7 @@ import (
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/middleware"
@@ -33,8 +34,14 @@ func main() {
 
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
 	authProvider.Manager = ctrlServer.ConnectionServer.JwtManager
+
+	robinIpcParams := robin.RobinIpcParams{
+		CtrlServer: ctrlServer,
+		Allocator:  &ip.ULABuilder{},
+	}
+
 	robinRpc.Server = ctrlServer
-	robinIpc.Server = ctrlServer
+	robinIpc = robin.NewRobinIpc(robinIpcParams)
 
 	if err != nil {
 		logging.ErrorLog.Fatalln(err.Error())

@@ -13,7 +13,6 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -33,12 +32,6 @@ type WgCtrlConnection struct {
 	endpoint     string
 	// tokens maps a meshID to the corresponding token
 	tokens map[string]string
-}
-
-var keepAliveParams = keepalive.ClientParameters{
-	Time:                5 * time.Minute,
-	Timeout:             time.Second,
-	PermitWithoutStream: true,
 }
 
 func NewWgCtrlConnection(clientConfig *tls.Config, server string) (*WgCtrlConnection, error) {
@@ -82,7 +75,6 @@ func (c *WgCtrlConnection) Authenticate(meshId string) error {
 // ConnectWithToken: Connects to a new gRPC peer given the address of the other server.
 func (c *WgCtrlConnection) Connect() error {
 	conn, err := grpc.Dial(c.endpoint,
-		grpc.WithKeepaliveParams(keepAliveParams),
 		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)),
 	)
 

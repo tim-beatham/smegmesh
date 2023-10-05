@@ -1,4 +1,4 @@
-package cga
+package ip
 
 /*
  * Use a WireGuard public key to generate a unique interface ID
@@ -106,7 +106,7 @@ func (c *CgaParameters) generateInterface() []byte {
 	return interfaceId
 }
 
-func (c *CgaParameters) GetIpv6() net.IP {
+func (c *CgaParameters) GetIP() net.IP {
 	if c.flag == 1 {
 		return c.interfaceId[:]
 	}

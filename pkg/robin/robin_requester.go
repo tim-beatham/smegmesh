@@ -8,24 +8,30 @@ import (
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
-	"github.com/tim-beatham/wgmesh/pkg/slaac"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 type RobinIpc struct {
-	Server *ctrlserver.MeshCtrlServer
+	Server      *ctrlserver.MeshCtrlServer
+	ipAllocator ip.IPAllocator
 }
 
 func (n *RobinIpc) CreateMesh(name string, reply *string) error {
 	wg.CreateInterface(n.Server.IfName)
 
 	mesh, err := n.Server.CreateMesh()
-	ula, _ := slaac.NewULA(n.Server.GetDevice().PublicKey, "0")
+
+	nodeIP, err := n.ipAllocator.GetIP(n.Server.GetPublicKey(), mesh.SharedKey.String())
+
+	if err != nil {
+		return err
+	}
 
 	outBoundIp := lib.GetOutboundIP().String()
 
@@ -33,7 +39,7 @@ func (n *RobinIpc) CreateMesh(name string, reply *string) error {
 		HostEndpoint: outBoundIp + ":8080",
 		PublicKey:    n.Server.GetDevice().PublicKey.String(),
 		WgEndpoint:   outBoundIp + ":51820",
-		WgIp:         ula.CGA.GetIpv6().String() + "/128",
+		WgIp:         nodeIP.String() + "/128",
 		MeshId:       mesh.SharedKey.String(),
 	}
 
@@ -190,7 +196,6 @@ func (n *RobinIpc) Authenticate(meshId, endpoint string) error {
 		return err
 	}
 
-	err = peerConnection.Connect()
 	return err
 }
 
@@ -225,16 +230,21 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 	defer cancel()
 
 	dev := n.Server.GetDevice()
-	ula, _ := slaac.NewULA(dev.PublicKey, "0")
 
-	logging.InfoLog.Println("WgIP: " + ula.CGA.GetIpv6().String())
+	ipAddr, err := n.ipAllocator.GetIP(n.Server.GetPublicKey(), args.MeshId)
+
+	if err != nil {
+		return err
+	}
+
+	logging.InfoLog.Println("WgIP: " + ipAddr.String())
 
 	joinMeshReq := rpc.JoinMeshRequest{
 		MeshId:    args.MeshId,
 		HostPort:  8080,
 		PublicKey: dev.PublicKey.String(),
 		WgPort:    int32(dev.ListenPort),
-		WgIp:      ula.CGA.GetIpv6().String() + "/128",
+		WgIp:      ipAddr.String() + "/128",
 	}
 
 	r, err := c.JoinMesh(ctx, &joinMeshReq)
@@ -283,6 +293,14 @@ func (n *RobinIpc) EnableInterface(meshId string, reply *string) error {
 	return nil
 }
 
-func NewRobinIpc(ctrlServer *ctrlserver.MeshCtrlServer) *RobinIpc {
-	return &RobinIpc{Server: ctrlServer}
+type RobinIpcParams struct {
+	CtrlServer *ctrlserver.MeshCtrlServer
+	Allocator  ip.IPAllocator
+}
+
+func NewRobinIpc(ipcParams RobinIpcParams) RobinIpc {
+	return RobinIpc{
+		Server:      ipcParams.CtrlServer,
+		ipAllocator: ipcParams.Allocator,
+	}
 }

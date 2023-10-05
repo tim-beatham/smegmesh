@@ -1,15 +1,13 @@
-package slaac
+package ip
 
 import (
 	"crypto/sha1"
+	"net"
 
-	"github.com/tim-beatham/wgmesh/pkg/cga"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-type ULA struct {
-	CGA cga.CgaParameters
-}
+type ULABuilder struct{}
 
 func getULAPrefix(meshId string) [8]byte {
 	var ulaPrefix [8]byte
@@ -26,14 +24,13 @@ func getULAPrefix(meshId string) [8]byte {
 	return ulaPrefix
 }
 
-func NewULA(key wgtypes.Key, meshId string) (*ULA, error) {
+func (u *ULABuilder) GetIP(key wgtypes.Key, meshId string) (net.IP, error) {
 	ulaPrefix := getULAPrefix(meshId)
 
-	c, err := cga.NewCga(key, ulaPrefix)
+	c, err := NewCga(key, ulaPrefix)
 
 	if err != nil {
 		return nil, err
 	}
-
-	return &ULA{CGA: *c}, nil
+	return c.GetIP(), nil
 }

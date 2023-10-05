@@ -7,22 +7,27 @@ import (
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
+type ConnectionManager interface {
+	AddConnection(endPoint string) (PeerConnection, error)
+	GetConnection(endPoint string) (PeerConnection, error)
+}
+
 // ConnectionManager manages connections between other peers
 // in the control plane.
-type ConnectionManager struct {
+type JwtConnectionManager struct {
 	// clientConnections maps an endpoint to a connection
 	clientConnections map[string]PeerConnection
 	serverConfig      *tls.Config
 	clientConfig      *tls.Config
 }
 
-type NewConnectionManagerParams struct {
+type NewJwtConnectionManagerParams struct {
 	CertificatePath      string
 	PrivateKey           string
 	SkipCertVerification bool
 }
 
-func NewConnectionManager(params *NewConnectionManagerParams) (*ConnectionManager, error) {
+func NewJwtConnectionManager(params *NewJwtConnectionManagerParams) (ConnectionManager, error) {
 	cert, err := tls.LoadX509KeyPair(params.CertificatePath, params.PrivateKey)
 
 	if err != nil {
@@ -49,11 +54,11 @@ func NewConnectionManager(params *NewConnectionManagerParams) (*ConnectionManage
 	}
 
 	connections := make(map[string]PeerConnection)
-	connMgr := ConnectionManager{connections, serverConfig, clientConfig}
+	connMgr := JwtConnectionManager{connections, serverConfig, clientConfig}
 	return &connMgr, nil
 }
 
-func (m *ConnectionManager) GetConnection(endpoint string) (PeerConnection, error) {
+func (m *JwtConnectionManager) GetConnection(endpoint string) (PeerConnection, error) {
 	conn, exists := m.clientConnections[endpoint]
 
 	if !exists {
@@ -63,12 +68,8 @@ func (m *ConnectionManager) GetConnection(endpoint string) (PeerConnection, erro
 	return conn, nil
 }
 
-type AddConnectionParams struct {
-	TokenId string
-}
-
 // AddToken: Adds a connection to the list of connections to manage
-func (m *ConnectionManager) AddConnection(endPoint string) (PeerConnection, error) {
+func (m *JwtConnectionManager) AddConnection(endPoint string) (PeerConnection, error) {
 	_, exists := m.clientConnections[endPoint]
 
 	if exists {
