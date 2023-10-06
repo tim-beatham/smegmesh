@@ -21,7 +21,7 @@ func (m *MeshManger) MeshExists(meshId string) bool {
 }
 
 // CreateMesh: Creates a new mesh, stores it and returns the mesh id
-func (m *MeshManger) CreateMesh(meshId, devName string) (string, error) {
+func (m *MeshManger) CreateMesh(devName string) (string, error) {
 	key, err := wgtypes.GenerateKey()
 
 	if err != nil {
@@ -51,6 +51,24 @@ func (m *MeshManger) UpdateMesh(meshId string, changes []byte, client wgctrl.Cli
 
 	wg.UpdateWgConf(m.Meshes[meshId].IfName, crdt.Nodes, client)
 	return nil
+}
+
+// AddMesh: Add the mesh to the list of meshes
+func (m *MeshManger) AddMesh(meshId string, devName string, meshBytes []byte) error {
+	mesh := crdt.NewCrdtNodeManager(meshId, devName)
+	err := mesh.Load(meshBytes)
+
+	if err != nil {
+		return err
+	}
+
+	m.Meshes[meshId] = mesh
+	return nil
+}
+
+// AddMeshNode: Add a mesh node
+func (m *MeshManger) AddMeshNode(meshId string, node crdt.MeshNodeCrdt) {
+	m.Meshes[meshId].AddNode(node)
 }
 
 // EnableInterface: Enables the given WireGuard interface.

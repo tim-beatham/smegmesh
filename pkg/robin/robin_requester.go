@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
@@ -23,11 +24,12 @@ type RobinIpc struct {
 }
 
 func (n *RobinIpc) CreateMesh(name string, reply *string) error {
-	wg.CreateInterface(n.Server.IfName)
+	wg.CreateInterface("wgmesh")
 
-	mesh, err := n.Server.CreateMesh()
+	meshId, err := n.Server.MeshManager.CreateMesh("wgmesh")
 
-	nodeIP, err := n.ipAllocator.GetIP(n.Server.GetPublicKey(), mesh.SharedKey.String())
+	pubKey, err := n.Server.MeshManager.GetPublicKey(meshId)
+	nodeIP, err := n.ipAllocator.GetIP(*pubKey, meshId)
 
 	if err != nil {
 		return err
@@ -35,26 +37,25 @@ func (n *RobinIpc) CreateMesh(name string, reply *string) error {
 
 	outBoundIp := lib.GetOutboundIP().String()
 
-	addHostArgs := ctrlserver.AddHostArgs{
+	meshNode := crdt.MeshNodeCrdt{
 		HostEndpoint: outBoundIp + ":8080",
-		PublicKey:    n.Server.GetDevice().PublicKey.String(),
+		PublicKey:    pubKey.String(),
 		WgEndpoint:   outBoundIp + ":51820",
-		WgIp:         nodeIP.String() + "/128",
-		MeshId:       mesh.SharedKey.String(),
+		WgHost:       nodeIP.String() + "/128",
 	}
 
-	n.Server.AddHost(addHostArgs)
+	n.Server.MeshManager.AddMeshNode(meshId, meshNode)
 
 	if err != nil {
 		return err
 	}
 
-	*reply = mesh.SharedKey.String()
+	*reply = meshId
 	return nil
 }
 
 func (n *RobinIpc) ListMeshes(name string, reply *map[string]ctrlserver.Mesh) error {
-	*reply = n.Server.Meshes
+	// *reply = n.Server.Meshes
 	return nil
 }
 
@@ -93,21 +94,10 @@ func updateMesh(n *RobinIpc, meshId string, endPoint string) error {
 		return err
 	}
 
-	mesh := new(ctrlserver.Mesh)
-	mesh.Nodes = make(map[string]ctrlserver.MeshNode)
-	mesh.SharedKey = &key
-	n.Server.Meshes[meshId] = *mesh
+	err := n.Server.MeshManager.AddMesh(meshId, "wgmesh", r.Mesh)
 
-	for _, node := range r.GetMeshNode() {
-		meshNode := ctrlserver.MeshNode{
-			PublicKey:    node.PublicKey,
-			HostEndpoint: node.Endpoint,
-			WgEndpoint:   node.WgEndpoint,
-			WgHost:       node.WgHost,
-		}
-
-		n.Server.Meshes[meshId].Nodes[meshNode.HostEndpoint] = meshNode
-		n.Server.AddWgPeer(meshNode)
+	if err != nil {
+		return err
 	}
 
 	return nil

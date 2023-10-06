@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/automerge/automerge-go v0.0.0-20230903201930-b80ce8aadbb9 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect

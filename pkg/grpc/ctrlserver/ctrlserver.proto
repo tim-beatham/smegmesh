@@ -20,19 +20,13 @@ message GetMeshRequest {
 }
 
 message GetMeshReply {
-    string meshId = 1;
-    repeated MeshNode meshNode = 2;
+    bytes mesh = 2;
 }
 
 message JoinMeshRequest {
-    string meshId = 1;
-    int32 hostPort = 2;
-    string publicKey = 3;
-    int32 wgPort = 4;
-    string wgIp = 5;
+    bytes changes = 1;
 }
 
 message JoinMeshReply {
     bool success = 1;
-    optional string meshIp = 2;
 }
