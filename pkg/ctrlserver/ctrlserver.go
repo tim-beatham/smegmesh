@@ -29,7 +29,7 @@ type NewCtrlServerParams struct {
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Client = params.WgClient
-	ctrlServer.MeshManager = &manager.MeshManger{}
+	ctrlServer.MeshManager = manager.NewMeshManager(*params.WgClient)
 
 	connManagerParams := conn.NewJwtConnectionManagerParams{
 		CertificatePath:      params.Conf.CertificatePath,

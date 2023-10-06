@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -28,34 +27,31 @@ func (m *MeshManger) CreateMesh(devName string) (string, error) {
 		return "", err
 	}
 
-	nodeManager := crdt.NewCrdtNodeManager(key.String(), devName)
+	nodeManager := crdt.NewCrdtNodeManager(key.String(), devName, m.Client)
 	m.Meshes[key.String()] = nodeManager
 	return key.String(), nil
 }
 
 // UpdateMesh: merge the changes and save it to the device
-func (m *MeshManger) UpdateMesh(meshId string, changes []byte, client wgctrl.Client) error {
+func (m *MeshManger) UpdateMesh(meshId string, changes []byte) error {
 	mesh, ok := m.Meshes[meshId]
 
 	if !ok {
 		return errors.New("mesh does not exist")
 	}
 
-	mesh.LoadChanges(changes)
-
-	crdt, err := mesh.GetCrdt()
+	err := mesh.LoadChanges(changes)
 
 	if err != nil {
 		return err
 	}
 
-	wg.UpdateWgConf(m.Meshes[meshId].IfName, crdt.Nodes, client)
 	return nil
 }
 
 // AddMesh: Add the mesh to the list of meshes
 func (m *MeshManger) AddMesh(meshId string, devName string, meshBytes []byte) error {
-	mesh := crdt.NewCrdtNodeManager(meshId, devName)
+	mesh := crdt.NewCrdtNodeManager(meshId, devName, m.Client)
 	err := mesh.Load(meshBytes)
 
 	if err != nil {
@@ -69,6 +65,11 @@ func (m *MeshManger) AddMesh(meshId string, devName string, meshBytes []byte) er
 // AddMeshNode: Add a mesh node
 func (m *MeshManger) AddMeshNode(meshId string, node crdt.MeshNodeCrdt) {
 	m.Meshes[meshId].AddNode(node)
+}
+
+func (m *MeshManger) GetMesh(meshId string) *crdt.CrdtNodeManager {
+	theMesh, _ := m.Meshes[meshId]
+	return theMesh
 }
 
 // EnableInterface: Enables the given WireGuard interface.
@@ -85,14 +86,19 @@ func (s *MeshManger) EnableInterface(meshId string) error {
 		return err
 	}
 
-	endPoint := lib.GetOutboundIP().String() + ":8080"
-	node, contains := crdt.Nodes[endPoint]
+	dev, err := s.Client.Device(mesh.IfName)
+
+	if err != nil {
+		return err
+	}
+
+	node, contains := crdt.Nodes[dev.PublicKey.String()]
 
 	if !contains {
 		return errors.New("Node does not exist in the mesh")
 	}
 
-	return wg.EnableInterface(mesh.IfName, node.WgEndpoint)
+	return wg.EnableInterface(mesh.IfName, node.WgHost)
 }
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
@@ -110,4 +116,8 @@ func (s *MeshManger) GetPublicKey(meshId string) (*wgtypes.Key, error) {
 	}
 
 	return &dev.PublicKey, nil
+}
+
+func NewMeshManager(client wgctrl.Client) *MeshManger {
+	return &MeshManger{Meshes: make(map[string]*crdt.CrdtNodeManager), Client: &client}
 }

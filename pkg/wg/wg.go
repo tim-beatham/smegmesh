@@ -1,11 +1,10 @@
 package wg
 
 import (
-	"fmt"
 	"net"
 	"os/exec"
 
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -64,7 +63,7 @@ func EnableInterface(ifName string, ip string) error {
 	cmd := exec.Command("/usr/bin/ip", "link", "set", "up", "dev", ifName)
 
 	if err := cmd.Run(); err != nil {
-		fmt.Println(err.Error())
+		logging.ErrorLog.Println(err.Error())
 		return err
 	}
 
@@ -80,61 +79,5 @@ func EnableInterface(ifName string, ip string) error {
 		return err
 	}
 
-	return nil
-}
-
-func convertMeshNode(node crdt.MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
-	peerEndpoint, err := net.ResolveUDPAddr("udp", node.WgEndpoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
-
-	if err != nil {
-		return nil, err
-	}
-
-	allowedIps := make([]net.IPNet, 1)
-	_, ipnet, err := net.ParseCIDR(node.WgHost)
-
-	if err != nil {
-		return nil, err
-	}
-
-	allowedIps[0] = *ipnet
-
-	peerConfig := wgtypes.PeerConfig{
-		PublicKey:  peerPublic,
-		Endpoint:   peerEndpoint,
-		AllowedIPs: allowedIps,
-	}
-
-	return &peerConfig, nil
-}
-
-func UpdateWgConf(devName string, nodes map[string]crdt.MeshNodeCrdt, client wgctrl.Client) error {
-	peerConfigs := make([]wgtypes.PeerConfig, len(nodes))
-
-	var count int = 0
-
-	for _, n := range nodes {
-		peer, err := convertMeshNode(n)
-
-		if err != nil {
-			return err
-		}
-
-		peerConfigs[count] = *peer
-		count++
-	}
-
-	cfg := wgtypes.Config{
-		Peers:        peerConfigs,
-		ReplacePeers: true,
-	}
-
-	client.ConfigureDevice(devName, cfg)
 	return nil
 }

@@ -64,8 +64,8 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 
 	for _, node := range reply.Nodes {
 		fmt.Println("Public Key: " + node.PublicKey)
-		fmt.Println("WireGuard Endpoint: " + node.HostEndpoint)
-		fmt.Println("Control Endpoint: " + node.WgEndpoint)
+		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
+		fmt.Println("Control Endpoint: " + node.HostEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
 		fmt.Println("---")
 	}
@@ -77,7 +77,7 @@ func enableInterface(client *ipcRpc.Client, meshId string) {
 	err := client.Call("RobinIpc.EnableInterface", &meshId, &reply)
 
 	if err != nil {
-		(err.Error())
+		fmt.Println(err.Error())
 		return
 	}
 

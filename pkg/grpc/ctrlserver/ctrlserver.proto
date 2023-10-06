@@ -25,6 +25,7 @@ message GetMeshReply {
 
 message JoinMeshRequest {
     bytes changes = 1;
+    string meshId = 2;
 }
 
 message JoinMeshReply {

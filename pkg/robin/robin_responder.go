@@ -3,12 +3,9 @@ package robin
 import (
 	"context"
 	"errors"
-	"net"
-	"strconv"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
-	"google.golang.org/grpc/peer"
 )
 
 type RobinRpc struct {
@@ -40,48 +37,33 @@ func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*rpc.MeshNode {
 }
 
 func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*rpc.GetMeshReply, error) {
-	mesh, contains := m.Server.Meshes[request.MeshId]
+	mesh := m.Server.MeshManager.GetMesh(request.MeshId)
 
-	if !contains {
-		return nil, errors.New("Element is not in the mesh")
+	if mesh == nil {
+		return nil, errors.New("mesh does not exist")
 	}
 
+	meshBytes := mesh.Save()
+
 	reply := rpc.GetMeshReply{
-		MeshId:   request.MeshId,
-		MeshNode: nodesToRpcNodes(mesh.Nodes),
+		Mesh: meshBytes,
 	}
 
 	return &reply, nil
 }
 
 func (m *RobinRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (*rpc.JoinMeshReply, error) {
-	p, _ := peer.FromContext(ctx)
+	mesh := m.Server.MeshManager.GetMesh(request.MeshId)
 
-	hostIp, _, err := net.SplitHostPort(p.Addr.String())
+	if mesh == nil {
+		return nil, errors.New("mesh does not exist")
+	}
+
+	err := m.Server.MeshManager.UpdateMesh(request.MeshId, request.Changes)
 
 	if err != nil {
 		return nil, err
 	}
 
-	wgIp := request.WgIp
-
-	if wgIp == "" {
-		return nil, errors.New("Haven't provided a valid IP address")
-	}
-
-	addHostArgs := ctrlserver.AddHostArgs{
-		HostEndpoint: hostIp + ":" + strconv.Itoa(int(request.HostPort)),
-		PublicKey:    request.PublicKey,
-		MeshId:       request.MeshId,
-		WgEndpoint:   hostIp + ":" + strconv.Itoa(int(request.WgPort)),
-		WgIp:         wgIp,
-	}
-
-	err = m.Server.AddHost(addHostArgs)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &rpc.JoinMeshReply{Success: true, MeshIp: &wgIp}, nil
+	return &rpc.JoinMeshReply{Success: true}, nil
 }
