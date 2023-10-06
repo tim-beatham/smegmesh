@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/akamensky/argparse"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
@@ -25,16 +25,17 @@ func createMesh(client *ipcRpc.Client) string {
 }
 
 func listMeshes(client *ipcRpc.Client) {
-	var reply map[string]ctrlserver.Mesh
+	reply := new(ipc.ListMeshReply)
 
 	err := client.Call("RobinIpc.ListMeshes", "", &reply)
 
 	if err != nil {
+		logging.ErrorLog.Println(err.Error())
 		return
 	}
 
-	for sharedKey := range reply {
-		fmt.Println(sharedKey)
+	for _, meshId := range reply.Meshes {
+		fmt.Println(meshId)
 	}
 }
 
@@ -64,8 +65,8 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 
 	for _, node := range reply.Nodes {
 		fmt.Println("Public Key: " + node.PublicKey)
-		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Control Endpoint: " + node.HostEndpoint)
+		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
 		fmt.Println("---")
 	}

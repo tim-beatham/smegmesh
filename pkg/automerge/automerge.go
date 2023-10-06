@@ -11,7 +11,7 @@ import (
 
 // CrdtNodeManager manages nodes in the crdt mesh
 type CrdtNodeManager struct {
-	meshId string
+	MeshId string
 	IfName string
 	Client *wgctrl.Client
 	doc    *automerge.Doc
@@ -72,7 +72,7 @@ func (c *CrdtNodeManager) SaveChanges() []byte {
 // NewCrdtNodeManager: Create a new crdt node manager
 func NewCrdtNodeManager(meshId, devName string, client *wgctrl.Client) *CrdtNodeManager {
 	var manager CrdtNodeManager
-	manager.meshId = meshId
+	manager.MeshId = meshId
 	manager.doc = automerge.New()
 	manager.IfName = devName
 	manager.Client = client
