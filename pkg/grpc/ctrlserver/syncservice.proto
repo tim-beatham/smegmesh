@@ -1,0 +1,26 @@
+syntax = "proto3";
+package syncservice;
+
+option go_package = "pkg/rpc";
+
+service SyncService {
+    rpc GetConf(GetConfRequest) returns (GetConfReply) {}
+    rpc SyncMesh(SyncMeshRequest) returns (SyncMeshReply) {}
+}
+
+message GetConfRequest {
+    string meshId = 1;
+}
+
+message GetConfReply {
+    bytes mesh = 1;
+}
+
+message SyncMeshRequest {
+    string meshId = 1;
+    bytes changes = 2;
+}
+
+message SyncMeshReply {
+    bool success = 1;
+}

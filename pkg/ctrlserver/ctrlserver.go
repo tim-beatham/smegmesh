@@ -30,6 +30,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Client = params.WgClient
 	ctrlServer.MeshManager = manager.NewMeshManager(*params.WgClient)
+	ctrlServer.Conf = params.Conf
 
 	connManagerParams := conn.NewJwtConnectionManagerParams{
 		CertificatePath:      params.Conf.CertificatePath,
@@ -46,11 +47,9 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer.ConnectionManager = connMgr
 
 	connServerParams := conn.NewConnectionServerParams{
-		CertificatePath:      params.Conf.CertificatePath,
-		PrivateKey:           params.Conf.PrivateKeyPath,
-		SkipCertVerification: params.Conf.SkipCertVerification,
-		AuthProvider:         params.AuthProvider,
-		CtrlProvider:         params.CtrlProvider,
+		Conf:         params.Conf,
+		AuthProvider: params.AuthProvider,
+		CtrlProvider: params.CtrlProvider,
 	}
 
 	connServer, err := conn.NewConnectionServer(&connServerParams)

@@ -3,7 +3,6 @@ package robin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -23,7 +22,7 @@ type RobinIpc struct {
 }
 
 func (n *RobinIpc) CreateMesh(name string, reply *string) error {
-	wg.CreateInterface("wgmesh")
+	wg.CreateInterface(n.Server.Conf.IfName)
 
 	meshId, err := n.Server.MeshManager.CreateMesh("wgmesh")
 
@@ -59,7 +58,6 @@ func (n *RobinIpc) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	i := 0
 	for _, mesh := range n.Server.MeshManager.Meshes {
 		meshNames[i] = mesh.MeshId
-		fmt.Println(meshNames[i])
 		i++
 	}
 
@@ -157,7 +155,7 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	err = n.Server.MeshManager.AddMesh(args.MeshId, "wgmesh", meshReply.Mesh)
+	err = n.Server.MeshManager.AddMesh(args.MeshId, n.Server.Conf.IfName, meshReply.Mesh)
 
 	if err != nil {
 		return err
@@ -234,7 +232,6 @@ func (n *RobinIpc) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 
 func (n *RobinIpc) EnableInterface(meshId string, reply *string) error {
 	err := n.Server.MeshManager.EnableInterface(meshId)
-	fmt.Println("reached")
 
 	if err != nil {
 		*reply = err.Error()

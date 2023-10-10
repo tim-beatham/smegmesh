@@ -13,6 +13,8 @@ type WgMeshConfiguration struct {
 	PrivateKeyPath       string `yaml:"privateKeyPath"`
 	SkipCertVerification bool   `yaml:"skipCertVerification"`
 	IfName               string `yaml:"ifName"`
+	WgPort               string `yaml:"wgPort"`
+	GrpcPort             string `yaml:"grpcPort"`
 }
 
 func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {

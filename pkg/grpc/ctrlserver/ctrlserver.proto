@@ -4,27 +4,10 @@ package rpctypes;
 option go_package = "pkg/rpc";
 
 service MeshCtrlServer {
-    rpc GetMesh(GetMeshRequest) returns (GetMeshReply) {}
     rpc JoinMesh(JoinMeshRequest) returns (JoinMeshReply) {}
 }
 
-message MeshNode {
-    string publicKey = 1;
-    string wgEndpoint = 2;
-    string endpoint = 3;
-    string wgHost = 4;
-}
-
-message GetMeshRequest {
-    string meshId = 1;
-}
-
-message GetMeshReply {
-    bytes mesh = 2;
-}
-
 message JoinMeshRequest {
-    bytes changes = 1;
     string meshId = 2;
 }
 

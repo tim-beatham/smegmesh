@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/auth"
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"google.golang.org/grpc"
@@ -19,30 +20,29 @@ type ConnectionServer struct {
 	server       *grpc.Server
 	authProvider rpc.AuthenticationServer
 	ctrlProvider rpc.MeshCtrlServerServer
+	Conf         *conf.WgMeshConfiguration
 }
 
 type NewConnectionServerParams struct {
-	CertificatePath      string
-	PrivateKey           string
-	SkipCertVerification bool
-	AuthProvider         rpc.AuthenticationServer
-	CtrlProvider         rpc.MeshCtrlServerServer
+	Conf         *conf.WgMeshConfiguration
+	AuthProvider rpc.AuthenticationServer
+	CtrlProvider rpc.MeshCtrlServerServer
 }
 
 // NewConnectionServer: create a new gRPC connection server instance
 func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, error) {
-	cert, err := tls.LoadX509KeyPair(params.CertificatePath, params.PrivateKey)
+	cert, err := tls.LoadX509KeyPair(params.Conf.CertificatePath, params.Conf.PrivateKeyPath)
 
 	if err != nil {
 		logging.ErrorLog.Printf("Failed to load key pair: %s\n", err.Error())
-		logging.ErrorLog.Printf("Certificate Path: %s\n", params.CertificatePath)
-		logging.ErrorLog.Printf("Private Key Path: %s\n", params.PrivateKey)
+		logging.ErrorLog.Printf("Certificate Path: %s\n", params.Conf.CertificatePath)
+		logging.ErrorLog.Printf("Private Key Path: %s\n", params.Conf.PrivateKeyPath)
 		return nil, err
 	}
 
 	serverAuth := tls.RequireAndVerifyClientCert
 
-	if params.SkipCertVerification {
+	if params.Conf.SkipCertVerification {
 		serverAuth = tls.RequireAnyClientCert
 	}
 
@@ -67,6 +67,7 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 		server,
 		authProvider,
 		ctrlProvider,
+		params.Conf,
 	}
 
 	return &connServer, nil
@@ -76,7 +77,7 @@ func (s *ConnectionServer) Listen() error {
 	rpc.RegisterMeshCtrlServerServer(s.server, s.ctrlProvider)
 	rpc.RegisterAuthenticationServer(s.server, s.authProvider)
 
-	lis, err := net.Listen("tcp", ":8080")
+	lis, err := net.Listen("tcp", s.Conf.GrpcPort)
 
 	if err != nil {
 		logging.ErrorLog.Println(err.Error())

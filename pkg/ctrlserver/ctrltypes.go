@@ -1,6 +1,7 @@
 package ctrlserver
 
 import (
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"github.com/tim-beatham/wgmesh/pkg/manager"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -28,7 +29,8 @@ type Mesh struct {
  */
 type MeshCtrlServer struct {
 	Client            *wgctrl.Client
-	MeshManager 	  *manager.MeshManger
+	MeshManager       *manager.MeshManger
 	ConnectionManager conn.ConnectionManager
 	ConnectionServer  *conn.ConnectionServer
+	Conf              *conf.WgMeshConfiguration
 }
