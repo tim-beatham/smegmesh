@@ -107,7 +107,7 @@ func (m *JwtManager) GetAuthInterceptor() grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 
-		if strings.Contains(info.FullMethod, "Auth") {
+		if strings.Contains(info.FullMethod, "") {
 			return handler(ctx, req)
 		}
 

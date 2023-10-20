@@ -10,6 +10,7 @@ import (
 type ConnectionManager interface {
 	AddConnection(endPoint string) (PeerConnection, error)
 	GetConnection(endPoint string) (PeerConnection, error)
+	HasConnection(endPoint string) bool
 }
 
 // ConnectionManager manages connections between other peers
@@ -70,10 +71,10 @@ func (m *JwtConnectionManager) GetConnection(endpoint string) (PeerConnection, e
 
 // AddToken: Adds a connection to the list of connections to manage
 func (m *JwtConnectionManager) AddConnection(endPoint string) (PeerConnection, error) {
-	_, exists := m.clientConnections[endPoint]
+	conn, exists := m.clientConnections[endPoint]
 
 	if exists {
-		return nil, errors.New("token already exists in the connections")
+		return conn, nil
 	}
 
 	connections, err := NewWgCtrlConnection(m.clientConfig, endPoint)
@@ -84,4 +85,9 @@ func (m *JwtConnectionManager) AddConnection(endPoint string) (PeerConnection, e
 
 	m.clientConnections[endPoint] = connections
 	return connections, nil
+}
+
+func (m *JwtConnectionManager) HasConnection(endPoint string) bool {
+	_, exists := m.clientConnections[endPoint]
+	return exists
 }

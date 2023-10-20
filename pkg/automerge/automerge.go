@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"net"
+	"strings"
 
 	"github.com/automerge/automerge-go"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
@@ -108,6 +109,10 @@ func convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
 	}
 
 	return &peerConfig, nil
+}
+
+func (m1 *MeshNodeCrdt) Compare(m2 *MeshNodeCrdt) int {
+	return strings.Compare(m1.PublicKey, m2.PublicKey)
 }
 
 func updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {

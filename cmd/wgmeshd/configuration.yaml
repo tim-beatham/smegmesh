@@ -3,5 +3,5 @@ privateKeyPath: "../../cert/key.pem"
 skipCertVerification: true
 ifName: "wgmesh"
 wgPort: 51820
-gRPCPort: 8080
+gRPCPort: "8080"
 secret: "abc123"

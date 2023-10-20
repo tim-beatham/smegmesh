@@ -18,6 +18,7 @@ type NewCtrlServerParams struct {
 	Conf         *conf.WgMeshConfiguration
 	AuthProvider rpc.AuthenticationServer
 	CtrlProvider rpc.MeshCtrlServerServer
+	SyncProvider rpc.SyncServiceServer
 }
 
 /*
@@ -50,6 +51,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		Conf:         params.Conf,
 		AuthProvider: params.AuthProvider,
 		CtrlProvider: params.CtrlProvider,
+		SyncProvider: params.SyncProvider,
 	}
 
 	connServer, err := conn.NewConnectionServer(&connServerParams)

@@ -20,6 +20,7 @@ type ConnectionServer struct {
 	server       *grpc.Server
 	authProvider rpc.AuthenticationServer
 	ctrlProvider rpc.MeshCtrlServerServer
+	syncProvider rpc.SyncServiceServer
 	Conf         *conf.WgMeshConfiguration
 }
 
@@ -27,6 +28,7 @@ type NewConnectionServerParams struct {
 	Conf         *conf.WgMeshConfiguration
 	AuthProvider rpc.AuthenticationServer
 	CtrlProvider rpc.MeshCtrlServerServer
+	SyncProvider rpc.SyncServiceServer
 }
 
 // NewConnectionServer: create a new gRPC connection server instance
@@ -51,7 +53,7 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 		Certificates: []tls.Certificate{cert},
 	}
 
-	jwtManager := auth.NewJwtManager("tim123", 24*time.Hour)
+	jwtManager := auth.NewJwtManager(params.Conf.Secret, 24*time.Hour)
 
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(jwtManager.GetAuthInterceptor()),
@@ -60,6 +62,7 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 
 	authProvider := params.AuthProvider
 	ctrlProvider := params.CtrlProvider
+	syncProvider := params.SyncProvider
 
 	connServer := ConnectionServer{
 		serverConfig,
@@ -67,6 +70,7 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 		server,
 		authProvider,
 		ctrlProvider,
+		syncProvider,
 		params.Conf,
 	}
 
@@ -77,7 +81,12 @@ func (s *ConnectionServer) Listen() error {
 	rpc.RegisterMeshCtrlServerServer(s.server, s.ctrlProvider)
 	rpc.RegisterAuthenticationServer(s.server, s.authProvider)
 
-	lis, err := net.Listen("tcp", s.Conf.GrpcPort)
+	logging.InfoLog.Println(s.syncProvider)
+	rpc.RegisterSyncServiceServer(s.server, s.syncProvider)
+
+	lis, err := net.Listen("tcp", ":"+s.Conf.GrpcPort)
+
+	logging.InfoLog.Printf("GRPC listening on %s\n", s.Conf.GrpcPort)
 
 	if err != nil {
 		logging.ErrorLog.Println(err.Error())

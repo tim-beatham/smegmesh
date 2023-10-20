@@ -81,7 +81,7 @@ func (n *RobinIpc) Authenticate(meshId, endpoint string) error {
 	return err
 }
 
-func (n *RobinIpc) updatePeers(meshId string) error {
+func (n *RobinIpc) authenticatePeers(meshId string) error {
 	theMesh := n.Server.MeshManager.GetMesh(meshId)
 
 	if theMesh == nil {
@@ -101,11 +101,9 @@ func (n *RobinIpc) updatePeers(meshId string) error {
 			continue
 		}
 
-		var reply string
-		err := n.JoinMesh(ipc.JoinMeshArgs{MeshId: meshId, IpAdress: node.HostEndpoint}, &reply)
+		err := n.Authenticate(meshId, node.HostEndpoint)
 
 		if err != nil {
-			logging.InfoLog.Println(err)
 			return err
 		}
 	}
@@ -199,7 +197,11 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 	}
 
 	if joinReply.GetSuccess() {
-		err = n.updatePeers(args.MeshId)
+		err = n.authenticatePeers(args.MeshId)
+	}
+
+	if err != nil {
+		return err
 	}
 
 	*reply = strconv.FormatBool(joinReply.GetSuccess())

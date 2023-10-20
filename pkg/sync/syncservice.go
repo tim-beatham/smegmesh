@@ -10,12 +10,13 @@ import (
 )
 
 type SyncServiceImpl struct {
-	server *ctrlserver.MeshCtrlServer
+	rpc.UnimplementedSyncServiceServer
+	Server *ctrlserver.MeshCtrlServer
 }
 
 // GetMesh: Gets a nodes local mesh configuration as a CRDT
 func (s *SyncServiceImpl) GetConf(context context.Context, request *rpc.GetConfRequest) (*rpc.GetConfReply, error) {
-	mesh := s.server.MeshManager.GetMesh(request.MeshId)
+	mesh := s.Server.MeshManager.GetMesh(request.MeshId)
 
 	if mesh == nil {
 		return nil, errors.New("mesh does not exist")
@@ -32,13 +33,13 @@ func (s *SyncServiceImpl) GetConf(context context.Context, request *rpc.GetConfR
 
 // Sync: Pings a node and syncs the mesh configuration with the other node
 func (s *SyncServiceImpl) SyncMesh(conext context.Context, request *rpc.SyncMeshRequest) (*rpc.SyncMeshReply, error) {
-	mesh := s.server.MeshManager.GetMesh(request.MeshId)
+	mesh := s.Server.MeshManager.GetMesh(request.MeshId)
 
 	if mesh == nil {
 		return nil, errors.New("mesh does not exist")
 	}
 
-	err := s.server.MeshManager.UpdateMesh(request.MeshId, request.Changes)
+	err := s.Server.MeshManager.UpdateMesh(request.MeshId, request.Changes)
 
 	if err != nil {
 		return nil, err
@@ -47,3 +48,6 @@ func (s *SyncServiceImpl) SyncMesh(conext context.Context, request *rpc.SyncMesh
 	return &rpc.SyncMeshReply{Success: true}, nil
 }
 
+func NewSyncService(server *ctrlserver.MeshCtrlServer) *SyncServiceImpl {
+	return &SyncServiceImpl{Server: server}
+}

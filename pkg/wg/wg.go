@@ -30,7 +30,7 @@ func CreateInterface(ifName string) error {
 /*
  * Create and configure a new WireGuard client
  */
-func CreateClient(ifName string) (*wgctrl.Client, error) {
+func CreateClient(ifName string, port int) (*wgctrl.Client, error) {
 	err := CreateInterface(ifName)
 
 	if err != nil {
@@ -43,7 +43,6 @@ func CreateClient(ifName string) (*wgctrl.Client, error) {
 		return nil, err
 	}
 
-	wgListenPort := 51820
 	privateKey, err := wgtypes.GeneratePrivateKey()
 
 	if err != nil {
@@ -52,7 +51,7 @@ func CreateClient(ifName string) (*wgctrl.Client, error) {
 
 	var cfg wgtypes.Config = wgtypes.Config{
 		PrivateKey: &privateKey,
-		ListenPort: &wgListenPort,
+		ListenPort: &port,
 	}
 
 	client.ConfigureDevice(ifName, cfg)

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
 // SyncScheduler: Loops through all nodes in the mesh and runs a schedule to
@@ -14,13 +15,15 @@ type SyncScheduler interface {
 }
 
 type SyncSchedulerImpl struct {
-	quit   chan struct{}
-	server *ctrlserver.MeshCtrlServer
+	syncRate int
+	quit     chan struct{}
+	server   *ctrlserver.MeshCtrlServer
+	syncer   Syncer
 }
 
 // Run implements SyncScheduler.
 func (s *SyncSchedulerImpl) Run() error {
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Duration(s.syncRate) * time.Second)
 
 	quit := make(chan struct{})
 	s.quit = quit
@@ -28,6 +31,11 @@ func (s *SyncSchedulerImpl) Run() error {
 	for {
 		select {
 		case <-ticker.C:
+			err := s.syncer.SyncMeshes()
+
+			if err != nil {
+				logging.ErrorLog.Println(err.Error())
+			}
 			break
 		case <-quit:
 			break
@@ -41,6 +49,7 @@ func (s *SyncSchedulerImpl) Stop() error {
 	return nil
 }
 
-func NewSyncScheduler(s *ctrlserver.MeshCtrlServer) SyncScheduler {
-	return &SyncSchedulerImpl{server: s}
+func NewSyncScheduler(s *ctrlserver.MeshCtrlServer, syncRequester SyncRequester, syncRate int) SyncScheduler {
+	syncer := NewSyncer(s.MeshManager, syncRequester)
+	return &SyncSchedulerImpl{server: s, syncRate: syncRate, syncer: syncer}
 }
