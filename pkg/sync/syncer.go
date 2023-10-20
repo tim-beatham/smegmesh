@@ -37,14 +37,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		return err
 	}
 
-	pubKey, err := s.manager.GetPublicKey(meshId)
-
-	if err != nil {
-		return err
-	}
-
 	excludedNodes := map[string]struct{}{
-		pubKey.String(): {},
+		s.manager.HostEndpoint: {},
 	}
 
 	meshNodes := lib.MapValuesWithExclude(snapshot.Nodes, excludedNodes)

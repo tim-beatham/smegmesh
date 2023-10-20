@@ -5,6 +5,7 @@ import (
 	"log"
 	ipcRpc "net/rpc"
 	"os"
+	"strconv"
 
 	"github.com/akamensky/argparse"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
@@ -68,6 +69,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 		fmt.Println("Control Endpoint: " + node.HostEndpoint)
 		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
+		fmt.Println("Failed Count: " + strconv.Itoa(node.FailedCount))
 		fmt.Println("---")
 	}
 }

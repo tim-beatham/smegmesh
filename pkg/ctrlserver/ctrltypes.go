@@ -16,6 +16,7 @@ type MeshNode struct {
 	WgEndpoint   string
 	PublicKey    string
 	WgHost       string
+	FailedCount  int
 }
 
 type Mesh struct {

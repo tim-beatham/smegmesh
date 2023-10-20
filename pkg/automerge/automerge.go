@@ -18,8 +18,12 @@ type CrdtNodeManager struct {
 	doc    *automerge.Doc
 }
 
+const maxFails = 5
+
 func (c *CrdtNodeManager) AddNode(crdt MeshNodeCrdt) {
-	c.doc.Path("nodes").Map().Set(crdt.PublicKey, crdt)
+	crdt.FailedCount = automerge.NewCounter(0)
+	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
+
 }
 
 func (c *CrdtNodeManager) applyWg() error {
@@ -113,6 +117,83 @@ func convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
 
 func (m1 *MeshNodeCrdt) Compare(m2 *MeshNodeCrdt) int {
 	return strings.Compare(m1.PublicKey, m2.PublicKey)
+}
+
+func (c *CrdtNodeManager) changeFailedCount(meshId, endpoint string, incAmount int64) error {
+	node, err := c.doc.Path("nodes").Map().Get(endpoint)
+
+	if err != nil {
+		return err
+	}
+
+	counter, err := node.Map().Get("failedCount")
+
+	if err != nil {
+		return err
+	}
+
+	err = counter.Counter().Inc(incAmount)
+	return err
+}
+
+// Increment failed count increments the number of times we have attempted
+// to contact the node and it's failed
+func (c *CrdtNodeManager) IncrementFailedCount(endpoint string) error {
+	snapshot, err := c.GetCrdt()
+
+	if err != nil {
+		return err
+	}
+
+	count, err := snapshot.Nodes[endpoint].FailedCount.Get()
+
+	if err != nil {
+		return err
+	}
+
+	if count >= maxFails {
+		c.removeNode(endpoint)
+		logging.InfoLog.Printf("Node %s removed from mesh %s", endpoint, c.MeshId)
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return c.changeFailedCount(c.MeshId, endpoint, +1)
+}
+
+func (c *CrdtNodeManager) removeNode(endpoint string) error {
+	err := c.doc.Path("nodes").Map().Delete(endpoint)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Decrement failed count decrements the number of times we have attempted to
+// contact the node and it's failed
+func (c *CrdtNodeManager) DecrementFailedCount(endpoint string) error {
+	snapshot, err := c.GetCrdt()
+
+	if err != nil {
+		return err
+	}
+
+	count, err := snapshot.Nodes[endpoint].FailedCount.Get()
+
+	if err != nil {
+		return err
+	}
+
+	if count < 0 {
+		return nil
+	}
+
+	return c.changeFailedCount(c.MeshId, endpoint, -1)
 }
 
 func updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {

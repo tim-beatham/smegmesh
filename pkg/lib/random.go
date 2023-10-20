@@ -9,7 +9,7 @@ func RandomSubsetOfLength[V any](vs []V, num int) []V {
 	selectedIndices := make(map[int]struct{})
 
 	for i := 0; i < num; {
-		if len(selectedIndices) == len(vs) {
+		if len(randomSubset) == len(vs) {
 			return randomSubset
 		}
 

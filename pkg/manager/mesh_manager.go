@@ -2,16 +2,20 @@ package manager
 
 import (
 	"errors"
+	"fmt"
 
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
+	"github.com/tim-beatham/wgmesh/pkg/conf"
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 type MeshManger struct {
-	Meshes map[string]*crdt.CrdtNodeManager
-	Client *wgctrl.Client
+	Meshes       map[string]*crdt.CrdtNodeManager
+	Client       *wgctrl.Client
+	HostEndpoint string
 }
 
 func (m *MeshManger) MeshExists(meshId string) bool {
@@ -86,13 +90,7 @@ func (s *MeshManger) EnableInterface(meshId string) error {
 		return err
 	}
 
-	dev, err := s.Client.Device(mesh.IfName)
-
-	if err != nil {
-		return err
-	}
-
-	node, contains := crdt.Nodes[dev.PublicKey.String()]
+	node, contains := crdt.Nodes[s.HostEndpoint]
 
 	if !contains {
 		return errors.New("Node does not exist in the mesh")
@@ -118,6 +116,12 @@ func (s *MeshManger) GetPublicKey(meshId string) (*wgtypes.Key, error) {
 	return &dev.PublicKey, nil
 }
 
-func NewMeshManager(client wgctrl.Client) *MeshManger {
-	return &MeshManger{Meshes: make(map[string]*crdt.CrdtNodeManager), Client: &client}
+func NewMeshManager(client wgctrl.Client, conf conf.WgMeshConfiguration) *MeshManger {
+	ip := lib.GetOutboundIP()
+
+	return &MeshManger{
+		Meshes:       make(map[string]*crdt.CrdtNodeManager),
+		Client:       &client,
+		HostEndpoint: fmt.Sprintf("%s:%s", ip.String(), conf.GrpcPort),
+	}
 }

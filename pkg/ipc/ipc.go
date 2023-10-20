@@ -7,7 +7,7 @@ import (
 	"net/rpc"
 	"os"
 
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
+	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 )
 
 type JoinMeshArgs struct {
@@ -16,7 +16,7 @@ type JoinMeshArgs struct {
 }
 
 type GetMeshReply struct {
-	Nodes []crdt.MeshNodeCrdt
+	Nodes []ctrlserver.MeshNode
 }
 
 type ListMeshReply struct {

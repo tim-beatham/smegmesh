@@ -17,11 +17,11 @@ type SyncRequester interface {
 }
 
 type SyncRequesterImpl struct {
-	server *ctrlserver.MeshCtrlServer
+	server    *ctrlserver.MeshCtrlServer
+	errorHdlr SyncErrorHandler
 }
 
 func (s *SyncRequesterImpl) Authenticate(meshId, endpoint string) error {
-
 	peerConnection, err := s.server.ConnectionManager.AddConnection(endpoint)
 
 	if err != nil {
@@ -77,6 +77,16 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, endPoint string) error {
 	return err
 }
 
+func (s *SyncRequesterImpl) handleErr(meshId, endpoint string, err error) error {
+	ok := s.errorHdlr.Handle(meshId, endpoint, err)
+
+	if ok {
+		return nil
+	}
+
+	return err
+}
+
 // SyncMesh: Proactively send a sync request to the other mesh
 func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 	if !s.server.ConnectionManager.HasConnection(endpoint) {
@@ -92,7 +102,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 	err = peerConnection.Connect()
 
 	if err != nil {
-		return err
+		return s.handleErr(meshId, endpoint, err)
 	}
 
 	client, err := peerConnection.GetClient()
@@ -126,13 +136,15 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 	_, err = c.SyncMesh(ctx, &syncMeshRequest)
 
 	if err != nil {
-		return err
+		return s.handleErr(meshId, endpoint, err)
 	}
 
 	logging.InfoLog.Printf("Synced with node: %s meshId: %s\n", endpoint, meshId)
+	mesh.DecrementFailedCount(endpoint)
 	return nil
 }
 
 func NewSyncRequester(s *ctrlserver.MeshCtrlServer) SyncRequester {
-	return &SyncRequesterImpl{server: s}
+	errorHdlr := NewSyncErrorHandler(s.MeshManager)
+	return &SyncRequesterImpl{server: s, errorHdlr: errorHdlr}
 }

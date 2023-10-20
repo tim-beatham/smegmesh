@@ -217,11 +217,21 @@ func (n *RobinIpc) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	}
 
 	if mesh != nil {
-		nodes := make([]crdt.MeshNodeCrdt, len(meshSnapshot.Nodes))
+		nodes := make([]ctrlserver.MeshNode, len(meshSnapshot.Nodes))
 
 		i := 0
 		for _, n := range meshSnapshot.Nodes {
-			nodes[i] = n
+			failedInt, _ := n.FailedCount.Get()
+
+			node := ctrlserver.MeshNode{
+				HostEndpoint: n.HostEndpoint,
+				WgEndpoint:   n.WgEndpoint,
+				PublicKey:    n.PublicKey,
+				WgHost:       n.WgHost,
+				FailedCount:  int(failedInt),
+			}
+
+			nodes[i] = node
 			i += 1
 		}
 
