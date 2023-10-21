@@ -69,7 +69,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 		fmt.Println("Control Endpoint: " + node.HostEndpoint)
 		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
-		fmt.Println("Failed Count: " + strconv.Itoa(node.FailedCount))
+		fmt.Println("Failed Count: " + strconv.FormatBool(node.Failed))
 		fmt.Println("---")
 	}
 }

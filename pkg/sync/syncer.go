@@ -37,6 +37,10 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		return err
 	}
 
+	if len(snapshot.Nodes) <= 1 {
+		return nil
+	}
+
 	excludedNodes := map[string]struct{}{
 		s.manager.HostEndpoint: {},
 	}
@@ -65,7 +69,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 		}
 	}
 
-	return nil
+	return s.manager.ApplyWg()
 }
 
 func NewSyncer(m *manager.MeshManger, r SyncRequester) Syncer {

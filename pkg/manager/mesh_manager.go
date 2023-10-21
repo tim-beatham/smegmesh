@@ -31,7 +31,7 @@ func (m *MeshManger) CreateMesh(devName string) (string, error) {
 		return "", err
 	}
 
-	nodeManager := crdt.NewCrdtNodeManager(key.String(), devName, m.Client)
+	nodeManager := crdt.NewCrdtNodeManager(key.String(), m.HostEndpoint, devName, m.Client)
 	m.Meshes[key.String()] = nodeManager
 	return key.String(), nil
 }
@@ -53,9 +53,22 @@ func (m *MeshManger) UpdateMesh(meshId string, changes []byte) error {
 	return nil
 }
 
+// ApplyWg: applies the wireguard configuration changes
+func (m *MeshManger) ApplyWg() error {
+	for _, mesh := range m.Meshes {
+		err := mesh.ApplyWg()
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // AddMesh: Add the mesh to the list of meshes
 func (m *MeshManger) AddMesh(meshId string, devName string, meshBytes []byte) error {
-	mesh := crdt.NewCrdtNodeManager(meshId, devName, m.Client)
+	mesh := crdt.NewCrdtNodeManager(meshId, m.HostEndpoint, devName, m.Client)
 	err := mesh.Load(meshBytes)
 
 	if err != nil {

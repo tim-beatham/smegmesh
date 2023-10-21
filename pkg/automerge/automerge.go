@@ -1,6 +1,7 @@
 package crdt
 
 import (
+	"errors"
 	"net"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 type CrdtNodeManager struct {
 	MeshId string
 	IfName string
+	NodeId string
 	Client *wgctrl.Client
 	doc    *automerge.Doc
 }
@@ -21,19 +23,18 @@ type CrdtNodeManager struct {
 const maxFails = 5
 
 func (c *CrdtNodeManager) AddNode(crdt MeshNodeCrdt) {
-	crdt.FailedCount = automerge.NewCounter(0)
+	crdt.FailedMap = automerge.NewMap()
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
-
 }
 
-func (c *CrdtNodeManager) applyWg() error {
+func (c *CrdtNodeManager) ApplyWg() error {
 	snapshot, err := c.GetCrdt()
 
 	if err != nil {
 		return err
 	}
 
-	updateWgConf(c.IfName, snapshot.Nodes, *c.Client)
+	c.updateWgConf(c.IfName, snapshot.Nodes, *c.Client)
 	return nil
 }
 
@@ -51,7 +52,6 @@ func (c *CrdtNodeManager) Load(bytes []byte) error {
 	}
 
 	c.doc = doc
-	c.applyWg()
 	return nil
 }
 
@@ -67,7 +67,7 @@ func (c *CrdtNodeManager) LoadChanges(changes []byte) error {
 		return err
 	}
 
-	return c.applyWg()
+	return nil
 }
 
 func (c *CrdtNodeManager) SaveChanges() []byte {
@@ -75,16 +75,17 @@ func (c *CrdtNodeManager) SaveChanges() []byte {
 }
 
 // NewCrdtNodeManager: Create a new crdt node manager
-func NewCrdtNodeManager(meshId, devName string, client *wgctrl.Client) *CrdtNodeManager {
+func NewCrdtNodeManager(meshId, hostId, devName string, client *wgctrl.Client) *CrdtNodeManager {
 	var manager CrdtNodeManager
 	manager.MeshId = meshId
 	manager.doc = automerge.New()
 	manager.IfName = devName
 	manager.Client = client
+	manager.NodeId = hostId
 	return &manager
 }
 
-func convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
+func (m *CrdtNodeManager) convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
 	peerEndpoint, err := net.ResolveUDPAddr("udp", node.WgEndpoint)
 
 	if err != nil {
@@ -108,6 +109,7 @@ func convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
 
 	peerConfig := wgtypes.PeerConfig{
 		PublicKey:  peerPublic,
+		Remove:     m.HasFailed(node.HostEndpoint),
 		Endpoint:   peerEndpoint,
 		AllowedIPs: allowedIps,
 	}
@@ -126,41 +128,30 @@ func (c *CrdtNodeManager) changeFailedCount(meshId, endpoint string, incAmount i
 		return err
 	}
 
-	counter, err := node.Map().Get("failedCount")
+	counterMap, err := node.Map().Get("failedMap")
 
-	if err != nil {
-		return err
+	if counterMap.Kind() == automerge.KindVoid {
+		return errors.New("Something went wrong map does not exist")
 	}
 
-	err = counter.Counter().Inc(incAmount)
+	counter, _ := counterMap.Map().Get(c.NodeId)
+
+	if counter.Kind() == automerge.KindVoid {
+		err = counterMap.Map().Set(c.NodeId, incAmount)
+	} else {
+		if counter.Int64()+incAmount < 0 {
+			return nil
+		}
+
+		err = counterMap.Map().Set(c.NodeId, counter.Int64()+1)
+	}
+
 	return err
 }
 
 // Increment failed count increments the number of times we have attempted
 // to contact the node and it's failed
 func (c *CrdtNodeManager) IncrementFailedCount(endpoint string) error {
-	snapshot, err := c.GetCrdt()
-
-	if err != nil {
-		return err
-	}
-
-	count, err := snapshot.Nodes[endpoint].FailedCount.Get()
-
-	if err != nil {
-		return err
-	}
-
-	if count >= maxFails {
-		c.removeNode(endpoint)
-		logging.InfoLog.Printf("Node %s removed from mesh %s", endpoint, c.MeshId)
-		return nil
-	}
-
-	if err != nil {
-		return err
-	}
-
 	return c.changeFailedCount(c.MeshId, endpoint, +1)
 }
 
@@ -177,32 +168,69 @@ func (c *CrdtNodeManager) removeNode(endpoint string) error {
 // Decrement failed count decrements the number of times we have attempted to
 // contact the node and it's failed
 func (c *CrdtNodeManager) DecrementFailedCount(endpoint string) error {
-	snapshot, err := c.GetCrdt()
-
-	if err != nil {
-		return err
-	}
-
-	count, err := snapshot.Nodes[endpoint].FailedCount.Get()
-
-	if err != nil {
-		return err
-	}
-
-	if count < 0 {
-		return nil
-	}
-
 	return c.changeFailedCount(c.MeshId, endpoint, -1)
 }
 
-func updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {
+// GetNode: returns a mesh node crdt.
+func (m *CrdtNodeManager) GetNode(endpoint string) (*MeshNodeCrdt, error) {
+	node, err := m.doc.Path("nodes").Map().Get(endpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	meshNode, err := automerge.As[*MeshNodeCrdt](node)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return meshNode, nil
+}
+
+const threshold = 2
+const thresholdVotes = 0.1
+
+func (m *CrdtNodeManager) Length() int {
+	return m.doc.Path("nodes").Map().Len()
+}
+
+func (m *CrdtNodeManager) HasFailed(endpoint string) bool {
+	node, err := m.GetNode(endpoint)
+
+	if err != nil {
+		logging.InfoLog.Printf("Cannot get node node: %s\n", endpoint)
+		return true
+	}
+
+	values, err := node.FailedMap.Values()
+
+	if err != nil {
+		return true
+	}
+
+	countFailed := 0
+
+	for _, value := range values {
+		count := value.Int64()
+
+		if count >= threshold {
+			countFailed++
+		}
+	}
+
+	logging.InfoLog.Printf("Count Failed Value: %d\n", countFailed)
+	logging.InfoLog.Printf("Threshold Value: %d\n", int(thresholdVotes*float64(m.Length())+1))
+	return countFailed >= int(thresholdVotes*float64(m.Length())+1)
+}
+
+func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {
 	peerConfigs := make([]wgtypes.PeerConfig, len(nodes))
 
 	var count int = 0
 
 	for _, n := range nodes {
-		peer, err := convertMeshNode(n)
+		peer, err := m.convertMeshNode(n)
 		logging.InfoLog.Println(n.HostEndpoint)
 
 		if err != nil {

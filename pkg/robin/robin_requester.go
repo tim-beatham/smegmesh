@@ -24,9 +24,18 @@ type RobinIpc struct {
 func (n *RobinIpc) CreateMesh(name string, reply *string) error {
 	wg.CreateInterface(n.Server.Conf.IfName)
 
-	meshId, err := n.Server.MeshManager.CreateMesh("wgmesh")
+	meshId, err := n.Server.MeshManager.CreateMesh(n.Server.Conf.IfName)
+
+	if err != nil {
+		return err
+	}
 
 	pubKey, err := n.Server.MeshManager.GetPublicKey(meshId)
+
+	if err != nil {
+		return err
+	}
+
 	nodeIP, err := n.ipAllocator.GetIP(*pubKey, meshId)
 
 	if err != nil {
@@ -220,15 +229,13 @@ func (n *RobinIpc) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 		nodes := make([]ctrlserver.MeshNode, len(meshSnapshot.Nodes))
 
 		i := 0
-		for _, n := range meshSnapshot.Nodes {
-			failedInt, _ := n.FailedCount.Get()
-
+		for _, node := range meshSnapshot.Nodes {
 			node := ctrlserver.MeshNode{
-				HostEndpoint: n.HostEndpoint,
-				WgEndpoint:   n.WgEndpoint,
-				PublicKey:    n.PublicKey,
-				WgHost:       n.WgHost,
-				FailedCount:  int(failedInt),
+				HostEndpoint: node.HostEndpoint,
+				WgEndpoint:   node.WgEndpoint,
+				PublicKey:    node.PublicKey,
+				WgHost:       node.WgHost,
+				Failed:       mesh.HasFailed(node.HostEndpoint),
 			}
 
 			nodes[i] = node

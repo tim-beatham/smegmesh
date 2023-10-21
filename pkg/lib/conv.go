@@ -9,6 +9,11 @@ func MapValuesWithExclude[K comparable, V any](m map[K]V, exclude map[K]struct{}
 	values := make([]V, len(m)-len(exclude))
 
 	i := 0
+
+	if len(m)-len(exclude) <= 0 {
+		return values
+	}
+
 	for k, v := range m {
 		if _, excluded := exclude[k]; excluded {
 			continue
