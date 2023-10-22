@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 
@@ -188,12 +189,12 @@ func (m *CrdtNodeManager) GetNode(endpoint string) (*MeshNodeCrdt, error) {
 	return meshNode, nil
 }
 
-const threshold = 2
-const thresholdVotes = 0.1
-
 func (m *CrdtNodeManager) Length() int {
 	return m.doc.Path("nodes").Map().Len()
 }
+
+const threshold = 2
+const thresholdVotes = 0.1
 
 func (m *CrdtNodeManager) HasFailed(endpoint string) bool {
 	node, err := m.GetNode(endpoint)
@@ -248,4 +249,8 @@ func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNode
 
 	client.ConfigureDevice(devName, cfg)
 	return nil
+}
+
+func (n *MeshNodeCrdt) GetEscapedIP() string {
+	return fmt.Sprintf("\"%s\"", n.WgHost)
 }

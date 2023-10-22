@@ -87,6 +87,19 @@ func enableInterface(client *ipcRpc.Client, meshId string) {
 	fmt.Println(reply)
 }
 
+func getGraph(client *ipcRpc.Client, meshId string) {
+	var reply string
+
+	err := client.Call("RobinIpc.GetDOT", &meshId, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
 func main() {
 	parser := argparse.NewParser("wg-mesh",
 		"wg-mesh Manipulate WireGuard meshes")
@@ -96,12 +109,13 @@ func main() {
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
 	getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
 	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
+	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
 
 	var meshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var ipAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
-
 	var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -130,6 +144,10 @@ func main() {
 
 	if getMeshCmd.Happened() {
 		getMesh(client, *getMeshId)
+	}
+
+	if getGraphCmd.Happened() {
+		getGraph(client, *getGraphMeshId)
 	}
 
 	if enableInterfaceCmd.Happened() {

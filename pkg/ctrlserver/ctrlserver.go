@@ -8,7 +8,7 @@ package ctrlserver
 import (
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/conn"
-	"github.com/tim-beatham/wgmesh/pkg/manager"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
@@ -30,7 +30,7 @@ type NewCtrlServerParams struct {
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Client = params.WgClient
-	ctrlServer.MeshManager = manager.NewMeshManager(*params.WgClient, *params.Conf)
+	ctrlServer.MeshManager = mesh.NewMeshManager(*params.WgClient, *params.Conf)
 	ctrlServer.Conf = params.Conf
 
 	connManagerParams := conn.NewJwtConnectionManagerParams{

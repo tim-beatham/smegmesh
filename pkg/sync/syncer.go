@@ -5,7 +5,7 @@ import (
 
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
-	"github.com/tim-beatham/wgmesh/pkg/manager"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 )
 
 // Syncer: picks random nodes from the mesh
@@ -15,7 +15,7 @@ type Syncer interface {
 }
 
 type SyncerImpl struct {
-	manager            *manager.MeshManger
+	manager            *mesh.MeshManger
 	requester          SyncRequester
 	authenticatedNodes []crdt.MeshNodeCrdt
 }
@@ -45,6 +45,12 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		s.manager.HostEndpoint: {},
 	}
 
+	for _, node := range snapshot.Nodes {
+		if mesh.HasFailed(node.HostEndpoint) {
+			excludedNodes[node.HostEndpoint] = struct{}{}
+		}
+	}
+
 	meshNodes := lib.MapValuesWithExclude(snapshot.Nodes, excludedNodes)
 	randomSubset := lib.RandomSubsetOfLength(meshNodes, subSetLength)
 
@@ -72,6 +78,6 @@ func (s *SyncerImpl) SyncMeshes() error {
 	return s.manager.ApplyWg()
 }
 
-func NewSyncer(m *manager.MeshManger, r SyncRequester) Syncer {
+func NewSyncer(m *mesh.MeshManger, r SyncRequester) Syncer {
 	return &SyncerImpl{manager: m, requester: r}
 }

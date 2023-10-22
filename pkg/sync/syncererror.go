@@ -2,7 +2,7 @@ package sync
 
 import (
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/manager"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -12,7 +12,7 @@ type SyncErrorHandler interface {
 }
 
 type SyncErrorHandlerImpl struct {
-	meshManager *manager.MeshManger
+	meshManager *mesh.MeshManger
 }
 
 func (s *SyncErrorHandlerImpl) incrementFailedCount(meshId string, endpoint string) bool {
@@ -44,6 +44,6 @@ func (s *SyncErrorHandlerImpl) Handle(meshId string, endpoint string, err error)
 	return false
 }
 
-func NewSyncErrorHandler(m *manager.MeshManger) SyncErrorHandler {
+func NewSyncErrorHandler(m *mesh.MeshManger) SyncErrorHandler {
 	return &SyncErrorHandlerImpl{meshManager: m}
 }

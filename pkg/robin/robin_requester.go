@@ -12,6 +12,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 )
@@ -258,6 +259,19 @@ func (n *RobinIpc) EnableInterface(meshId string, reply *string) error {
 	}
 
 	*reply = "up"
+	return nil
+}
+
+func (n *RobinIpc) GetDOT(meshId string, reply *string) error {
+	g := mesh.NewMeshDotConverter(n.Server.MeshManager)
+
+	result, err := g.Generate(meshId)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = result
 	return nil
 }
 

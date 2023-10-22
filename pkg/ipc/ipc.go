@@ -29,6 +29,7 @@ type MeshIpc interface {
 	JoinMesh(args JoinMeshArgs, reply *string) error
 	GetMesh(meshId string, reply *GetMeshReply) error
 	EnableInterface(meshId string, reply *string) error
+	GetDOT(meshId string, reply *string) error
 }
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
