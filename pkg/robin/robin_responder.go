@@ -56,7 +56,7 @@ func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*r
 func (m *RobinRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (*rpc.JoinMeshReply, error) {
 	mesh := m.Server.MeshManager.GetMesh(request.MeshId)
 
-	logging.InfoLog.Println("[JOINING MESH]: " + request.MeshId)
+	logging.Log.WriteInfof("[JOINING MESH]: " + request.MeshId)
 
 	if mesh == nil {
 		return nil, errors.New("mesh does not exist")

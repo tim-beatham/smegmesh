@@ -31,7 +31,7 @@ func listMeshes(client *ipcRpc.Client) {
 	err := client.Call("RobinIpc.ListMeshes", "", &reply)
 
 	if err != nil {
-		logging.ErrorLog.Println(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 		return
 	}
 

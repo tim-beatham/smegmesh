@@ -1,8 +1,3 @@
-/*
- * ctrlserver controls the WireGuard mesh. Contains an IpcHandler for
- * handling commands fired by wgmesh command.
- * Contains an RpcHandler for handling commands fired by another server.
- */
 package ctrlserver
 
 import (
@@ -13,6 +8,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
+// NewCtrlServerParams are the params requried to create a new ctrl server
 type NewCtrlServerParams struct {
 	WgClient     *wgctrl.Client
 	Conf         *conf.WgMeshConfiguration
@@ -21,32 +17,27 @@ type NewCtrlServerParams struct {
 	SyncProvider rpc.SyncServiceServer
 }
 
-/*
- * NewCtrlServer creates a new instance of the ctrlserver.
- * It is associated with a WireGuard client and an interface.
- * wgClient: Represents the WireGuard control client.
- * ifName: WireGuard interface name
- */
+// Create a new instance of the MeshCtrlServer or error if the
+// operation failed
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
 	ctrlServer.Client = params.WgClient
 	ctrlServer.MeshManager = mesh.NewMeshManager(*params.WgClient, *params.Conf)
 	ctrlServer.Conf = params.Conf
 
-	connManagerParams := conn.NewJwtConnectionManagerParams{
+	connManagerParams := conn.NewConnectionManageParams{
 		CertificatePath:      params.Conf.CertificatePath,
 		PrivateKey:           params.Conf.PrivateKeyPath,
 		SkipCertVerification: params.Conf.SkipCertVerification,
 	}
 
-	connMgr, err := conn.NewJwtConnectionManager(&connManagerParams)
+	connMgr, err := conn.NewConnectionManager(&connManagerParams)
 
 	if err != nil {
 		return nil, err
 	}
 
 	ctrlServer.ConnectionManager = connMgr
-
 	connServerParams := conn.NewConnectionServerParams{
 		Conf:         params.Conf,
 		AuthProvider: params.AuthProvider,
@@ -62,4 +53,17 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 
 	ctrlServer.ConnectionServer = connServer
 	return ctrlServer, nil
+}
+
+// Close closes the ctrl server tearing down any connections that exist
+func (s *MeshCtrlServer) Close() error {
+	if err := s.ConnectionManager.Close(); err != nil {
+		return err
+	}
+
+	if err := s.ConnectionServer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

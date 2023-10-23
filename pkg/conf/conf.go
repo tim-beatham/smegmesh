@@ -24,14 +24,14 @@ func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {
 	yamlBytes, err := os.ReadFile(filePath)
 
 	if err != nil {
-		logging.ErrorLog.Printf("Read file error: %s\n", err.Error())
+		logging.Log.WriteErrorf("Read file error: %s\n", err.Error())
 		return nil, err
 	}
 
 	err = yaml.Unmarshal(yamlBytes, &conf)
 
 	if err != nil {
-		logging.ErrorLog.Printf("Unmarshal error: %s\n", err.Error())
+		logging.Log.WriteErrorf("Unmarshal error: %s\n", err.Error())
 		return nil, err
 	}
 

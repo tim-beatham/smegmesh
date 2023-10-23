@@ -62,7 +62,7 @@ func EnableInterface(ifName string, ip string) error {
 	cmd := exec.Command("/usr/bin/ip", "link", "set", "up", "dev", ifName)
 
 	if err := cmd.Run(); err != nil {
-		logging.ErrorLog.Println(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 		return err
 	}
 

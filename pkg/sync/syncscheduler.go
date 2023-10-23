@@ -34,7 +34,7 @@ func (s *SyncSchedulerImpl) Run() error {
 			err := s.syncer.SyncMeshes()
 
 			if err != nil {
-				logging.ErrorLog.Println(err.Error())
+				logging.Log.WriteErrorf(err.Error())
 			}
 			break
 		case <-quit:

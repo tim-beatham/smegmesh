@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 
-	"github.com/tim-beatham/wgmesh/pkg/auth"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
+// AuthRpcProvider implements the AuthRpcProvider service
 type AuthRpcProvider struct {
 	rpc.UnimplementedAuthenticationServer
-	Manager *auth.JwtManager
 }
 
+// JoinMesh handles a JoinMeshRequest. Succeeds by stating the node managed to join the mesh
+// or returns an error if it failed
 func (a *AuthRpcProvider) JoinMesh(ctx context.Context, in *rpc.JoinAuthMeshRequest) (*rpc.JoinAuthMeshReply, error) {
 	meshId := in.MeshId
 
@@ -21,12 +22,8 @@ func (a *AuthRpcProvider) JoinMesh(ctx context.Context, in *rpc.JoinAuthMeshRequ
 		return nil, errors.New("Must specify the meshId")
 	}
 
-	logging.InfoLog.Println("MeshID: " + in.MeshId)
-	token, err := a.Manager.CreateClaims(in.MeshId, in.Alias)
+	logging.Log.WriteInfof("MeshID: " + in.MeshId)
 
-	if err != nil {
-		return nil, err
-	}
-
-	return &rpc.JoinAuthMeshReply{Success: true, Token: token}, nil
+	var token string = ""
+	return &rpc.JoinAuthMeshReply{Success: true, Token: &token}, nil
 }

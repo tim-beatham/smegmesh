@@ -36,7 +36,6 @@ func main() {
 	}
 
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
-	authProvider.Manager = ctrlServer.ConnectionServer.JwtManager
 	syncProvider.Server = ctrlServer
 	syncRequester := sync.NewSyncRequester(ctrlServer)
 	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester, 2)
@@ -50,7 +49,8 @@ func main() {
 	robinIpc = robin.NewRobinIpc(robinIpcParams)
 
 	if err != nil {
-		logging.ErrorLog.Fatalln(err.Error())
+		logging.Log.WriteErrorf(err.Error())
+		return
 	}
 
 	log.Println("Running IPC Handler")
@@ -61,9 +61,12 @@ func main() {
 	err = ctrlServer.ConnectionServer.Listen()
 
 	if err != nil {
-		logging.ErrorLog.Fatalln(err.Error())
+		logging.Log.WriteErrorf(err.Error())
+
+		return
 	}
 
-	defer wgClient.Close()
 	defer syncScheduler.Stop()
+	defer ctrlServer.Close()
+	defer wgClient.Close()
 }

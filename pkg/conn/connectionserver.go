@@ -3,9 +3,7 @@ package conn
 import (
 	"crypto/tls"
 	"net"
-	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/auth"
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
@@ -13,17 +11,23 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// ConnectionServer manages the gRPC server
+// ConnectionServer manages gRPC server peer connections
 type ConnectionServer struct {
-	severConfig  *tls.Config
-	JwtManager   *auth.JwtManager
-	server       *grpc.Server
+	// tlsConfiguration of the server
+	serverConfig *tls.Config
+	// server an instance of the grpc server
+	server *grpc.Server
+	// the authentication service to authenticate nodes
 	authProvider rpc.AuthenticationServer
+	// the ctrl service to manage node
 	ctrlProvider rpc.MeshCtrlServerServer
+	// the sync service to synchronise nodes
 	syncProvider rpc.SyncServiceServer
 	Conf         *conf.WgMeshConfiguration
+	listener     net.Listener
 }
 
+// NewConnectionServerParams contains params for creating a new connection server
 type NewConnectionServerParams struct {
 	Conf         *conf.WgMeshConfiguration
 	AuthProvider rpc.AuthenticationServer
@@ -36,9 +40,7 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 	cert, err := tls.LoadX509KeyPair(params.Conf.CertificatePath, params.Conf.PrivateKeyPath)
 
 	if err != nil {
-		logging.ErrorLog.Printf("Failed to load key pair: %s\n", err.Error())
-		logging.ErrorLog.Printf("Certificate Path: %s\n", params.Conf.CertificatePath)
-		logging.ErrorLog.Printf("Private Key Path: %s\n", params.Conf.PrivateKeyPath)
+		logging.Log.WriteErrorf("Failed to load key pair: %s\n", err.Error())
 		return nil, err
 	}
 
@@ -53,10 +55,7 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 		Certificates: []tls.Certificate{cert},
 	}
 
-	jwtManager := auth.NewJwtManager(params.Conf.Secret, 24*time.Hour)
-
 	server := grpc.NewServer(
-		grpc.UnaryInterceptor(jwtManager.GetAuthInterceptor()),
 		grpc.Creds(credentials.NewTLS(serverConfig)),
 	)
 
@@ -65,38 +64,51 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 	syncProvider := params.SyncProvider
 
 	connServer := ConnectionServer{
-		serverConfig,
-		jwtManager,
-		server,
-		authProvider,
-		ctrlProvider,
-		syncProvider,
-		params.Conf,
+		serverConfig: serverConfig,
+		server:       server,
+		authProvider: authProvider,
+		ctrlProvider: ctrlProvider,
+		syncProvider: syncProvider,
+		Conf:         params.Conf,
 	}
 
 	return &connServer, nil
 }
 
+// Listen for incoming requests. Returns an error if something went wrong.
 func (s *ConnectionServer) Listen() error {
 	rpc.RegisterMeshCtrlServerServer(s.server, s.ctrlProvider)
 	rpc.RegisterAuthenticationServer(s.server, s.authProvider)
 
-	logging.InfoLog.Println(s.syncProvider)
 	rpc.RegisterSyncServiceServer(s.server, s.syncProvider)
 
 	lis, err := net.Listen("tcp", ":"+s.Conf.GrpcPort)
+	s.listener = lis
 
-	logging.InfoLog.Printf("GRPC listening on %s\n", s.Conf.GrpcPort)
+	logging.Log.WriteInfof("GRPC listening on %s\n", s.Conf.GrpcPort)
 
 	if err != nil {
-		logging.ErrorLog.Println(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 		return err
 	}
 
 	if err := s.server.Serve(lis); err != nil {
-		logging.ErrorLog.Println(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 		return err
 	}
 
 	return nil
+}
+
+// Close closes the connection server. Returns an error
+// if something went wrong whilst attempting to close the connection
+func (c *ConnectionServer) Close() error {
+	var err error = nil
+	c.server.Stop()
+
+	if c.listener != nil {
+		err = c.listener.Close()
+	}
+
+	return err
 }

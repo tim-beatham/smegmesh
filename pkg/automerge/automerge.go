@@ -193,14 +193,13 @@ func (m *CrdtNodeManager) Length() int {
 	return m.doc.Path("nodes").Map().Len()
 }
 
-const threshold = 2
 const thresholdVotes = 0.1
 
 func (m *CrdtNodeManager) HasFailed(endpoint string) bool {
 	node, err := m.GetNode(endpoint)
 
 	if err != nil {
-		logging.InfoLog.Printf("Cannot get node node: %s\n", endpoint)
+		logging.Log.WriteErrorf("Cannot get node node: %s\n", endpoint)
 		return true
 	}
 
@@ -215,14 +214,12 @@ func (m *CrdtNodeManager) HasFailed(endpoint string) bool {
 	for _, value := range values {
 		count := value.Int64()
 
-		if count >= threshold {
+		if count >= 1 {
 			countFailed++
 		}
 	}
 
-	logging.InfoLog.Printf("Count Failed Value: %d\n", countFailed)
-	logging.InfoLog.Printf("Threshold Value: %d\n", int(thresholdVotes*float64(m.Length())+1))
-	return countFailed >= int(thresholdVotes*float64(m.Length())+1)
+	return countFailed >= 4
 }
 
 func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {
@@ -232,7 +229,6 @@ func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNode
 
 	for _, n := range nodes {
 		peer, err := m.convertMeshNode(n)
-		logging.InfoLog.Println(n.HostEndpoint)
 
 		if err != nil {
 			return err

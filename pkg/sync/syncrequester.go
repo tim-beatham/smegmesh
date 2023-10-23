@@ -23,31 +23,9 @@ type SyncRequesterImpl struct {
 	errorHdlr SyncErrorHandler
 }
 
-func (s *SyncRequesterImpl) Authenticate(meshId, endpoint string) error {
-	peerConnection, err := s.server.ConnectionManager.AddConnection(endpoint)
-
-	if err != nil {
-		return err
-	}
-
-	err = peerConnection.Authenticate(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
 // GetMesh: Retrieves the local state of the mesh at the endpoint
 func (s *SyncRequesterImpl) GetMesh(meshId string, endPoint string) error {
 	peerConnection, err := s.server.ConnectionManager.GetConnection(endPoint)
-
-	if err != nil {
-		return err
-	}
-
-	err = peerConnection.Connect()
 
 	if err != nil {
 		return err
@@ -60,13 +38,8 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, endPoint string) error {
 	}
 
 	c := rpc.NewSyncServiceClient(client)
-	authContext, err := peerConnection.CreateAuthContext(meshId)
 
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(authContext, time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	reply, err := c.GetConf(ctx, &rpc.GetConfRequest{MeshId: meshId})
@@ -91,29 +64,13 @@ func (s *SyncRequesterImpl) handleErr(meshId, endpoint string, err error) error 
 
 // SyncMesh: Proactively send a sync request to the other mesh
 func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
-	if !s.server.ConnectionManager.HasConnection(endpoint) {
-		s.Authenticate(meshId, endpoint)
-	}
-
 	peerConnection, err := s.server.ConnectionManager.GetConnection(endpoint)
 
 	if err != nil {
 		return err
 	}
 
-	err = peerConnection.Connect()
-
-	if err != nil {
-		return s.handleErr(meshId, endpoint, err)
-	}
-
 	client, err := peerConnection.GetClient()
-
-	if err != nil {
-		return err
-	}
-
-	authContext, err := peerConnection.CreateAuthContext(meshId)
 
 	if err != nil {
 		return err
@@ -127,7 +84,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 
 	c := rpc.NewSyncServiceClient(client)
 
-	ctx, cancel := context.WithTimeout(authContext, 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	err = syncMesh(mesh, ctx, c)
@@ -136,7 +93,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 		return s.handleErr(meshId, endpoint, err)
 	}
 
-	logging.InfoLog.Printf("Synced with node: %s meshId: %s\n", endpoint, meshId)
+	logging.Log.WriteInfof("Synced with node: %s meshId: %s\n", endpoint, meshId)
 	mesh.DecrementFailedCount(endpoint)
 	return nil
 }
@@ -162,7 +119,7 @@ func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncSe
 		in, err := stream.Recv()
 
 		if err != nil && err != io.EOF {
-			logging.ErrorLog.Printf("Stream recv error: %s\n", err.Error())
+			logging.Log.WriteInfof("Stream recv error: %s\n", err.Error())
 			return err
 		}
 
@@ -171,7 +128,7 @@ func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncSe
 		}
 
 		if err != nil {
-			logging.ErrorLog.Printf("Syncer recv error: %s\n", err.Error())
+			logging.Log.WriteInfof("Syncer recv error: %s\n", err.Error())
 			return err
 		}
 
@@ -180,7 +137,7 @@ func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncSe
 		}
 	}
 
-	logging.InfoLog.Println("SYNC finished")
+	logging.Log.WriteInfof("SYNC finished")
 	stream.CloseSend()
 	return nil
 }

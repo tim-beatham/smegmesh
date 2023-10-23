@@ -34,7 +34,7 @@ func (s *SyncErrorHandlerImpl) incrementFailedCount(meshId string, endpoint stri
 func (s *SyncErrorHandlerImpl) Handle(meshId string, endpoint string, err error) bool {
 	errStatus, _ := status.FromError(err)
 
-	logging.WarningLog.Printf("Handled gRPC error: %s", errStatus.Message())
+	logging.Log.WriteInfof("Handled gRPC error: %s", errStatus.Message())
 
 	switch errStatus.Code() {
 	case codes.Unavailable, codes.Unknown, codes.DeadlineExceeded, codes.Internal, codes.NotFound:

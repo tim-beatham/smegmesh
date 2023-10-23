@@ -75,70 +75,8 @@ func (n *RobinIpc) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	return nil
 }
 
-func (n *RobinIpc) Authenticate(meshId, endpoint string) error {
-	peerConnection, err := n.Server.ConnectionManager.AddConnection(endpoint)
-
-	if err != nil {
-		return err
-	}
-
-	err = peerConnection.Authenticate(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
-func (n *RobinIpc) authenticatePeers(meshId string) error {
-	theMesh := n.Server.MeshManager.GetMesh(meshId)
-
-	if theMesh == nil {
-		return errors.New("the mesh does not exist")
-	}
-
-	snapshot, _ := theMesh.GetCrdt()
-	publicKey, err := n.Server.MeshManager.GetPublicKey(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	for nodeKey, node := range snapshot.Nodes {
-		logging.InfoLog.Println(nodeKey)
-		if nodeKey == publicKey.String() {
-			continue
-		}
-
-		err := n.Authenticate(meshId, node.HostEndpoint)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
-	err := n.Authenticate(args.MeshId, args.IpAdress)
-
-	if err != nil {
-		return err
-	}
-
 	peerConnection, err := n.Server.ConnectionManager.GetConnection(args.IpAdress)
-
-	if err != nil {
-		return err
-	}
-
-	err = peerConnection.Connect()
-
-	if err != nil {
-		return err
-	}
 
 	client, err := peerConnection.GetClient()
 
@@ -148,13 +86,11 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 	c := rpc.NewMeshCtrlServerClient(client)
 
-	authContext, err := peerConnection.CreateAuthContext(args.MeshId)
-
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(authContext, time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	meshReply, err := c.GetMesh(ctx, &rpc.GetMeshRequest{MeshId: args.MeshId})
@@ -181,7 +117,7 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	logging.InfoLog.Println("WgIP: " + ipAddr.String())
+	logging.Log.WriteInfof("WgIP: " + ipAddr.String())
 
 	outBoundIP := lib.GetOutboundIP()
 
@@ -204,10 +140,6 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 	if err != nil {
 		return err
-	}
-
-	if joinReply.GetSuccess() {
-		err = n.authenticatePeers(args.MeshId)
 	}
 
 	if err != nil {

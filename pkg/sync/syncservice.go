@@ -41,9 +41,9 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 	var syncer *crdt.AutomergeSync = nil
 
 	for {
-		logging.InfoLog.Println("Received Attempt")
+		logging.Log.WriteInfof("Received Attempt")
 		in, err := stream.Recv()
-		logging.InfoLog.Println("Received Worked")
+		logging.Log.WriteInfof("Received Worked")
 
 		if err == io.EOF {
 			return nil
@@ -84,7 +84,6 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 		}
 
 		if !moreMessages || err == io.EOF {
-			logging.InfoLog.Println("SYNC Completed")
 			return nil
 		}
 	}
