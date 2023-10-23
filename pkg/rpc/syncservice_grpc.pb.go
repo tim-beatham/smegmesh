@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SyncServiceClient interface {
 	GetConf(ctx context.Context, in *GetConfRequest, opts ...grpc.CallOption) (*GetConfReply, error)
-	SyncMesh(ctx context.Context, in *SyncMeshRequest, opts ...grpc.CallOption) (*SyncMeshReply, error)
+	SyncMesh(ctx context.Context, opts ...grpc.CallOption) (SyncService_SyncMeshClient, error)
 }
 
 type syncServiceClient struct {
@@ -43,13 +43,35 @@ func (c *syncServiceClient) GetConf(ctx context.Context, in *GetConfRequest, opt
 	return out, nil
 }
 
-func (c *syncServiceClient) SyncMesh(ctx context.Context, in *SyncMeshRequest, opts ...grpc.CallOption) (*SyncMeshReply, error) {
-	out := new(SyncMeshReply)
-	err := c.cc.Invoke(ctx, "/syncservice.SyncService/SyncMesh", in, out, opts...)
+func (c *syncServiceClient) SyncMesh(ctx context.Context, opts ...grpc.CallOption) (SyncService_SyncMeshClient, error) {
+	stream, err := c.cc.NewStream(ctx, &SyncService_ServiceDesc.Streams[0], "/syncservice.SyncService/SyncMesh", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &syncServiceSyncMeshClient{stream}
+	return x, nil
+}
+
+type SyncService_SyncMeshClient interface {
+	Send(*SyncMeshRequest) error
+	Recv() (*SyncMeshReply, error)
+	grpc.ClientStream
+}
+
+type syncServiceSyncMeshClient struct {
+	grpc.ClientStream
+}
+
+func (x *syncServiceSyncMeshClient) Send(m *SyncMeshRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *syncServiceSyncMeshClient) Recv() (*SyncMeshReply, error) {
+	m := new(SyncMeshReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // SyncServiceServer is the server API for SyncService service.
@@ -57,7 +79,7 @@ func (c *syncServiceClient) SyncMesh(ctx context.Context, in *SyncMeshRequest, o
 // for forward compatibility
 type SyncServiceServer interface {
 	GetConf(context.Context, *GetConfRequest) (*GetConfReply, error)
-	SyncMesh(context.Context, *SyncMeshRequest) (*SyncMeshReply, error)
+	SyncMesh(SyncService_SyncMeshServer) error
 	mustEmbedUnimplementedSyncServiceServer()
 }
 
@@ -68,8 +90,8 @@ type UnimplementedSyncServiceServer struct {
 func (UnimplementedSyncServiceServer) GetConf(context.Context, *GetConfRequest) (*GetConfReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConf not implemented")
 }
-func (UnimplementedSyncServiceServer) SyncMesh(context.Context, *SyncMeshRequest) (*SyncMeshReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SyncMesh not implemented")
+func (UnimplementedSyncServiceServer) SyncMesh(SyncService_SyncMeshServer) error {
+	return status.Errorf(codes.Unimplemented, "method SyncMesh not implemented")
 }
 func (UnimplementedSyncServiceServer) mustEmbedUnimplementedSyncServiceServer() {}
 
@@ -102,22 +124,30 @@ func _SyncService_GetConf_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SyncService_SyncMesh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SyncMeshRequest)
-	if err := dec(in); err != nil {
+func _SyncService_SyncMesh_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(SyncServiceServer).SyncMesh(&syncServiceSyncMeshServer{stream})
+}
+
+type SyncService_SyncMeshServer interface {
+	Send(*SyncMeshReply) error
+	Recv() (*SyncMeshRequest, error)
+	grpc.ServerStream
+}
+
+type syncServiceSyncMeshServer struct {
+	grpc.ServerStream
+}
+
+func (x *syncServiceSyncMeshServer) Send(m *SyncMeshReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *syncServiceSyncMeshServer) Recv() (*SyncMeshRequest, error) {
+	m := new(SyncMeshRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(SyncServiceServer).SyncMesh(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/syncservice.SyncService/SyncMesh",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncServiceServer).SyncMesh(ctx, req.(*SyncMeshRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 // SyncService_ServiceDesc is the grpc.ServiceDesc for SyncService service.
@@ -131,11 +161,14 @@ var SyncService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetConf",
 			Handler:    _SyncService_GetConf_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "SyncMesh",
-			Handler:    _SyncService_SyncMesh_Handler,
+			StreamName:    "SyncMesh",
+			Handler:       _SyncService_SyncMesh_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "pkg/grpc/ctrlserver/syncservice.proto",
 }

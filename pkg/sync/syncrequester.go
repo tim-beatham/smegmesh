@@ -3,8 +3,10 @@ package sync
 import (
 	"context"
 	"errors"
+	"io"
 	"time"
 
+	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
@@ -123,17 +125,12 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 		return errors.New("mesh does not exist")
 	}
 
-	syncMeshRequest := rpc.SyncMeshRequest{
-		MeshId:  meshId,
-		Changes: mesh.SaveChanges(),
-	}
-
 	c := rpc.NewSyncServiceClient(client)
 
-	ctx, cancel := context.WithTimeout(authContext, time.Second)
+	ctx, cancel := context.WithTimeout(authContext, 10*time.Second)
 	defer cancel()
 
-	_, err = c.SyncMesh(ctx, &syncMeshRequest)
+	err = syncMesh(mesh, ctx, c)
 
 	if err != nil {
 		return s.handleErr(meshId, endpoint, err)
@@ -141,6 +138,50 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 
 	logging.InfoLog.Printf("Synced with node: %s meshId: %s\n", endpoint, meshId)
 	mesh.DecrementFailedCount(endpoint)
+	return nil
+}
+
+func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncServiceClient) error {
+	stream, err := client.SyncMesh(ctx)
+
+	syncer := mesh.GetSyncer()
+
+	if err != nil {
+		return err
+	}
+
+	for {
+		msg, moreMessages := syncer.GenerateMessage()
+
+		err := stream.Send(&rpc.SyncMeshRequest{MeshId: mesh.MeshId, Changes: msg})
+
+		if err != nil {
+			return err
+		}
+
+		in, err := stream.Recv()
+
+		if err != nil && err != io.EOF {
+			logging.ErrorLog.Printf("Stream recv error: %s\n", err.Error())
+			return err
+		}
+
+		if err != io.EOF && len(in.Changes) != 0 {
+			err = syncer.RecvMessage(in.Changes)
+		}
+
+		if err != nil {
+			logging.ErrorLog.Printf("Syncer recv error: %s\n", err.Error())
+			return err
+		}
+
+		if !moreMessages {
+			break
+		}
+	}
+
+	logging.InfoLog.Println("SYNC finished")
+	stream.CloseSend()
 	return nil
 }
 

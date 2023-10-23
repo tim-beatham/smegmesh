@@ -2,6 +2,7 @@ package sync
 
 import (
 	"errors"
+	"sync"
 
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
@@ -54,14 +55,21 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	meshNodes := lib.MapValuesWithExclude(snapshot.Nodes, excludedNodes)
 	randomSubset := lib.RandomSubsetOfLength(meshNodes, subSetLength)
 
-	for _, n := range randomSubset {
-		err := s.requester.SyncMesh(meshId, n.HostEndpoint)
+	var waitGroup sync.WaitGroup
 
-		if err != nil {
+	for _, n := range randomSubset {
+		waitGroup.Add(1)
+
+		syncMeshFunc := func() error {
+			defer waitGroup.Done()
+			err := s.requester.SyncMesh(meshId, n.HostEndpoint)
 			return err
 		}
+
+		go syncMeshFunc()
 	}
 
+	waitGroup.Wait()
 	return nil
 }
 

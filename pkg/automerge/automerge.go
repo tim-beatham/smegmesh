@@ -251,6 +251,10 @@ func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNode
 	return nil
 }
 
+func (m *CrdtNodeManager) GetSyncer() *AutomergeSync {
+	return NewAutomergeSync(m)
+}
+
 func (n *MeshNodeCrdt) GetEscapedIP() string {
 	return fmt.Sprintf("\"%s\"", n.WgHost)
 }
