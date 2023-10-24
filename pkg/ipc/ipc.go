@@ -10,9 +10,16 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 )
 
+type NewMeshArgs struct {
+	IfName string
+	WgPort int
+}
+
 type JoinMeshArgs struct {
 	MeshId   string
 	IpAdress string
+	IfName   string
+	Port     int
 }
 
 type GetMeshReply struct {
@@ -24,7 +31,7 @@ type ListMeshReply struct {
 }
 
 type MeshIpc interface {
-	CreateMesh(name string, reply *string) error
+	CreateMesh(args *NewMeshArgs, reply *string) error
 	ListMeshes(name string, reply *ListMeshReply) error
 	JoinMesh(args JoinMeshArgs, reply *string) error
 	GetMesh(meshId string, reply *GetMeshReply) error

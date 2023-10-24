@@ -11,7 +11,8 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/middleware"
 	"github.com/tim-beatham/wgmesh/pkg/robin"
 	"github.com/tim-beatham/wgmesh/pkg/sync"
-	wg "github.com/tim-beatham/wgmesh/pkg/wg"
+	"github.com/tim-beatham/wgmesh/pkg/timestamp"
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 func main() {
@@ -20,7 +21,12 @@ func main() {
 		log.Fatalln("Could not parse configuration")
 	}
 
-	wgClient, err := wg.CreateClient(conf.IfName, conf.WgPort)
+	client, err := wgctrl.New()
+
+	if err != nil {
+		logging.Log.WriteErrorf("Failed to create wgctrl client")
+		return
+	}
 
 	var robinRpc robin.RobinRpc
 	var robinIpc robin.RobinIpc
@@ -28,17 +34,18 @@ func main() {
 	var syncProvider sync.SyncServiceImpl
 
 	ctrlServerParams := ctrlserver.NewCtrlServerParams{
-		WgClient:     wgClient,
 		Conf:         conf,
 		AuthProvider: &authProvider,
 		CtrlProvider: &robinRpc,
 		SyncProvider: &syncProvider,
+		Client:       client,
 	}
 
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
 	syncProvider.Server = ctrlServer
 	syncRequester := sync.NewSyncRequester(ctrlServer)
 	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester, 2)
+	timestampScheduler := timestamp.NewTimestampScheduler(ctrlServer, 60)
 
 	robinIpcParams := robin.RobinIpcParams{
 		CtrlServer: ctrlServer,
@@ -57,6 +64,7 @@ func main() {
 
 	go ipc.RunIpcHandler(&robinIpc)
 	go syncScheduler.Run()
+	go timestampScheduler.Run()
 
 	err = ctrlServer.ConnectionServer.Listen()
 
@@ -67,6 +75,7 @@ func main() {
 	}
 
 	defer syncScheduler.Stop()
+	defer timestampScheduler.Stop()
 	defer ctrlServer.Close()
-	defer wgClient.Close()
+	defer client.Close()
 }

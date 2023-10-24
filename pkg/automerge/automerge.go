@@ -5,26 +5,30 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/automerge/automerge-go"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // CrdtNodeManager manages nodes in the crdt mesh
 type CrdtNodeManager struct {
-	MeshId string
-	IfName string
-	NodeId string
-	Client *wgctrl.Client
-	doc    *automerge.Doc
+	MeshId   string
+	IfName   string
+	NodeId   string
+	Client   *wgctrl.Client
+	doc      *automerge.Doc
+	LastHash automerge.ChangeHash
 }
 
 const maxFails = 5
 
 func (c *CrdtNodeManager) AddNode(crdt MeshNodeCrdt) {
 	crdt.FailedMap = automerge.NewMap()
+	crdt.Timestamp = time.Now().Unix()
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
 }
 
@@ -61,29 +65,22 @@ func (c *CrdtNodeManager) Save() []byte {
 	return c.doc.Save()
 }
 
-func (c *CrdtNodeManager) LoadChanges(changes []byte) error {
-	err := c.doc.LoadIncremental(changes)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *CrdtNodeManager) SaveChanges() []byte {
-	return c.doc.SaveIncremental()
-}
-
 // NewCrdtNodeManager: Create a new crdt node manager
-func NewCrdtNodeManager(meshId, hostId, devName string, client *wgctrl.Client) *CrdtNodeManager {
+func NewCrdtNodeManager(meshId, hostId, devName string, port int, client *wgctrl.Client) (*CrdtNodeManager, error) {
 	var manager CrdtNodeManager
 	manager.MeshId = meshId
 	manager.doc = automerge.New()
 	manager.IfName = devName
 	manager.Client = client
 	manager.NodeId = hostId
-	return &manager
+
+	err := wg.CreateWgInterface(client, devName, port)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &manager, nil
 }
 
 func (m *CrdtNodeManager) convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
@@ -193,7 +190,29 @@ func (m *CrdtNodeManager) Length() int {
 	return m.doc.Path("nodes").Map().Len()
 }
 
-const thresholdVotes = 0.1
+func (m *CrdtNodeManager) GetDevice() (*wgtypes.Device, error) {
+	dev, err := m.Client.Device(m.IfName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dev, nil
+}
+
+// HasChanges returns true if we have changes since the last time we synced
+func (m *CrdtNodeManager) HasChanges() bool {
+	changes, err := m.doc.Changes(m.LastHash)
+
+	logging.Log.WriteInfof("Changes %s", m.LastHash.String())
+
+	if err != nil {
+		return false
+	}
+
+	logging.Log.WriteInfof("Changes length %d", len(changes))
+	return len(changes) > 0
+}
 
 func (m *CrdtNodeManager) HasFailed(endpoint string) bool {
 	node, err := m.GetNode(endpoint)
@@ -220,6 +239,30 @@ func (m *CrdtNodeManager) HasFailed(endpoint string) bool {
 	}
 
 	return countFailed >= 4
+}
+
+func (m *CrdtNodeManager) SaveChanges() {
+	hashes := m.doc.Heads()
+	hash := hashes[len(hashes)-1]
+
+	logging.Log.WriteInfof("Saved Hash %s", hash.String())
+	m.LastHash = hash
+}
+
+func (m *CrdtNodeManager) UpdateTimeStamp() error {
+	node, err := m.doc.Path("nodes").Map().Get(m.NodeId)
+
+	if err != nil {
+		return err
+	}
+
+	err = node.Map().Set("timestamp", time.Now().Unix())
+
+	if err == nil {
+		logging.Log.WriteInfof("Timestamp Updated for %s", m.MeshId)
+	}
+
+	return err
 }
 
 func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {

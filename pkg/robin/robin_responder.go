@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
@@ -54,19 +53,5 @@ func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*r
 }
 
 func (m *RobinRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (*rpc.JoinMeshReply, error) {
-	mesh := m.Server.MeshManager.GetMesh(request.MeshId)
-
-	logging.Log.WriteInfof("[JOINING MESH]: " + request.MeshId)
-
-	if mesh == nil {
-		return nil, errors.New("mesh does not exist")
-	}
-
-	err := m.Server.MeshManager.UpdateMesh(request.MeshId, request.Changes)
-
-	if err != nil {
-		return nil, err
-	}
-
 	return &rpc.JoinMeshReply{Success: true}, nil
 }

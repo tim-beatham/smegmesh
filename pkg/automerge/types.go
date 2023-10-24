@@ -7,8 +7,8 @@ type MeshNodeCrdt struct {
 	WgEndpoint   string         `automerge:"wgEndpoint"`
 	PublicKey    string         `automerge:"publicKey"`
 	WgHost       string         `automerge:"wgHost"`
+	Timestamp    int64          `automerge:"timestamp"`
 	FailedMap    *automerge.Map `automerge:"failedMap"`
-	FailedInt    int            `automerge:"-"`
 }
 
 type MeshCrdt struct {

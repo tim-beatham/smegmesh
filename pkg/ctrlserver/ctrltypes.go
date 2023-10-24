@@ -17,6 +17,7 @@ type MeshNode struct {
 	PublicKey    string
 	WgHost       string
 	Failed       bool
+	Timestamp    int64
 }
 
 type Mesh struct {

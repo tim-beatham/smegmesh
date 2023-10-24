@@ -5,10 +5,12 @@ package conn
 import (
 	"crypto/tls"
 	"errors"
+	"time"
 
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 // PeerConnection represents a client-side connection between two
@@ -42,7 +44,10 @@ func NewWgCtrlConnection(clientConfig *tls.Config, server string) (*WgCtrlConnec
 func (c *WgCtrlConnection) createGrpcConn() error {
 	conn, err := grpc.Dial(c.endpoint,
 		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)),
-	)
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:    10 * time.Minute,
+			Timeout: 30 * time.Minute,
+		}))
 
 	if err != nil {
 		logging.Log.WriteErrorf("Could not connect: %s\n", err.Error())

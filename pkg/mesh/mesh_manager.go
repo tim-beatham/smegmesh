@@ -16,6 +16,7 @@ type MeshManger struct {
 	Meshes       map[string]*crdt.CrdtNodeManager
 	Client       *wgctrl.Client
 	HostEndpoint string
+	conf         *conf.WgMeshConfiguration
 }
 
 func (m *MeshManger) MeshExists(meshId string) bool {
@@ -24,52 +25,32 @@ func (m *MeshManger) MeshExists(meshId string) bool {
 }
 
 // CreateMesh: Creates a new mesh, stores it and returns the mesh id
-func (m *MeshManger) CreateMesh(devName string) (string, error) {
+func (m *MeshManger) CreateMesh(devName string, port int) (string, error) {
 	key, err := wgtypes.GenerateKey()
 
 	if err != nil {
 		return "", err
 	}
 
-	nodeManager := crdt.NewCrdtNodeManager(key.String(), m.HostEndpoint, devName, m.Client)
+	nodeManager, err := crdt.NewCrdtNodeManager(key.String(), m.HostEndpoint, devName, port, m.Client)
+
+	if err != nil {
+		return "", err
+	}
+
 	m.Meshes[key.String()] = nodeManager
 	return key.String(), nil
 }
 
-// UpdateMesh: merge the changes and save it to the device
-func (m *MeshManger) UpdateMesh(meshId string, changes []byte) error {
-	mesh, ok := m.Meshes[meshId]
-
-	if !ok {
-		return errors.New("mesh does not exist")
-	}
-
-	err := mesh.LoadChanges(changes)
+// AddMesh: Add the mesh to the list of meshes
+func (m *MeshManger) AddMesh(meshId string, devName string, port int, meshBytes []byte) error {
+	mesh, err := crdt.NewCrdtNodeManager(meshId, m.HostEndpoint, devName, port, m.Client)
 
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-// ApplyWg: applies the wireguard configuration changes
-func (m *MeshManger) ApplyWg() error {
-	for _, mesh := range m.Meshes {
-		err := mesh.ApplyWg()
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// AddMesh: Add the mesh to the list of meshes
-func (m *MeshManger) AddMesh(meshId string, devName string, meshBytes []byte) error {
-	mesh := crdt.NewCrdtNodeManager(meshId, m.HostEndpoint, devName, m.Client)
-	err := mesh.Load(meshBytes)
+	err = mesh.Load(meshBytes)
 
 	if err != nil {
 		return err
@@ -82,6 +63,10 @@ func (m *MeshManger) AddMesh(meshId string, devName string, meshBytes []byte) er
 // AddMeshNode: Add a mesh node
 func (m *MeshManger) AddMeshNode(meshId string, node crdt.MeshNodeCrdt) {
 	m.Meshes[meshId].AddNode(node)
+}
+
+func (m *MeshManger) HasChanges(meshId string) bool {
+	return m.Meshes[meshId].HasChanges()
 }
 
 func (m *MeshManger) GetMesh(meshId string) *crdt.CrdtNodeManager {
@@ -109,6 +94,12 @@ func (s *MeshManger) EnableInterface(meshId string) error {
 		return errors.New("Node does not exist in the mesh")
 	}
 
+	err = mesh.ApplyWg()
+
+	if err != nil {
+		return err
+	}
+
 	return wg.EnableInterface(mesh.IfName, node.WgHost)
 }
 
@@ -120,7 +111,7 @@ func (s *MeshManger) GetPublicKey(meshId string) (*wgtypes.Key, error) {
 		return nil, errors.New("mesh does not exist")
 	}
 
-	dev, err := s.Client.Device(mesh.IfName)
+	dev, err := mesh.GetDevice()
 
 	if err != nil {
 		return nil, err
@@ -129,12 +120,26 @@ func (s *MeshManger) GetPublicKey(meshId string) (*wgtypes.Key, error) {
 	return &dev.PublicKey, nil
 }
 
-func NewMeshManager(client wgctrl.Client, conf conf.WgMeshConfiguration) *MeshManger {
+// UpdateTimeStamp updates the timestamp of this node in all meshes
+func (s *MeshManger) UpdateTimeStamp() error {
+	for _, mesh := range s.Meshes {
+		err := mesh.UpdateTimeStamp()
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func NewMeshManager(conf conf.WgMeshConfiguration, client *wgctrl.Client) *MeshManger {
 	ip := lib.GetOutboundIP()
 
 	return &MeshManger{
 		Meshes:       make(map[string]*crdt.CrdtNodeManager),
-		Client:       &client,
 		HostEndpoint: fmt.Sprintf("%s:%s", ip.String(), conf.GrpcPort),
+		Client:       client,
+		conf:         &conf,
 	}
 }

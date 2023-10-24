@@ -14,6 +14,7 @@ type SyncScheduler interface {
 	Stop() error
 }
 
+// SyncSchedulerImpl scheduler for sync scheduling
 type SyncSchedulerImpl struct {
 	syncRate int
 	quit     chan struct{}

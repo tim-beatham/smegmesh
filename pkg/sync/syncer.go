@@ -3,9 +3,11 @@ package sync
 import (
 	"errors"
 	"sync"
+	"time"
 
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 )
 
@@ -26,6 +28,11 @@ const maxAuthentications = 30
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
+	if !s.manager.HasChanges(meshId) {
+		logging.Log.WriteInfof("No changes for %s", meshId)
+		return nil
+	}
+
 	mesh := s.manager.GetMesh(meshId)
 
 	if mesh == nil {
@@ -55,6 +62,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	meshNodes := lib.MapValuesWithExclude(snapshot.Nodes, excludedNodes)
 	randomSubset := lib.RandomSubsetOfLength(meshNodes, subSetLength)
 
+	before := time.Now()
+
 	var waitGroup sync.WaitGroup
 
 	for _, n := range randomSubset {
@@ -70,6 +79,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	}
 
 	waitGroup.Wait()
+
+	logging.Log.WriteInfof("SYNC TIME: %v", time.Now().Sub(before))
 	return nil
 }
 
@@ -83,7 +94,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 		}
 	}
 
-	return s.manager.ApplyWg()
+	return nil
 }
 
 func NewSyncer(m *mesh.MeshManger, r SyncRequester) Syncer {

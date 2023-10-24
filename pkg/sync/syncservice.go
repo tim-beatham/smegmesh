@@ -8,7 +8,6 @@ import (
 
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
@@ -41,11 +40,12 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 	var syncer *crdt.AutomergeSync = nil
 
 	for {
-		logging.Log.WriteInfof("Received Attempt")
 		in, err := stream.Recv()
-		logging.Log.WriteInfof("Received Worked")
 
 		if err == io.EOF {
+			if syncer != nil {
+				syncer.Complete()
+			}
 			return nil
 		}
 
@@ -84,6 +84,9 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 		}
 
 		if !moreMessages || err == io.EOF {
+			if syncer != nil {
+				syncer.Complete()
+			}
 			return nil
 		}
 	}

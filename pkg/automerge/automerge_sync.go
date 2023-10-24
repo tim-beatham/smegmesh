@@ -2,10 +2,12 @@ package crdt
 
 import (
 	"github.com/automerge/automerge-go"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
 type AutomergeSync struct {
-	state *automerge.SyncState
+	state   *automerge.SyncState
+	manager *CrdtNodeManager
 }
 
 func (a *AutomergeSync) GenerateMessage() ([]byte, bool) {
@@ -28,6 +30,14 @@ func (a *AutomergeSync) RecvMessage(msg []byte) error {
 	return nil
 }
 
+func (a *AutomergeSync) Complete() {
+	logging.Log.WriteInfof("Sync Completed")
+	a.manager.SaveChanges()
+}
+
 func NewAutomergeSync(manager *CrdtNodeManager) *AutomergeSync {
-	return &AutomergeSync{state: automerge.NewSyncState(manager.doc)}
+	return &AutomergeSync{
+		state:   automerge.NewSyncState(manager.doc),
+		manager: manager,
+	}
 }

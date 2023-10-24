@@ -3,6 +3,7 @@ package robin
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -22,10 +23,10 @@ type RobinIpc struct {
 	ipAllocator ip.IPAllocator
 }
 
-func (n *RobinIpc) CreateMesh(name string, reply *string) error {
-	wg.CreateInterface(n.Server.Conf.IfName)
+func (n *RobinIpc) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
+	wg.CreateInterface(args.IfName)
 
-	meshId, err := n.Server.MeshManager.CreateMesh(n.Server.Conf.IfName)
+	meshId, err := n.Server.MeshManager.CreateMesh(args.IfName, args.WgPort)
 
 	if err != nil {
 		return err
@@ -46,9 +47,9 @@ func (n *RobinIpc) CreateMesh(name string, reply *string) error {
 	outBoundIp := lib.GetOutboundIP()
 
 	meshNode := crdt.MeshNodeCrdt{
-		HostEndpoint: outBoundIp.String() + ":8080",
+		HostEndpoint: fmt.Sprintf("%s:%s", outBoundIp.String(), n.Server.Conf.GrpcPort),
 		PublicKey:    pubKey.String(),
-		WgEndpoint:   outBoundIp.String() + ":51820",
+		WgEndpoint:   fmt.Sprintf("%s:%d", outBoundIp.String(), args.WgPort),
 		WgHost:       nodeIP.String() + "/128",
 	}
 
@@ -99,7 +100,7 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	err = n.Server.MeshManager.AddMesh(args.MeshId, n.Server.Conf.IfName, meshReply.Mesh)
+	err = n.Server.MeshManager.AddMesh(args.MeshId, args.IfName, args.Port, meshReply.Mesh)
 
 	if err != nil {
 		return err
@@ -122,31 +123,14 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 	outBoundIP := lib.GetOutboundIP()
 
 	node := crdt.MeshNodeCrdt{
-		HostEndpoint: outBoundIP.String() + ":8080",
-		WgEndpoint:   outBoundIP.String() + ":51820",
+		HostEndpoint: fmt.Sprintf("%s:%s", outBoundIP.String(), n.Server.Conf.GrpcPort),
+		WgEndpoint:   fmt.Sprintf("%s:%d", outBoundIP.String(), args.Port),
 		PublicKey:    pubKey.String(),
 		WgHost:       ipAddr.String() + "/128",
 	}
 
 	n.Server.MeshManager.AddMeshNode(args.MeshId, node)
-	mesh := n.Server.MeshManager.GetMesh(args.MeshId)
-
-	joinMeshRequest := rpc.JoinMeshRequest{
-		MeshId:  args.MeshId,
-		Changes: mesh.SaveChanges(),
-	}
-
-	joinReply, err := c.JoinMesh(ctx, &joinMeshRequest)
-
-	if err != nil {
-		return err
-	}
-
-	if err != nil {
-		return err
-	}
-
-	*reply = strconv.FormatBool(joinReply.GetSuccess())
+	*reply = strconv.FormatBool(true)
 	return nil
 }
 
@@ -169,6 +153,7 @@ func (n *RobinIpc) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 				PublicKey:    node.PublicKey,
 				WgHost:       node.WgHost,
 				Failed:       mesh.HasFailed(node.HostEndpoint),
+				Timestamp:    node.Timestamp,
 			}
 
 			nodes[i] = node

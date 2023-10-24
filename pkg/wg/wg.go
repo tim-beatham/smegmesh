@@ -30,23 +30,17 @@ func CreateInterface(ifName string) error {
 /*
  * Create and configure a new WireGuard client
  */
-func CreateClient(ifName string, port int) (*wgctrl.Client, error) {
+func CreateWgInterface(client *wgctrl.Client, ifName string, port int) error {
 	err := CreateInterface(ifName)
 
 	if err != nil {
-		return nil, err
-	}
-
-	client, err := wgctrl.New()
-
-	if err != nil {
-		return nil, err
+		return err
 	}
 
 	privateKey, err := wgtypes.GeneratePrivateKey()
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var cfg wgtypes.Config = wgtypes.Config{
@@ -55,7 +49,7 @@ func CreateClient(ifName string, port int) (*wgctrl.Client, error) {
 	}
 
 	client.ConfigureDevice(ifName, cfg)
-	return client, nil
+	return nil
 }
 
 func EnableInterface(ifName string, ip string) error {
@@ -72,7 +66,7 @@ func EnableInterface(ifName string, ip string) error {
 		return err
 	}
 
-	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", "wgmesh")
+	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", ifName)
 
 	if err := cmd.Run(); err != nil {
 		return err

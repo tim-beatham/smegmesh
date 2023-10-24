@@ -10,8 +10,8 @@ import (
 
 // NewCtrlServerParams are the params requried to create a new ctrl server
 type NewCtrlServerParams struct {
-	WgClient     *wgctrl.Client
 	Conf         *conf.WgMeshConfiguration
+	Client       *wgctrl.Client
 	AuthProvider rpc.AuthenticationServer
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
@@ -21,8 +21,7 @@ type NewCtrlServerParams struct {
 // operation failed
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
-	ctrlServer.Client = params.WgClient
-	ctrlServer.MeshManager = mesh.NewMeshManager(*params.WgClient, *params.Conf)
+	ctrlServer.MeshManager = mesh.NewMeshManager(*params.Conf, params.Client)
 	ctrlServer.Conf = params.Conf
 
 	connManagerParams := conn.NewConnectionManageParams{

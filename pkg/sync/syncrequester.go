@@ -14,7 +14,7 @@ import (
 
 // SyncRequester: coordinates the syncing of meshes
 type SyncRequester interface {
-	GetMesh(meshId string, endPoint string) error
+	GetMesh(meshId string, ifName string, port int, endPoint string) error
 	SyncMesh(meshid string, endPoint string) error
 }
 
@@ -24,7 +24,7 @@ type SyncRequesterImpl struct {
 }
 
 // GetMesh: Retrieves the local state of the mesh at the endpoint
-func (s *SyncRequesterImpl) GetMesh(meshId string, endPoint string) error {
+func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endPoint string) error {
 	peerConnection, err := s.server.ConnectionManager.GetConnection(endPoint)
 
 	if err != nil {
@@ -48,7 +48,7 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, endPoint string) error {
 		return err
 	}
 
-	err = s.server.MeshManager.AddMesh(meshId, s.server.Conf.IfName, reply.Mesh)
+	err = s.server.MeshManager.AddMesh(meshId, ifName, port, reply.Mesh)
 	return err
 }
 
@@ -137,7 +137,7 @@ func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncSe
 		}
 	}
 
-	logging.Log.WriteInfof("SYNC finished")
+	syncer.Complete()
 	stream.CloseSend()
 	return nil
 }

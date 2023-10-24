@@ -5,7 +5,7 @@ import (
 	"log"
 	ipcRpc "net/rpc"
 	"os"
-	"strconv"
+	"time"
 
 	"github.com/akamensky/argparse"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
@@ -14,9 +14,14 @@ import (
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
-func createMesh(client *ipcRpc.Client) string {
+func createMesh(client *ipcRpc.Client, ifName string, wgPort int) string {
 	var reply string
-	err := client.Call("RobinIpc.CreateMesh", "", &reply)
+	newMeshParams := ipc.NewMeshArgs{
+		IfName: ifName,
+		WgPort: wgPort,
+	}
+
+	err := client.Call("RobinIpc.CreateMesh", &newMeshParams, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -40,10 +45,15 @@ func listMeshes(client *ipcRpc.Client) {
 	}
 }
 
-func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string) string {
+func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string, ifName string, wgPort int) string {
 	var reply string
 
-	args := ipc.JoinMeshArgs{MeshId: meshId, IpAdress: ipAddress}
+	args := ipc.JoinMeshArgs{
+		MeshId:   meshId,
+		IpAdress: ipAddress,
+		IfName:   ifName,
+		Port:     wgPort,
+	}
 
 	err := client.Call("RobinIpc.JoinMesh", &args, &reply)
 
@@ -69,7 +79,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 		fmt.Println("Control Endpoint: " + node.HostEndpoint)
 		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
-		fmt.Println("Failed Count: " + strconv.FormatBool(node.Failed))
+		fmt.Println(fmt.Sprintf("Timestamp: %s", time.Unix(node.Timestamp, 0).String()))
 		fmt.Println("---")
 	}
 }
@@ -111,8 +121,14 @@ func main() {
 	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
 
+	var newMeshIfName *string = newMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
+	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
+
 	var meshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var ipAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
+	var joinMeshIfName *string = joinMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
+	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
+
 	var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
@@ -131,7 +147,7 @@ func main() {
 	}
 
 	if newMeshCmd.Happened() {
-		fmt.Println(createMesh(client))
+		fmt.Println(createMesh(client, *newMeshIfName, *newMeshPort))
 	}
 
 	if listMeshCmd.Happened() {
@@ -139,7 +155,7 @@ func main() {
 	}
 
 	if joinMeshCmd.Happened() {
-		fmt.Println(joinMesh(client, *meshId, *ipAddress))
+		fmt.Println(joinMesh(client, *meshId, *ipAddress, *joinMeshIfName, *joinMeshPort))
 	}
 
 	if getMeshCmd.Happened() {
