@@ -18,6 +18,7 @@ type MeshNode struct {
 	WgHost       string
 	Failed       bool
 	Timestamp    int64
+	Routes       []string
 }
 
 type Mesh struct {

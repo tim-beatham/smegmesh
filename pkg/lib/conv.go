@@ -25,3 +25,15 @@ func MapValuesWithExclude[K comparable, V any](m map[K]V, exclude map[K]struct{}
 
 	return values
 }
+
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	values := make([]K, len(m))
+
+	i := 0
+	for k, _ := range m {
+		values[i] = k
+		i++
+	}
+
+	return values
+}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/automerge/automerge-go"
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -22,6 +23,7 @@ type CrdtNodeManager struct {
 	Client   *wgctrl.Client
 	doc      *automerge.Doc
 	LastHash automerge.ChangeHash
+	conf     *conf.WgMeshConfiguration
 }
 
 const maxFails = 5
@@ -30,6 +32,8 @@ func (c *CrdtNodeManager) AddNode(crdt MeshNodeCrdt) {
 	crdt.FailedMap = automerge.NewMap()
 	crdt.Timestamp = time.Now().Unix()
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
+	nodeVal, _ := c.doc.Path("nodes").Map().Get(crdt.HostEndpoint)
+	nodeVal.Map().Set("routes", automerge.NewMap())
 }
 
 func (c *CrdtNodeManager) ApplyWg() error {
@@ -66,13 +70,14 @@ func (c *CrdtNodeManager) Save() []byte {
 }
 
 // NewCrdtNodeManager: Create a new crdt node manager
-func NewCrdtNodeManager(meshId, hostId, devName string, port int, client *wgctrl.Client) (*CrdtNodeManager, error) {
+func NewCrdtNodeManager(meshId, hostId, devName string, port int, conf conf.WgMeshConfiguration, client *wgctrl.Client) (*CrdtNodeManager, error) {
 	var manager CrdtNodeManager
 	manager.MeshId = meshId
 	manager.doc = automerge.New()
 	manager.IfName = devName
 	manager.Client = client
 	manager.NodeId = hostId
+	manager.conf = &conf
 
 	err := wg.CreateWgInterface(client, devName, port)
 
@@ -104,6 +109,11 @@ func (m *CrdtNodeManager) convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfi
 	}
 
 	allowedIps[0] = *ipnet
+
+	for route, _ := range node.Routes {
+		_, ipnet, _ := net.ParseCIDR(route)
+		allowedIps = append(allowedIps, *ipnet)
+	}
 
 	peerConfig := wgtypes.PeerConfig{
 		PublicKey:  peerPublic,
@@ -287,6 +297,31 @@ func (m *CrdtNodeManager) updateWgConf(devName string, nodes map[string]MeshNode
 	}
 
 	client.ConfigureDevice(devName, cfg)
+	return nil
+}
+
+// AddRoutes: adds routes to the specific nodeId
+func (m *CrdtNodeManager) AddRoutes(routes ...string) error {
+	nodeVal, err := m.doc.Path("nodes").Map().Get(m.NodeId)
+
+	if err != nil {
+		return err
+	}
+
+	routeMap, err := nodeVal.Map().Get("routes")
+
+	if err != nil {
+		return err
+	}
+
+	for _, route := range routes {
+		err = routeMap.Map().Set(route, struct{}{})
+
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

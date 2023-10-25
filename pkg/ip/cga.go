@@ -13,14 +13,13 @@ import (
 )
 
 const (
-	ModifierLength  = 16
-	ZeroLength      = 9
-	hash2Length     = 57
-	hash1Length     = 58
-	Hash2Prefix     = 14
-	Hash1Prefix     = 8
-	InterfaceIdLen  = 8
-	SubnetPrefixLen = 8
+	ModifierLength = 16
+	ZeroLength     = 9
+	hash2Length    = 57
+	hash1Length    = 58
+	Hash2Prefix    = 14
+	Hash1Prefix    = 8
+	InterfaceIdLen = 8
 )
 
 /*
@@ -28,14 +27,14 @@ const (
  */
 type CgaParameters struct {
 	Modifier       [ModifierLength]byte
-	SubnetPrefix   [SubnetPrefixLen]byte
+	SubnetPrefix   [2 * InterfaceIdLen]byte
 	CollisionCount uint8
 	PublicKey      wgtypes.Key
 	interfaceId    [2 * InterfaceIdLen]byte
 	flag           byte
 }
 
-func NewCga(key wgtypes.Key, subnetPrefix [SubnetPrefixLen]byte) (*CgaParameters, error) {
+func NewCga(key wgtypes.Key, subnetPrefix [2 * InterfaceIdLen]byte) (*CgaParameters, error) {
 	var params CgaParameters
 
 	_, err := rand.Read(params.Modifier[:])

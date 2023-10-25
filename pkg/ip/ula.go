@@ -2,6 +2,7 @@ package ip
 
 import (
 	"crypto/sha1"
+	"fmt"
 	"net"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -9,8 +10,8 @@ import (
 
 type ULABuilder struct{}
 
-func getULAPrefix(meshId string) [8]byte {
-	var ulaPrefix [8]byte
+func getMeshPrefix(meshId string) [16]byte {
+	var ulaPrefix [16]byte
 
 	ulaPrefix[0] = 0xfd
 
@@ -24,8 +25,22 @@ func getULAPrefix(meshId string) [8]byte {
 	return ulaPrefix
 }
 
+func (u *ULABuilder) GetIPNet(meshId string) (*net.IPNet, error) {
+	meshBytes := getMeshPrefix(meshId)
+	var meshIP net.IP = meshBytes[:]
+
+	ip := fmt.Sprintf("%s/%d", meshIP.String(), 64)
+	_, net, err := net.ParseCIDR(ip)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return net, nil
+}
+
 func (u *ULABuilder) GetIP(key wgtypes.Key, meshId string) (net.IP, error) {
-	ulaPrefix := getULAPrefix(meshId)
+	ulaPrefix := getMeshPrefix(meshId)
 
 	c, err := NewCga(key, ulaPrefix)
 

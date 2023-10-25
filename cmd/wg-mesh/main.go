@@ -5,6 +5,7 @@ import (
 	"log"
 	ipcRpc "net/rpc"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/akamensky/argparse"
@@ -80,6 +81,10 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
 		fmt.Println(fmt.Sprintf("Timestamp: %s", time.Unix(node.Timestamp, 0).String()))
+
+		advertiseRoutes := strings.Join(node.Routes, ",")
+		fmt.Printf("Routes: %s\n", advertiseRoutes)
+
 		fmt.Println("---")
 	}
 }

@@ -44,7 +44,7 @@ func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
 		}
 
 		for _, node2 := range nodes[i+1:] {
-			if node1 == node2 || mesh.HasFailed(node2.HostEndpoint) {
+			if node1.WgEndpoint == node2.WgEndpoint || mesh.HasFailed(node2.HostEndpoint) {
 				continue
 			}
 

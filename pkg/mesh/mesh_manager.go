@@ -14,6 +14,7 @@ import (
 
 type MeshManger struct {
 	Meshes       map[string]*crdt.CrdtNodeManager
+	RouteManager RouteManager
 	Client       *wgctrl.Client
 	HostEndpoint string
 	conf         *conf.WgMeshConfiguration
@@ -32,19 +33,20 @@ func (m *MeshManger) CreateMesh(devName string, port int) (string, error) {
 		return "", err
 	}
 
-	nodeManager, err := crdt.NewCrdtNodeManager(key.String(), m.HostEndpoint, devName, port, m.Client)
+	nodeManager, err := crdt.NewCrdtNodeManager(key.String(), m.HostEndpoint, devName, port, *m.conf, m.Client)
 
 	if err != nil {
 		return "", err
 	}
 
 	m.Meshes[key.String()] = nodeManager
-	return key.String(), nil
+
+	return key.String(), err
 }
 
 // AddMesh: Add the mesh to the list of meshes
 func (m *MeshManger) AddMesh(meshId string, devName string, port int, meshBytes []byte) error {
-	mesh, err := crdt.NewCrdtNodeManager(meshId, m.HostEndpoint, devName, port, m.Client)
+	mesh, err := crdt.NewCrdtNodeManager(meshId, m.HostEndpoint, devName, port, *m.conf, m.Client)
 
 	if err != nil {
 		return err
@@ -63,6 +65,10 @@ func (m *MeshManger) AddMesh(meshId string, devName string, port int, meshBytes 
 // AddMeshNode: Add a mesh node
 func (m *MeshManger) AddMeshNode(meshId string, node crdt.MeshNodeCrdt) {
 	m.Meshes[meshId].AddNode(node)
+
+	if m.conf.AdvertiseRoutes {
+		m.RouteManager.UpdateRoutes()
+	}
 }
 
 func (m *MeshManger) HasChanges(meshId string) bool {
@@ -100,7 +106,13 @@ func (s *MeshManger) EnableInterface(meshId string) error {
 		return err
 	}
 
-	return wg.EnableInterface(mesh.IfName, node.WgHost)
+	err = wg.EnableInterface(mesh.IfName, node.WgHost)
+
+	if s.conf.AdvertiseRoutes {
+		s.RouteManager.ApplyWg(mesh)
+	}
+
+	return nil
 }
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
@@ -135,11 +147,13 @@ func (s *MeshManger) UpdateTimeStamp() error {
 
 func NewMeshManager(conf conf.WgMeshConfiguration, client *wgctrl.Client) *MeshManger {
 	ip := lib.GetOutboundIP()
-
-	return &MeshManger{
+	m := &MeshManger{
 		Meshes:       make(map[string]*crdt.CrdtNodeManager),
 		HostEndpoint: fmt.Sprintf("%s:%s", ip.String(), conf.GrpcPort),
 		Client:       client,
 		conf:         &conf,
 	}
+
+	m.RouteManager = NewRouteManager(m)
+	return m
 }

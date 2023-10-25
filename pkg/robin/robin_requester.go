@@ -51,6 +51,7 @@ func (n *RobinIpc) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		PublicKey:    pubKey.String(),
 		WgEndpoint:   fmt.Sprintf("%s:%d", outBoundIp.String(), args.WgPort),
 		WgHost:       nodeIP.String() + "/128",
+		Routes:       map[string]interface{}{},
 	}
 
 	n.Server.MeshManager.AddMeshNode(meshId, meshNode)
@@ -127,6 +128,7 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		WgEndpoint:   fmt.Sprintf("%s:%d", outBoundIP.String(), args.Port),
 		PublicKey:    pubKey.String(),
 		WgHost:       ipAddr.String() + "/128",
+		Routes:       make(map[string]interface{}),
 	}
 
 	n.Server.MeshManager.AddMeshNode(args.MeshId, node)
@@ -154,6 +156,7 @@ func (n *RobinIpc) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 				WgHost:       node.WgHost,
 				Failed:       mesh.HasFailed(node.HostEndpoint),
 				Timestamp:    node.Timestamp,
+				Routes:       lib.MapKeys(node.Routes),
 			}
 
 			nodes[i] = node
