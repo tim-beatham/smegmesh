@@ -5,7 +5,7 @@ option go_package = "pkg/rpc";
 
 service SyncService {
     rpc GetConf(GetConfRequest) returns (GetConfReply) {}
-    rpc SyncMesh(SyncMeshRequest) returns (SyncMeshReply) {}
+    rpc SyncMesh(stream SyncMeshRequest) returns (stream SyncMeshReply) {}
 }
 
 message GetConfRequest {
@@ -23,4 +23,5 @@ message SyncMeshRequest {
 
 message SyncMeshReply {
     bool success = 1;
+    bytes changes = 2;
 }
