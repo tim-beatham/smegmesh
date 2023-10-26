@@ -14,7 +14,7 @@ type TimestampScheduler interface {
 }
 
 type TimeStampSchedulerImpl struct {
-	meshManager *mesh.MeshManger
+	meshManager *mesh.MeshManager
 	updateRate  int
 	quit        chan struct{}
 }

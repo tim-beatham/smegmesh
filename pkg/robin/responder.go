@@ -8,7 +8,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
-type RobinRpc struct {
+type WgRpc struct {
 	rpc.UnimplementedMeshCtrlServerServer
 	Server *ctrlserver.MeshCtrlServer
 }
@@ -36,7 +36,7 @@ func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*rpc.MeshNode {
 	return meshNodes
 }
 
-func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*rpc.GetMeshReply, error) {
+func (m *WgRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*rpc.GetMeshReply, error) {
 	mesh := m.Server.MeshManager.GetMesh(request.MeshId)
 
 	if mesh == nil {
@@ -52,6 +52,6 @@ func (m *RobinRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*r
 	return &reply, nil
 }
 
-func (m *RobinRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (*rpc.JoinMeshReply, error) {
+func (m *WgRpc) JoinMesh(ctx context.Context, request *rpc.JoinMeshRequest) (*rpc.JoinMeshReply, error) {
 	return &rpc.JoinMeshReply{Success: true}, nil
 }

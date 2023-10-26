@@ -1,6 +1,7 @@
 package ctrlserver
 
 import (
+	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
@@ -21,7 +22,8 @@ type NewCtrlServerParams struct {
 // operation failed
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
-	ctrlServer.MeshManager = mesh.NewMeshManager(*params.Conf, params.Client)
+	factory := crdt.CrdtProviderFactory{}
+	ctrlServer.MeshManager = mesh.NewMeshManager(*params.Conf, params.Client, &factory)
 	ctrlServer.Conf = params.Conf
 
 	connManagerParams := conn.NewConnectionManageParams{

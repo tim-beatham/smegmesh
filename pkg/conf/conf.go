@@ -13,7 +13,11 @@ type WgMeshConfiguration struct {
 	PrivateKeyPath       string `yaml:"privateKeyPath"`
 	SkipCertVerification bool   `yaml:"skipCertVerification"`
 	GrpcPort             string `yaml:"gRPCPort"`
-	AdvertiseRoutes      bool   `yaml:"advertiseRoutes"`
+	// AdvertiseRoutes advertises other meshes if the node is in multiple meshes
+	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
+	// PublicEndpoint is the IP in which this computer is publicly reachable.
+	// usecase is when the node is behind NAT.
+	PublicEndpoint string `yaml:"publicEndpoint"`
 }
 
 func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {

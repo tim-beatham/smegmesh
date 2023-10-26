@@ -7,7 +7,7 @@ import (
 
 type AutomergeSync struct {
 	state   *automerge.SyncState
-	manager *CrdtNodeManager
+	manager *CrdtMeshManager
 }
 
 func (a *AutomergeSync) GenerateMessage() ([]byte, bool) {
@@ -35,7 +35,7 @@ func (a *AutomergeSync) Complete() {
 	a.manager.SaveChanges()
 }
 
-func NewAutomergeSync(manager *CrdtNodeManager) *AutomergeSync {
+func NewAutomergeSync(manager *CrdtMeshManager) *AutomergeSync {
 	return &AutomergeSync{
 		state:   automerge.NewSyncState(manager.doc),
 		manager: manager,

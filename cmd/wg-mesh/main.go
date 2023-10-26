@@ -22,7 +22,7 @@ func createMesh(client *ipcRpc.Client, ifName string, wgPort int) string {
 		WgPort: wgPort,
 	}
 
-	err := client.Call("RobinIpc.CreateMesh", &newMeshParams, &reply)
+	err := client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -34,7 +34,7 @@ func createMesh(client *ipcRpc.Client, ifName string, wgPort int) string {
 func listMeshes(client *ipcRpc.Client) {
 	reply := new(ipc.ListMeshReply)
 
-	err := client.Call("RobinIpc.ListMeshes", "", &reply)
+	err := client.Call("IpcHandler.ListMeshes", "", &reply)
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
@@ -56,7 +56,7 @@ func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string, ifName str
 		Port:     wgPort,
 	}
 
-	err := client.Call("RobinIpc.JoinMesh", &args, &reply)
+	err := client.Call("IpcHandler.JoinMesh", &args, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -68,7 +68,7 @@ func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string, ifName str
 func getMesh(client *ipcRpc.Client, meshId string) {
 	reply := new(ipc.GetMeshReply)
 
-	err := client.Call("RobinIpc.GetMesh", &meshId, &reply)
+	err := client.Call("IpcHandler.GetMesh", &meshId, &reply)
 
 	if err != nil {
 		log.Panic(err.Error())
@@ -92,7 +92,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 func enableInterface(client *ipcRpc.Client, meshId string) {
 	var reply string
 
-	err := client.Call("RobinIpc.EnableInterface", &meshId, &reply)
+	err := client.Call("IpcHandler.EnableInterface", &meshId, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -105,7 +105,7 @@ func enableInterface(client *ipcRpc.Client, meshId string) {
 func getGraph(client *ipcRpc.Client, meshId string) {
 	var reply string
 
-	err := client.Call("RobinIpc.GetDOT", &meshId, &reply)
+	err := client.Call("IpcHandler.GetDOT", &meshId, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())

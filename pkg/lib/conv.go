@@ -1,5 +1,9 @@
 package lib
 
+import (
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
+)
+
 // MapToSlice converts a map to a slice in go
 func MapValues[K comparable, V any](m map[K]V) []V {
 	return MapValuesWithExclude(m, map[K]struct{}{})
@@ -18,6 +22,8 @@ func MapValuesWithExclude[K comparable, V any](m map[K]V, exclude map[K]struct{}
 		if _, excluded := exclude[k]; excluded {
 			continue
 		}
+
+		logging.Log.WriteInfof("Key %s", k)
 
 		values[i] = v
 		i++

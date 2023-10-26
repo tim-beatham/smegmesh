@@ -16,7 +16,6 @@ type MeshNode struct {
 	WgEndpoint   string
 	PublicKey    string
 	WgHost       string
-	Failed       bool
 	Timestamp    int64
 	Routes       []string
 }
@@ -32,7 +31,7 @@ type Mesh struct {
  */
 type MeshCtrlServer struct {
 	Client            *wgctrl.Client
-	MeshManager       *mesh.MeshManger
+	MeshManager       *mesh.MeshManager
 	ConnectionManager conn.ConnectionManager
 	ConnectionServer  *conn.ConnectionServer
 	Conf              *conf.WgMeshConfiguration

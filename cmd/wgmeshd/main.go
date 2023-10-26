@@ -28,8 +28,8 @@ func main() {
 		return
 	}
 
-	var robinRpc robin.RobinRpc
-	var robinIpc robin.RobinIpc
+	var robinRpc robin.WgRpc
+	var robinIpc robin.IpcHandler
 	var authProvider middleware.AuthRpcProvider
 	var syncProvider sync.SyncServiceImpl
 

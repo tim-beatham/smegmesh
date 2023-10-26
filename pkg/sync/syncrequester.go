@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
@@ -94,11 +94,10 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 	}
 
 	logging.Log.WriteInfof("Synced with node: %s meshId: %s\n", endpoint, meshId)
-	mesh.DecrementFailedCount(endpoint)
 	return nil
 }
 
-func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncServiceClient) error {
+func syncMesh(mesh mesh.MeshProvider, ctx context.Context, client rpc.SyncServiceClient) error {
 	stream, err := client.SyncMesh(ctx)
 
 	syncer := mesh.GetSyncer()
@@ -110,7 +109,7 @@ func syncMesh(mesh *crdt.CrdtNodeManager, ctx context.Context, client rpc.SyncSe
 	for {
 		msg, moreMessages := syncer.GenerateMessage()
 
-		err := stream.Send(&rpc.SyncMeshRequest{MeshId: mesh.MeshId, Changes: msg})
+		err := stream.Send(&rpc.SyncMeshRequest{MeshId: mesh.GetMeshId(), Changes: msg})
 
 		if err != nil {
 			return err

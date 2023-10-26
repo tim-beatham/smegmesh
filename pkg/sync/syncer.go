@@ -18,13 +18,12 @@ type Syncer interface {
 }
 
 type SyncerImpl struct {
-	manager            *mesh.MeshManger
+	manager            *mesh.MeshManager
 	requester          SyncRequester
 	authenticatedNodes []crdt.MeshNodeCrdt
 }
 
-const subSetLength = 5
-const maxAuthentications = 30
+const subSetLength = 3
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
@@ -39,27 +38,23 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		return errors.New("the provided mesh does not exist")
 	}
 
-	snapshot, err := mesh.GetCrdt()
+	snapshot, err := mesh.GetMesh()
 
 	if err != nil {
 		return err
 	}
 
-	if len(snapshot.Nodes) <= 1 {
+	nodes := snapshot.GetNodes()
+
+	if len(nodes) <= 1 {
 		return nil
 	}
 
 	excludedNodes := map[string]struct{}{
-		s.manager.HostEndpoint: {},
+		s.manager.HostParameters.HostEndpoint: {},
 	}
 
-	for _, node := range snapshot.Nodes {
-		if mesh.HasFailed(node.HostEndpoint) {
-			excludedNodes[node.HostEndpoint] = struct{}{}
-		}
-	}
-
-	meshNodes := lib.MapValuesWithExclude(snapshot.Nodes, excludedNodes)
+	meshNodes := lib.MapValuesWithExclude(nodes, excludedNodes)
 	randomSubset := lib.RandomSubsetOfLength(meshNodes, subSetLength)
 
 	before := time.Now()
@@ -71,7 +66,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 		syncMeshFunc := func() error {
 			defer waitGroup.Done()
-			err := s.requester.SyncMesh(meshId, n.HostEndpoint)
+			err := s.requester.SyncMesh(meshId, n.GetHostEndpoint())
 			return err
 		}
 
@@ -86,8 +81,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 // SyncMeshes: Sync all meshes
 func (s *SyncerImpl) SyncMeshes() error {
-	for _, m := range s.manager.Meshes {
-		err := s.Sync(m.MeshId)
+	for meshId, _ := range s.manager.Meshes {
+		err := s.Sync(meshId)
 
 		if err != nil {
 			return err
@@ -97,6 +92,6 @@ func (s *SyncerImpl) SyncMeshes() error {
 	return nil
 }
 
-func NewSyncer(m *mesh.MeshManger, r SyncRequester) Syncer {
+func NewSyncer(m *mesh.MeshManager, r SyncRequester) Syncer {
 	return &SyncerImpl{manager: m, requester: r}
 }

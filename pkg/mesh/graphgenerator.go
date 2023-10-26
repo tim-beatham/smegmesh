@@ -8,13 +8,14 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 )
 
+// MeshGraphConverter converts a mesh to a graph
 type MeshGraphConverter interface {
 	// convert the mesh to textual form
 	Generate(meshId string) (string, error)
 }
 
 type MeshDOTConverter struct {
-	manager *MeshManger
+	manager *MeshManager
 }
 
 func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
@@ -26,35 +27,33 @@ func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
 
 	g := graph.NewGraph(meshId, graph.GRAPH)
 
-	snapshot, err := mesh.GetCrdt()
+	snapshot, err := mesh.GetMesh()
 
 	if err != nil {
 		return "", err
 	}
 
-	for _, node := range snapshot.Nodes {
-		g.AddNode(node.GetEscapedIP())
+	for _, node := range snapshot.GetNodes() {
+		g.AddNode(fmt.Sprintf("\"%s\"", node.GetWgHost().IP.String()))
 	}
 
-	nodes := lib.MapValues(snapshot.Nodes)
+	nodes := lib.MapValues(snapshot.GetNodes())
 
 	for i, node1 := range nodes[:len(nodes)-1] {
-		if mesh.HasFailed(node1.HostEndpoint) {
-			continue
-		}
-
 		for _, node2 := range nodes[i+1:] {
-			if node1.WgEndpoint == node2.WgEndpoint || mesh.HasFailed(node2.HostEndpoint) {
+			if node1.GetWgEndpoint() == node2.GetWgEndpoint() {
 				continue
 			}
 
-			g.AddEdge(fmt.Sprintf("%s to %s", node1.GetEscapedIP(), node2.GetEscapedIP()), node1.GetEscapedIP(), node2.GetEscapedIP())
+			node1Id := fmt.Sprintf("\"%s\"", node1.GetWgHost().IP.String())
+			node2Id := fmt.Sprintf("\"%s\"", node2.GetWgHost().IP.String())
+			g.AddEdge(fmt.Sprintf("%s to %s", node1Id, node2Id), node1Id, node2Id)
 		}
 	}
 
 	return g.GetDOT()
 }
 
-func NewMeshDotConverter(m *MeshManger) MeshGraphConverter {
+func NewMeshDotConverter(m *MeshManager) MeshGraphConverter {
 	return &MeshDOTConverter{manager: m}
 }

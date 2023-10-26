@@ -18,12 +18,12 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
-type RobinIpc struct {
+type IpcHandler struct {
 	Server      *ctrlserver.MeshCtrlServer
 	ipAllocator ip.IPAllocator
 }
 
-func (n *RobinIpc) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
+func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	wg.CreateInterface(args.IfName)
 
 	meshId, err := n.Server.MeshManager.CreateMesh(args.IfName, args.WgPort)
@@ -54,7 +54,7 @@ func (n *RobinIpc) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		Routes:       map[string]interface{}{},
 	}
 
-	n.Server.MeshManager.AddMeshNode(meshId, meshNode)
+	n.Server.MeshManager.AddMeshNode(meshId, &meshNode)
 
 	if err != nil {
 		return err
@@ -64,12 +64,12 @@ func (n *RobinIpc) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	return nil
 }
 
-func (n *RobinIpc) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
+func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	meshNames := make([]string, len(n.Server.MeshManager.Meshes))
 
 	i := 0
-	for _, mesh := range n.Server.MeshManager.Meshes {
-		meshNames[i] = mesh.MeshId
+	for meshId, _ := range n.Server.MeshManager.Meshes {
+		meshNames[i] = meshId
 		i++
 	}
 
@@ -77,7 +77,7 @@ func (n *RobinIpc) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	return nil
 }
 
-func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
+func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 	peerConnection, err := n.Server.ConnectionManager.GetConnection(args.IpAdress)
 
 	client, err := peerConnection.GetClient()
@@ -130,47 +130,51 @@ func (n *RobinIpc) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		WgHost:       ipAddr.String() + "/128",
 		Routes:       make(map[string]interface{}),
 	}
-
-	n.Server.MeshManager.AddMeshNode(args.MeshId, node)
+	n.Server.MeshManager.AddMeshNode(args.MeshId, &node)
 	*reply = strconv.FormatBool(true)
 	return nil
 }
 
-func (n *RobinIpc) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
+func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	mesh := n.Server.MeshManager.GetMesh(meshId)
-	meshSnapshot, err := mesh.GetCrdt()
+	meshSnapshot, err := mesh.GetMesh()
 
 	if err != nil {
 		return err
 	}
 
-	if mesh != nil {
-		nodes := make([]ctrlserver.MeshNode, len(meshSnapshot.Nodes))
-
-		i := 0
-		for _, node := range meshSnapshot.Nodes {
-			node := ctrlserver.MeshNode{
-				HostEndpoint: node.HostEndpoint,
-				WgEndpoint:   node.WgEndpoint,
-				PublicKey:    node.PublicKey,
-				WgHost:       node.WgHost,
-				Failed:       mesh.HasFailed(node.HostEndpoint),
-				Timestamp:    node.Timestamp,
-				Routes:       lib.MapKeys(node.Routes),
-			}
-
-			nodes[i] = node
-			i += 1
-		}
-
-		*reply = ipc.GetMeshReply{Nodes: nodes}
-	} else {
+	if mesh == nil {
 		return errors.New("mesh does not exist")
 	}
+	nodes := make([]ctrlserver.MeshNode, len(meshSnapshot.GetNodes()))
+
+	i := 0
+	for _, node := range meshSnapshot.GetNodes() {
+		pubKey, _ := node.GetPublicKey()
+
+		if err != nil {
+			return err
+		}
+
+		node := ctrlserver.MeshNode{
+			HostEndpoint: node.GetHostEndpoint(),
+			WgEndpoint:   node.GetWgEndpoint(),
+			PublicKey:    pubKey.String(),
+			WgHost:       node.GetWgHost().String(),
+			Timestamp:    node.GetTimeStamp(),
+			Routes:       node.GetRoutes(),
+		}
+
+		nodes[i] = node
+		i += 1
+	}
+
+	*reply = ipc.GetMeshReply{Nodes: nodes}
+
 	return nil
 }
 
-func (n *RobinIpc) EnableInterface(meshId string, reply *string) error {
+func (n *IpcHandler) EnableInterface(meshId string, reply *string) error {
 	err := n.Server.MeshManager.EnableInterface(meshId)
 
 	if err != nil {
@@ -182,7 +186,7 @@ func (n *RobinIpc) EnableInterface(meshId string, reply *string) error {
 	return nil
 }
 
-func (n *RobinIpc) GetDOT(meshId string, reply *string) error {
+func (n *IpcHandler) GetDOT(meshId string, reply *string) error {
 	g := mesh.NewMeshDotConverter(n.Server.MeshManager)
 
 	result, err := g.Generate(meshId)
@@ -200,8 +204,8 @@ type RobinIpcParams struct {
 	Allocator  ip.IPAllocator
 }
 
-func NewRobinIpc(ipcParams RobinIpcParams) RobinIpc {
-	return RobinIpc{
+func NewRobinIpc(ipcParams RobinIpcParams) IpcHandler {
+	return IpcHandler{
 		Server:      ipcParams.CtrlServer,
 		ipAllocator: ipcParams.Allocator,
 	}

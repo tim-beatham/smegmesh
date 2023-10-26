@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
@@ -37,7 +37,7 @@ func (s *SyncServiceImpl) GetConf(context context.Context, request *rpc.GetConfR
 // SyncMesh: syncs the two streams changes
 func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error {
 	var meshId = ""
-	var syncer *crdt.AutomergeSync = nil
+	var syncer mesh.MeshSyncer = nil
 
 	for {
 		in, err := stream.Recv()
