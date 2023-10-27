@@ -2,6 +2,9 @@ package conn
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
+	"os"
 	"sync"
 
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
@@ -41,6 +44,7 @@ type NewConnectionManageParams struct {
 	PrivateKey string
 	// Whether or not to skip certificate verification
 	SkipCertVerification bool
+	CaCert               string
 }
 
 // NewConnectionManager: Creates a new instance of a ConnectionManager or an error
@@ -61,6 +65,23 @@ func NewConnectionManager(params *NewConnectionManageParams) (ConnectionManager,
 		serverAuth = tls.RequireAnyClientCert
 	}
 
+	certPool := x509.NewCertPool()
+
+	if !params.SkipCertVerification {
+
+		if params.CaCert == "" {
+			return nil, errors.New("CA Cert is not specified")
+		}
+
+		caCert, err := os.ReadFile(params.CaCert)
+
+		if err != nil {
+			return nil, err
+		}
+
+		certPool.AppendCertsFromPEM(caCert)
+	}
+
 	serverConfig := &tls.Config{
 		ClientAuth:   serverAuth,
 		Certificates: []tls.Certificate{cert},
@@ -69,6 +90,7 @@ func NewConnectionManager(params *NewConnectionManageParams) (ConnectionManager,
 	clientConfig := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: params.SkipCertVerification,
+		RootCAs:            certPool,
 	}
 
 	connections := make(map[string]PeerConnection)

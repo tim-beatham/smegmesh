@@ -11,6 +11,7 @@ import (
 type WgMeshConfiguration struct {
 	CertificatePath      string `yaml:"certificatePath"`
 	PrivateKeyPath       string `yaml:"privateKeyPath"`
+	CaCertificatePath    string `yaml:"caCertificatePath"`
 	SkipCertVerification bool   `yaml:"skipCertVerification"`
 	GrpcPort             string `yaml:"gRPCPort"`
 	// AdvertiseRoutes advertises other meshes if the node is in multiple meshes

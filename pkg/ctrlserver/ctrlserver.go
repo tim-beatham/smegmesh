@@ -30,6 +30,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		CertificatePath:      params.Conf.CertificatePath,
 		PrivateKey:           params.Conf.PrivateKeyPath,
 		SkipCertVerification: params.Conf.SkipCertVerification,
+		CaCert:               params.Conf.CaCertificatePath,
 	}
 
 	connMgr, err := conn.NewConnectionManager(&connManagerParams)

@@ -45,7 +45,6 @@ func (m *MeshManager) CreateMesh(devName string, port int) (string, error) {
 	}
 
 	m.Meshes[key.String()] = nodeManager
-
 	return key.String(), err
 }
 
@@ -70,12 +69,13 @@ func (m *MeshManager) AddMesh(meshId string, devName string, port int, meshBytes
 	}
 
 	m.Meshes[meshId] = meshProvider
-	return nil
+	return err
 }
 
 // AddMeshNode: Add a mesh node
-func (m *MeshManager) AddMeshNode(meshId string, node MeshNode) {
+func (m *MeshManager) AddMeshNode(meshId string, node MeshNode) error {
 	m.Meshes[meshId].AddNode(node)
+	return m.RouteManager.UpdateRoutes()
 }
 
 // HasChanges returns true if the mesh has changes

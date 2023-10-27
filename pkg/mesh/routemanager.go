@@ -1,12 +1,13 @@
 package mesh
 
 import (
+	"github.com/tim-beatham/wgmesh/pkg/ip"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/route"
 )
 
 type RouteManager interface {
 	UpdateRoutes() error
-	ApplyWg() error
 }
 
 type RouteManagerImpl struct {
@@ -15,55 +16,29 @@ type RouteManagerImpl struct {
 }
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
-	// // meshes := r.meshManager.Meshes
-	// // ulaBuilder := new(ip.ULABuilder)
+	meshes := r.meshManager.Meshes
+	ulaBuilder := new(ip.ULABuilder)
 
-	// for _, mesh1 := range meshes {
-	// 	for _, mesh2 := range meshes {
-	// 		if mesh1 == mesh2 {
-	// 			continue
-	// 		}
+	for _, mesh1 := range meshes {
+		for _, mesh2 := range meshes {
+			if mesh1 == mesh2 {
+				continue
+			}
 
-	// 		ipNet, err := ulaBuilder.GetIPNet(mesh2.MeshId)
+			ipNet, err := ulaBuilder.GetIPNet(mesh2.GetMeshId())
 
-	// 		if err != nil {
-	// 			logging.Log.WriteErrorf(err.Error())
-	// 			return err
-	// 		}
+			if err != nil {
+				logging.Log.WriteErrorf(err.Error())
+				return err
+			}
 
-	// 		mesh1.AddRoutes(ipNet.String())
-	// 	}
-	// }
+			err = mesh1.AddRoutes(r.meshManager.HostParameters.HostEndpoint, ipNet.String())
 
-	return nil
-}
-
-func (r *RouteManagerImpl) ApplyWg() error {
-	// snapshot, err := mesh.GetMesh()
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for _, node := range snapshot.Nodes {
-	// 	if node.HostEndpoint == r.meshManager.HostEndpoint {
-	// 		continue
-	// 	}
-
-	// 	for route, _ := range node.Routes {
-	// 		_, netIP, err := net.ParseCIDR(route)
-
-	// 		if err != nil {
-	// 			return err
-	// 		}
-
-	// 		err = r.routeInstaller.InstallRoutes(mesh.IfName, netIP)
-
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }

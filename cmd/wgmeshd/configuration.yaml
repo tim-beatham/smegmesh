@@ -1,5 +1,6 @@
 certificatePath: "../../cert/cert.pem"
-privateKeyPath: "../../cert/key.pem"
+privateKeyPath: "../../cert/priv.pem"
+caCertificatePath: "../../cert/cacert.pem"
 skipCertVerification: true
 gRPCPort: "8080"
 advertiseRoutes: true

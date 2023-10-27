@@ -34,7 +34,7 @@ func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
 	}
 
 	for _, node := range snapshot.GetNodes() {
-		g.AddNode(fmt.Sprintf("\"%s\"", node.GetWgHost().IP.String()))
+		c.graphNode(g, node)
 	}
 
 	nodes := lib.MapValues(snapshot.GetNodes())
@@ -45,13 +45,29 @@ func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
 				continue
 			}
 
-			node1Id := fmt.Sprintf("\"%s\"", node1.GetWgHost().IP.String())
-			node2Id := fmt.Sprintf("\"%s\"", node2.GetWgHost().IP.String())
+			node1Id := fmt.Sprintf("\"%s\"", node1.GetIdentifier())
+			node2Id := fmt.Sprintf("\"%s\"", node2.GetIdentifier())
 			g.AddEdge(fmt.Sprintf("%s to %s", node1Id, node2Id), node1Id, node2Id)
 		}
 	}
 
 	return g.GetDOT()
+}
+
+// graphNode: graphs a node within the mesh
+func (c *MeshDOTConverter) graphNode(g *graph.Graph, node MeshNode) {
+	nodeId := fmt.Sprintf("\"%s\"", node.GetIdentifier())
+	g.PutNode(nodeId, graph.CIRCLE)
+
+	if node.GetHostEndpoint() == c.manager.HostParameters.HostEndpoint {
+		return
+	}
+
+	for _, route := range node.GetRoutes() {
+		routeId := fmt.Sprintf("\"%s\"", route)
+		g.PutNode(routeId, graph.HEXAGON)
+		g.AddEdge(fmt.Sprintf("%s to %s", nodeId, routeId), nodeId, routeId)
+	}
 }
 
 func NewMeshDotConverter(m *MeshManager) MeshGraphConverter {

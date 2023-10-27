@@ -40,17 +40,6 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	nodeVal.Map().Set("routes", automerge.NewMap())
 }
 
-func (c *CrdtMeshManager) ApplyWg() error {
-	// snapshot, err := c.GetMesh()
-
-	// if err != nil {
-	// return err
-	// }
-
-	// c.updateWgConf(c.IfName, snapshot.GetNodes(), *c.Client)
-	return nil
-}
-
 // GetMesh(): Converts the document into a struct
 func (c *CrdtMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
 	return automerge.As[*MeshCrdt](c.doc.Root())
@@ -93,43 +82,6 @@ func NewCrdtNodeManager(meshId, devName string, port int, conf conf.WgMeshConfig
 	}
 
 	return &manager, nil
-}
-
-func (m *CrdtMeshManager) convertMeshNode(node MeshNodeCrdt) (*wgtypes.PeerConfig, error) {
-	peerEndpoint, err := net.ResolveUDPAddr("udp", node.WgEndpoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	peerPublic, err := wgtypes.ParseKey(node.PublicKey)
-
-	if err != nil {
-		return nil, err
-	}
-
-	allowedIps := make([]net.IPNet, 1)
-	_, ipnet, err := net.ParseCIDR(node.WgHost)
-
-	if err != nil {
-		return nil, err
-	}
-
-	allowedIps[0] = *ipnet
-
-	for route, _ := range node.Routes {
-		_, ipnet, _ := net.ParseCIDR(route)
-		allowedIps = append(allowedIps, *ipnet)
-	}
-
-	peerConfig := wgtypes.PeerConfig{
-		PublicKey:  peerPublic,
-		Remove:     m.HasFailed(node.HostEndpoint),
-		Endpoint:   peerEndpoint,
-		AllowedIPs: allowedIps,
-	}
-
-	return &peerConfig, nil
 }
 
 func (c *CrdtMeshManager) removeNode(endpoint string) error {
@@ -222,6 +174,7 @@ func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
 // AddRoutes: adds routes to the specific nodeId
 func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
+	logging.Log.WriteInfof("Adding route to %s", nodeId)
 
 	if err != nil {
 		return err
@@ -244,31 +197,6 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 	return nil
 }
 
-func (m *CrdtMeshManager) updateWgConf(devName string, nodes map[string]MeshNodeCrdt, client wgctrl.Client) error {
-	peerConfigs := make([]wgtypes.PeerConfig, len(nodes))
-
-	var count int = 0
-
-	for _, n := range nodes {
-		peer, err := m.convertMeshNode(n)
-
-		if err != nil {
-			return err
-		}
-
-		peerConfigs[count] = *peer
-		count++
-	}
-
-	cfg := wgtypes.Config{
-		Peers:        peerConfigs,
-		ReplacePeers: true,
-	}
-
-	client.ConfigureDevice(devName, cfg)
-	return nil
-}
-
 func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }
@@ -286,7 +214,7 @@ func (m *MeshNodeCrdt) GetPublicKey() (wgtypes.Key, error) {
 }
 
 func (m *MeshNodeCrdt) GetWgEndpoint() string {
-	return m.HostEndpoint
+	return m.WgEndpoint
 }
 
 func (m *MeshNodeCrdt) GetWgHost() *net.IPNet {
@@ -306,6 +234,15 @@ func (m *MeshNodeCrdt) GetTimeStamp() int64 {
 
 func (m *MeshNodeCrdt) GetRoutes() []string {
 	return lib.MapKeys(m.Routes)
+}
+
+func (m *MeshNodeCrdt) GetIdentifier() string {
+	ipv6 := m.WgHost[:len(m.WgHost)-4]
+
+	constituents := strings.Split(ipv6, ":")
+	logging.Log.WriteInfof(ipv6)
+	constituents = constituents[4:]
+	return strings.Join(constituents, ":")
 }
 
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {

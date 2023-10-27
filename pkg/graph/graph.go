@@ -11,10 +11,17 @@ import (
 )
 
 type GraphType string
+type Shape string
 
 const (
 	GRAPH   GraphType = "graph"
 	DIGRAPH           = "digraph"
+)
+
+const (
+	CIRCLE  Shape = "circle"
+	STAR    Shape = "star"
+	HEXAGON Shape = "hexagon"
 )
 
 type Graph struct {
@@ -25,7 +32,8 @@ type Graph struct {
 }
 
 type Node struct {
-	Name string
+	Name  string
+	Shape Shape
 }
 
 type Edge interface {
@@ -53,15 +61,16 @@ func NewGraph(label string, graphType GraphType) *Graph {
 	return &Graph{Type: graphType, Label: label, nodes: make(map[string]*Node), edges: make([]Edge, 0)}
 }
 
-// AddNode: adds a node to the graph
-func (g *Graph) AddNode(label string) error {
+// PutNode: puts a node in the graph
+func (g *Graph) PutNode(label string, shape Shape) error {
 	_, exists := g.nodes[label]
 
 	if exists {
-		return errors.New(fmt.Sprintf("Node %s already exists", label))
+		// If exists no need to add the ndoe
+		return nil
 	}
 
-	g.nodes[label] = &Node{Name: label}
+	g.nodes[label] = &Node{Name: label, Shape: shape}
 	return nil
 }
 
@@ -156,8 +165,8 @@ func (n *Node) hash() int {
 }
 
 func (n *Node) GetDOT() (string, error) {
-	return fmt.Sprintf("node[shape=circle, style=\"filled\", fillcolor=%d] %s;\n",
-		n.hash(), n.Name), nil
+	return fmt.Sprintf("node[shape=%s, style=\"filled\", fillcolor=%d] %s;\n",
+		n.Shape, n.hash(), n.Name), nil
 }
 
 func (e *DirectedEdge) GetDOT() (string, error) {

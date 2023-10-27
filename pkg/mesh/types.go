@@ -24,6 +24,8 @@ type MeshNode interface {
 	GetTimeStamp() int64
 	// GetRoutes: returns the routes that the nodes provides
 	GetRoutes() []string
+	// GetIdentifier: returns the identifier of the node
+	GetIdentifier() string
 }
 
 type MeshSnapshot interface {

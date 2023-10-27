@@ -54,7 +54,7 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		Routes:       map[string]interface{}{},
 	}
 
-	n.Server.MeshManager.AddMeshNode(meshId, &meshNode)
+	err = n.Server.MeshManager.AddMeshNode(meshId, &meshNode)
 
 	if err != nil {
 		return err
@@ -130,7 +130,12 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		WgHost:       ipAddr.String() + "/128",
 		Routes:       make(map[string]interface{}),
 	}
-	n.Server.MeshManager.AddMeshNode(args.MeshId, &node)
+	err = n.Server.MeshManager.AddMeshNode(args.MeshId, &node)
+	
+	if err != nil {
+		return err
+	}
+	
 	*reply = strconv.FormatBool(true)
 	return nil
 }
