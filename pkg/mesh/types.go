@@ -68,7 +68,7 @@ type MeshProvider interface {
 // HostParameters contains the IDs of a node
 type HostParameters struct {
 	HostEndpoint string
-	// TODO: Contain the WireGuard identifier in this
+	// TODO: Contain the WireGungracefullyuard identifier in this
 }
 
 // MeshProviderFactoryParams parameters required to build a mesh provider
@@ -83,4 +83,18 @@ type MeshProviderFactoryParams struct {
 // MeshProviderFactory creates an instance of a mesh provider
 type MeshProviderFactory interface {
 	CreateMesh(params *MeshProviderFactoryParams) (MeshProvider, error)
+}
+
+// MeshNodeFactoryParams are the parameters required to construct
+// a mesh node
+type MeshNodeFactoryParams struct {
+	PublicKey *wgtypes.Key
+	NodeIP    net.IP
+	WgPort    int
+	Endpoint  string
+}
+
+// MeshBuilder build the hosts mesh node for it to be added to the mesh
+type MeshNodeFactory interface {
+	Build(params *MeshNodeFactoryParams) MeshNode
 }

@@ -11,15 +11,27 @@ import (
 )
 
 type NewMeshArgs struct {
+	// IfName is the interface that the mesh instance will run on
 	IfName string
+	// WgPort is the WireGuard port to expose
 	WgPort int
+	// Endpoint is the routable alias of the machine. Can be an IP
+	// or DNS entry
+	Endpoint string
 }
 
 type JoinMeshArgs struct {
-	MeshId   string
+	// MeshId is the ID of the mesh to join
+	MeshId string
+	// IpAddress is a routable IP in another mesh
 	IpAdress string
-	IfName   string
-	Port     int
+	// IfName is the interface name of the mesh
+	IfName string
+	// Port is the WireGuard port to expose
+	Port int
+	// Endpoint is the routable address of this machine. If not provided
+	// defaults to the default address
+	Endpoint string
 }
 
 type GetMeshReply struct {
@@ -34,6 +46,7 @@ type MeshIpc interface {
 	CreateMesh(args *NewMeshArgs, reply *string) error
 	ListMeshes(name string, reply *ListMeshReply) error
 	JoinMesh(args JoinMeshArgs, reply *string) error
+	LeaveMesh(meshId string, reply *string) error
 	GetMesh(meshId string, reply *GetMeshReply) error
 	EnableInterface(meshId string, reply *string) error
 	GetDOT(meshId string, reply *string) error

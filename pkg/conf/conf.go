@@ -9,18 +9,25 @@ import (
 )
 
 type WgMeshConfiguration struct {
-	CertificatePath      string `yaml:"certificatePath"`
-	PrivateKeyPath       string `yaml:"privateKeyPath"`
-	CaCertificatePath    string `yaml:"caCertificatePath"`
-	SkipCertVerification bool   `yaml:"skipCertVerification"`
-	GrpcPort             string `yaml:"gRPCPort"`
+	// CertificatePath is the path to the certificate to use in mTLS
+	CertificatePath string `yaml:"certificatePath"`
+	// PrivateKeypath is the path to the clients private key in mTLS
+	PrivateKeyPath string `yaml:"privateKeyPath"`
+	// CaCeritifcatePath path to the certificate of the trust certificate authority
+	CaCertificatePath string `yaml:"caCertificatePath"`
+	// SkipCertVerification specify to skip certificate verification. Should only be used
+	// in test environments
+	SkipCertVerification bool `yaml:"skipCertVerification"`
+	// Port to run the GrpcServer on
+	GrpcPort string `yaml:"gRPCPort"`
 	// AdvertiseRoutes advertises other meshes if the node is in multiple meshes
 	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
-	// PublicEndpoint is the IP in which this computer is publicly reachable.
-	// usecase is when the node is behind NAT.
-	PublicEndpoint string `yaml:"publicEndpoint"`
+	// Endpoint is the IP in which this computer is publicly reachable.
+	// usecase is when the node has multiple IP addresses
+	Endpoint string `yaml:"publicEndpoint"`
 }
 
+// ParseConfiguration parses the mesh configuration
 func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {
 	var conf WgMeshConfiguration
 

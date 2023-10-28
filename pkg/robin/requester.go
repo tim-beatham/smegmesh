@@ -7,15 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
-	"github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
 type IpcHandler struct {
@@ -24,42 +20,17 @@ type IpcHandler struct {
 }
 
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
-	wg.CreateInterface(args.IfName)
-
 	meshId, err := n.Server.MeshManager.CreateMesh(args.IfName, args.WgPort)
 
 	if err != nil {
 		return err
 	}
 
-	pubKey, err := n.Server.MeshManager.GetPublicKey(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	nodeIP, err := n.ipAllocator.GetIP(*pubKey, meshId)
-
-	if err != nil {
-		return err
-	}
-
-	outBoundIp := lib.GetOutboundIP()
-
-	meshNode := crdt.MeshNodeCrdt{
-		HostEndpoint: fmt.Sprintf("%s:%s", outBoundIp.String(), n.Server.Conf.GrpcPort),
-		PublicKey:    pubKey.String(),
-		WgEndpoint:   fmt.Sprintf("%s:%d", outBoundIp.String(), args.WgPort),
-		WgHost:       nodeIP.String() + "/128",
-		Routes:       map[string]interface{}{},
-	}
-
-	err = n.Server.MeshManager.AddMeshNode(meshId, &meshNode)
-
-	if err != nil {
-		return err
-	}
-
+	err = n.Server.MeshManager.AddSelf(&mesh.AddSelfParams{
+		MeshId:   meshId,
+		WgPort:   args.WgPort,
+		Endpoint: args.Endpoint,
+	})
 	*reply = meshId
 	return nil
 }
@@ -101,43 +72,40 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	err = n.Server.MeshManager.AddMesh(args.MeshId, args.IfName, args.Port, meshReply.Mesh)
+	err = n.Server.MeshManager.AddMesh(&mesh.AddMeshParams{
+		MeshId:    args.MeshId,
+		DevName:   args.IfName,
+		WgPort:    args.Port,
+		MeshBytes: meshReply.Mesh,
+	})
 
 	if err != nil {
 		return err
 	}
 
-	pubKey, err := n.Server.MeshManager.GetPublicKey(args.MeshId)
+	err = n.Server.MeshManager.AddSelf(&mesh.AddSelfParams{
+		MeshId:   args.MeshId,
+		WgPort:   args.Port,
+		Endpoint: args.Endpoint,
+	})
 
 	if err != nil {
 		return err
 	}
 
-	ipAddr, err := n.ipAllocator.GetIP(*pubKey, args.MeshId)
-
-	if err != nil {
-		return err
-	}
-
-	logging.Log.WriteInfof("WgIP: " + ipAddr.String())
-
-	outBoundIP := lib.GetOutboundIP()
-
-	node := crdt.MeshNodeCrdt{
-		HostEndpoint: fmt.Sprintf("%s:%s", outBoundIP.String(), n.Server.Conf.GrpcPort),
-		WgEndpoint:   fmt.Sprintf("%s:%d", outBoundIP.String(), args.Port),
-		PublicKey:    pubKey.String(),
-		WgHost:       ipAddr.String() + "/128",
-		Routes:       make(map[string]interface{}),
-	}
-	err = n.Server.MeshManager.AddMeshNode(args.MeshId, &node)
-	
-	if err != nil {
-		return err
-	}
-	
 	*reply = strconv.FormatBool(true)
 	return nil
+}
+
+// LeaveMesh leaves a mesh network
+func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
+	err := n.Server.MeshManager.LeaveMesh(meshId)
+
+	if err == nil {
+		*reply = fmt.Sprintf("Left Mesh %s", meshId)
+	}
+
+	return err
 }
 
 func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
@@ -175,7 +143,6 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	}
 
 	*reply = ipc.GetMeshReply{Nodes: nodes}
-
 	return nil
 }
 
@@ -206,12 +173,10 @@ func (n *IpcHandler) GetDOT(meshId string, reply *string) error {
 
 type RobinIpcParams struct {
 	CtrlServer *ctrlserver.MeshCtrlServer
-	Allocator  ip.IPAllocator
 }
 
 func NewRobinIpc(ipcParams RobinIpcParams) IpcHandler {
 	return IpcHandler{
-		Server:      ipcParams.CtrlServer,
-		ipAllocator: ipcParams.Allocator,
+		Server: ipcParams.CtrlServer,
 	}
 }

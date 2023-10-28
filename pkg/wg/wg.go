@@ -1,6 +1,7 @@
 package wg
 
 import (
+	"fmt"
 	"net"
 	"os/exec"
 
@@ -9,29 +10,30 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-/*
- * All WireGuard mesh interface called wgmesh
- */
-func CreateInterface(ifName string) error {
+// createInterface uses ip link to create an interface. If the interface exists
+// it returns an error
+func createInterface(ifName string) error {
 	_, err := net.InterfaceByName(ifName)
 
-	// Check if the interface exists
-	if err != nil {
-		cmd := exec.Command("/usr/bin/ip", "link", "add", "dev", ifName, "type", "wireguard")
-
-		if err := cmd.Run(); err != nil {
-			return err
-		}
+	if err == nil {
+		return &WgError{msg: fmt.Sprintf("Interface %s already exists", ifName)}
 	}
 
+	// Check if the interface exists
+	cmd := exec.Command("/usr/bin/ip", "link", "add", "dev", ifName, "type", "wireguard")
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
 	return nil
 }
 
-/*
- * Create and configure a new WireGuard client
- */
-func CreateWgInterface(client *wgctrl.Client, ifName string, port int) error {
-	err := CreateInterface(ifName)
+type WgInterfaceManipulatorImpl struct {
+	client *wgctrl.Client
+}
+
+func (m *WgInterfaceManipulatorImpl) CreateInterface(params *CreateInterfaceParams) error {
+	err := createInterface(params.IfName)
 
 	if err != nil {
 		return err
@@ -45,18 +47,37 @@ func CreateWgInterface(client *wgctrl.Client, ifName string, port int) error {
 
 	var cfg wgtypes.Config = wgtypes.Config{
 		PrivateKey: &privateKey,
-		ListenPort: &port,
+		ListenPort: &params.Port,
 	}
 
-	client.ConfigureDevice(ifName, cfg)
+	m.client.ConfigureDevice(params.IfName, cfg)
 	return nil
 }
 
-func EnableInterface(ifName string, ip string) error {
-	cmd := exec.Command("/usr/bin/ip", "link", "set", "up", "dev", ifName)
+// flushInterface flushes the specified interface
+func flushInterface(ifName string) error {
+	_, err := net.InterfaceByName(ifName)
+
+	if err != nil {
+		return &WgError{msg: fmt.Sprintf("Interface %s does not exist cannot flush", ifName)}
+	}
+
+	cmd := exec.Command("/usr/bin/ip", "addr", "flush", "dev", ifName)
 
 	if err := cmd.Run(); err != nil {
-		logging.Log.WriteErrorf(err.Error())
+		logging.Log.WriteErrorf(fmt.Sprintf("%s error flushing interface %s", err.Error(), ifName))
+		return &WgError{msg: fmt.Sprintf("Failed to flush interface %s", ifName)}
+	}
+
+	return nil
+}
+
+// EnableInterface flushes the interface and sets the ip address of the
+// interface
+func (m *WgInterfaceManipulatorImpl) EnableInterface(ifName string, ip string) error {
+	err := flushInterface(ifName)
+
+	if err != nil {
 		return err
 	}
 
@@ -66,11 +87,14 @@ func EnableInterface(ifName string, ip string) error {
 		return err
 	}
 
-	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", ifName)
+	cmd := exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", ifName)
 
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-
 	return nil
+}
+
+func NewWgInterfaceManipulator(client *wgctrl.Client) WgInterfaceManipulator {
+	return &WgInterfaceManipulatorImpl{client: client}
 }

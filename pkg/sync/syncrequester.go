@@ -48,7 +48,12 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endP
 		return err
 	}
 
-	err = s.server.MeshManager.AddMesh(meshId, ifName, port, reply.Mesh)
+	err = s.server.MeshManager.AddMesh(&mesh.AddMeshParams{
+		MeshId:    meshId,
+		DevName:   ifName,
+		WgPort:    port,
+		MeshBytes: reply.Mesh,
+	})
 	return err
 }
 

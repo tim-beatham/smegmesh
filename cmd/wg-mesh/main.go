@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	ipcRpc "net/rpc"
 	"os"
 	"strings"
@@ -15,14 +14,22 @@ import (
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
-func createMesh(client *ipcRpc.Client, ifName string, wgPort int) string {
+type CreateMeshParams struct {
+	Client   *ipcRpc.Client
+	IfName   string
+	WgPort   int
+	Endpoint string
+}
+
+func createMesh(args *CreateMeshParams) string {
 	var reply string
 	newMeshParams := ipc.NewMeshArgs{
-		IfName: ifName,
-		WgPort: wgPort,
+		IfName:   args.IfName,
+		WgPort:   args.WgPort,
+		Endpoint: args.Endpoint,
 	}
 
-	err := client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
+	err := args.Client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -46,17 +53,26 @@ func listMeshes(client *ipcRpc.Client) {
 	}
 }
 
-func joinMesh(client *ipcRpc.Client, meshId string, ipAddress string, ifName string, wgPort int) string {
+type JoinMeshParams struct {
+	Client    *ipcRpc.Client
+	MeshId    string
+	IpAddress string
+	IfName    string
+	WgPort    int
+	Endpoint  string
+}
+
+func joinMesh(params *JoinMeshParams) string {
 	var reply string
 
 	args := ipc.JoinMeshArgs{
-		MeshId:   meshId,
-		IpAdress: ipAddress,
-		IfName:   ifName,
-		Port:     wgPort,
+		MeshId:   params.MeshId,
+		IpAdress: params.IpAddress,
+		IfName:   params.IfName,
+		Port:     params.WgPort,
 	}
 
-	err := client.Call("IpcHandler.JoinMesh", &args, &reply)
+	err := params.Client.Call("IpcHandler.JoinMesh", &args, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -71,7 +87,7 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 	err := client.Call("IpcHandler.GetMesh", &meshId, &reply)
 
 	if err != nil {
-		log.Panic(err.Error())
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -87,6 +103,19 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 
 		fmt.Println("---")
 	}
+}
+
+func leaveMesh(client *ipcRpc.Client, meshId string) {
+	var reply string
+
+	err := client.Call("IpcHandler.LeaveMesh", &meshId, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
 }
 
 func enableInterface(client *ipcRpc.Client, meshId string) {
@@ -125,18 +154,23 @@ func main() {
 	getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
 	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
+	leaveMeshCmd := parser.NewCommand("leave-mesh", "Leave a mesh network")
 
 	var newMeshIfName *string = newMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
 	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
+	var newMeshEndpoint *string = newMeshCmd.String("e", "endpoint", &argparse.Options{})
 
-	var meshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
-	var ipAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
+	var joinMeshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var joinMeshIpAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
 	var joinMeshIfName *string = joinMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
 	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
+	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{})
 
 	var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
+
+	var leaveMeshMeshId *string = leaveMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -152,7 +186,12 @@ func main() {
 	}
 
 	if newMeshCmd.Happened() {
-		fmt.Println(createMesh(client, *newMeshIfName, *newMeshPort))
+		fmt.Println(createMesh(&CreateMeshParams{
+			Client:   client,
+			IfName:   *newMeshIfName,
+			WgPort:   *newMeshPort,
+			Endpoint: *newMeshEndpoint,
+		}))
 	}
 
 	if listMeshCmd.Happened() {
@@ -160,7 +199,14 @@ func main() {
 	}
 
 	if joinMeshCmd.Happened() {
-		fmt.Println(joinMesh(client, *meshId, *ipAddress, *joinMeshIfName, *joinMeshPort))
+		fmt.Println(joinMesh(&JoinMeshParams{
+			Client:    client,
+			IfName:    *joinMeshIfName,
+			WgPort:    *joinMeshPort,
+			IpAddress: *joinMeshIpAddress,
+			MeshId:    *joinMeshId,
+			Endpoint:  *joinMeshEndpoint,
+		}))
 	}
 
 	if getMeshCmd.Happened() {
@@ -173,5 +219,9 @@ func main() {
 
 	if enableInterfaceCmd.Happened() {
 		enableInterface(client, *enableInterfaceMeshId)
+	}
+
+	if leaveMeshCmd.Happened() {
+		leaveMesh(client, *leaveMeshMeshId)
 	}
 }

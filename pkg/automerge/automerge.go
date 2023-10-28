@@ -11,7 +11,6 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -66,21 +65,22 @@ func (c *CrdtMeshManager) Load(bytes []byte) error {
 	return nil
 }
 
+type NewCrdtNodeMangerParams struct {
+	MeshId  string
+	DevName string
+	Port    int
+	Conf    conf.WgMeshConfiguration
+	Client  *wgctrl.Client
+}
+
 // NewCrdtNodeManager: Create a new crdt node manager
-func NewCrdtNodeManager(meshId, devName string, port int, conf conf.WgMeshConfiguration, client *wgctrl.Client) (*CrdtMeshManager, error) {
+func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, error) {
 	var manager CrdtMeshManager
-	manager.MeshId = meshId
+	manager.MeshId = params.MeshId
 	manager.doc = automerge.New()
-	manager.IfName = devName
-	manager.Client = client
-	manager.conf = &conf
-
-	err := wg.CreateWgInterface(client, devName, port)
-
-	if err != nil {
-		return nil, err
-	}
-
+	manager.IfName = params.DevName
+	manager.Client = params.Client
+	manager.conf = &params.Conf
 	return &manager, nil
 }
 
@@ -94,7 +94,7 @@ func (c *CrdtMeshManager) removeNode(endpoint string) error {
 	return nil
 }
 
-// GetNode: returns a mesh node crdt.
+// GetNode: returns a mesh node crdt.Close releases resources used by a Client.
 func (m *CrdtMeshManager) GetNode(endpoint string) (*MeshNodeCrdt, error) {
 	node, err := m.doc.Path("nodes").Map().Get(endpoint)
 

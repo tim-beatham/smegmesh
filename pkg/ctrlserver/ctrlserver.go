@@ -4,8 +4,11 @@ import (
 	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/conn"
+	"github.com/tim-beatham/wgmesh/pkg/ip"
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
+	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
@@ -22,10 +25,27 @@ type NewCtrlServerParams struct {
 // operation failed
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
-	factory := crdt.CrdtProviderFactory{}
-	ctrlServer.MeshManager = mesh.NewMeshManager(*params.Conf, params.Client, &factory)
-	ctrlServer.Conf = params.Conf
+	meshFactory := crdt.CrdtProviderFactory{}
+	nodeFactory := crdt.MeshNodeFactory{
+		Config: *params.Conf,
+	}
+	idGenerator := &lib.UUIDGenerator{}
+	ipAllocator := &ip.ULABuilder{}
+	interfaceManipulator := wg.NewWgInterfaceManipulator(params.Client)
 
+	meshManagerParams := &mesh.NewMeshManagerParams{
+		Conf:                 *params.Conf,
+		Client:               params.Client,
+		MeshProvider:         &meshFactory,
+		NodeFactory:          &nodeFactory,
+		IdGenerator:          idGenerator,
+		IPAllocator:          ipAllocator,
+		InterfaceManipulator: interfaceManipulator,
+	}
+
+	ctrlServer.MeshManager = mesh.NewMeshManager(meshManagerParams)
+
+	ctrlServer.Conf = params.Conf
 	connManagerParams := conn.NewConnectionManageParams{
 		CertificatePath:      params.Conf.CertificatePath,
 		PrivateKey:           params.Conf.PrivateKeyPath,
