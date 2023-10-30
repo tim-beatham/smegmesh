@@ -5,7 +5,8 @@ go 1.21.1
 require (
 	github.com/akamensky/argparse v1.4.0
 	github.com/automerge/automerge-go v0.0.0-20230903201930-b80ce8aadbb9
-	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/google/uuid v1.3.0
+	github.com/sirupsen/logrus v1.9.3
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
 	google.golang.org/grpc v1.58.1
 	google.golang.org/protobuf v1.31.0
@@ -19,9 +20,6 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/vishvananda/netlink v1.1.0 // indirect
-	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df // indirect
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
