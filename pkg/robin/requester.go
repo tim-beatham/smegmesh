@@ -31,8 +31,9 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		WgPort:   args.WgPort,
 		Endpoint: args.Endpoint,
 	})
+
 	*reply = meshId
-	return nil
+	return err
 }
 
 func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
@@ -50,6 +51,10 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 
 func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 	peerConnection, err := n.Server.ConnectionManager.GetConnection(args.IpAdress)
+
+	if err != nil {
+		return err
+	}
 
 	client, err := peerConnection.GetClient()
 

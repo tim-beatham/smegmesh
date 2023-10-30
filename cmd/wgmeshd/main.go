@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
@@ -15,9 +16,15 @@ import (
 )
 
 func main() {
-	conf, err := conf.ParseConfiguration("./configuration.yaml")
+	if len(os.Args) != 2 {
+		logging.Log.WriteErrorf("Need to provide configuration.yaml")
+		return
+	}
+
+	conf, err := conf.ParseConfiguration(os.Args[1])
 	if err != nil {
-		log.Fatalln("Could not parse configuration")
+		logging.Log.WriteInfof("Could not parse configuration")
+		return
 	}
 
 	client, err := wgctrl.New()

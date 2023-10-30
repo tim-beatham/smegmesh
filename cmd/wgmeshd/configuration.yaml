@@ -1,6 +1,6 @@
-certificatePath: "../../cert/cert.pem"
-privateKeyPath: "../../cert/priv.pem"
-caCertificatePath: "../../cert/cacert.pem"
+certificatePath: "/wgmesh/cert/cert.pem"
+privateKeyPath: "/wgmesh/cert/priv.pem"
+caCertificatePath: "/wgmesh/cert/cacert.pem"
 skipCertVerification: true
 gRPCPort: "8080"
 advertiseRoutes: true

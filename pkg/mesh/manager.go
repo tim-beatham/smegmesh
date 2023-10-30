@@ -50,7 +50,10 @@ func (m *MeshManager) CreateMesh(devName string, port int) (string, error) {
 	}
 
 	m.Meshes[meshId] = nodeManager
-	return meshId, err
+	return meshId, m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
+		IfName: devName,
+		Port:   port,
+	})
 }
 
 type AddMeshParams struct {
@@ -81,7 +84,11 @@ func (m *MeshManager) AddMesh(params *AddMeshParams) error {
 	}
 
 	m.Meshes[params.MeshId] = meshProvider
-	return err
+
+	return m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
+		IfName: params.DevName,
+		Port:   params.WgPort,
+	})
 }
 
 // HasChanges returns true if the mesh has changes
@@ -214,10 +221,20 @@ func (s *MeshManager) GetSelf(meshId string) (MeshNode, error) {
 // UpdateTimeStamp updates the timestamp of this node in all meshes
 func (s *MeshManager) UpdateTimeStamp() error {
 	for _, mesh := range s.Meshes {
-		err := mesh.UpdateTimeStamp(s.HostParameters.HostEndpoint)
+		snapshot, err := mesh.GetMesh()
 
 		if err != nil {
 			return err
+		}
+
+		_, exists := snapshot.GetNodes()[s.HostParameters.HostEndpoint]
+
+		if exists {
+			err = mesh.UpdateTimeStamp(s.HostParameters.HostEndpoint)
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 
