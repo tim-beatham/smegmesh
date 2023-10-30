@@ -144,6 +144,19 @@ func getGraph(client *ipcRpc.Client, meshId string) {
 	fmt.Println(reply)
 }
 
+func queryMesh(client *ipcRpc.Client, meshId, query string) {
+	var reply string
+
+	err := client.Call("IpcHandler.Query", &ipc.QueryMesh{MeshId: meshId, Query: query}, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
 func main() {
 	parser := argparse.NewParser("wg-mesh",
 		"wg-mesh Manipulate WireGuard meshes")
@@ -155,6 +168,7 @@ func main() {
 	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
 	leaveMeshCmd := parser.NewCommand("leave-mesh", "Leave a mesh network")
+	queryMeshCmd := parser.NewCommand("query-mesh", "Query a mesh network using JMESPath")
 
 	var newMeshIfName *string = newMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
 	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
@@ -171,6 +185,9 @@ func main() {
 	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	var leaveMeshMeshId *string = leaveMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+
+	var queryMeshMeshId *string = queryMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var queryMeshQuery *string = queryMeshCmd.String("q", "query", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -223,5 +240,9 @@ func main() {
 
 	if leaveMeshCmd.Happened() {
 		leaveMesh(client, *leaveMeshMeshId)
+	}
+
+	if queryMeshCmd.Happened() {
+		queryMesh(client, *queryMeshMeshId, *queryMeshQuery)
 	}
 }

@@ -42,6 +42,11 @@ type ListMeshReply struct {
 	Meshes []string
 }
 
+type QueryMesh struct {
+	MeshId string
+	Query  string
+}
+
 type MeshIpc interface {
 	CreateMesh(args *NewMeshArgs, reply *string) error
 	ListMeshes(name string, reply *ListMeshReply) error
@@ -50,6 +55,7 @@ type MeshIpc interface {
 	GetMesh(meshId string, reply *GetMeshReply) error
 	EnableInterface(meshId string, reply *string) error
 	GetDOT(meshId string, reply *string) error
+	Query(query QueryMesh, reply *string) error
 }
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"

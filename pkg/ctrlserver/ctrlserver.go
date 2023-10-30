@@ -7,6 +7,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
+	"github.com/tim-beatham/wgmesh/pkg/query"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -19,6 +20,7 @@ type NewCtrlServerParams struct {
 	AuthProvider rpc.AuthenticationServer
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
+	Querier      query.Querier
 }
 
 // Create a new instance of the MeshCtrlServer or error if the
@@ -73,7 +75,9 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		return nil, err
 	}
 
+	ctrlServer.Querier = query.NewJmesQuerier(ctrlServer.MeshManager)
 	ctrlServer.ConnectionServer = connServer
+
 	return ctrlServer, nil
 }
 
