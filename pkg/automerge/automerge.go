@@ -139,10 +139,6 @@ func (m *CrdtMeshManager) HasChanges() bool {
 	return len(changes) > 0
 }
 
-func (m *CrdtMeshManager) HasFailed(endpoint string) bool {
-	return false
-}
-
 func (m *CrdtMeshManager) SaveChanges() {
 	hashes := m.doc.Heads()
 	hash := hashes[len(hashes)-1]

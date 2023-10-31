@@ -176,6 +176,17 @@ func (n *IpcHandler) GetDOT(meshId string, reply *string) error {
 	return nil
 }
 
+func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
+	queryResponse, err := n.Server.Querier.Query(params.MeshId, params.Query)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = string(queryResponse)
+	return nil
+}
+
 type RobinIpcParams struct {
 	CtrlServer *ctrlserver.MeshCtrlServer
 }
