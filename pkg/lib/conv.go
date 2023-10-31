@@ -43,3 +43,15 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 
 	return values
 }
+
+type convert[V1 any, V2 any] func(V1) V2
+
+func Map[V1 any, V2 any](list []V1, f convert[V1, V2]) []V2 {
+	newList := make([]V2, len(list))
+
+	for i, elem := range list {
+		newList[i] = f(elem)
+	}
+
+	return newList
+}

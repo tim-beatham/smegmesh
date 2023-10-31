@@ -87,10 +87,12 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 			if syncer != nil {
 				syncer.Complete()
 			}
+
 			return nil
 		}
 	}
 }
+
 func NewSyncService(server *ctrlserver.MeshCtrlServer) *SyncServiceImpl {
 	return &SyncServiceImpl{Server: server}
 }
