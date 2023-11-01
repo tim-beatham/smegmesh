@@ -21,13 +21,18 @@ type SyncerImpl struct {
 	manager            *mesh.MeshManager
 	requester          SyncRequester
 	authenticatedNodes []crdt.MeshNodeCrdt
+	infectionCount     int
 }
 
 const subSetLength = 3
+const infectionCount = 3
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
-	if !s.manager.HasChanges(meshId) {
+	logging.Log.WriteInfof("UPDATING WG CONF")
+	s.manager.ApplyConfig()
+
+	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
 		logging.Log.WriteInfof("No changes for %s", meshId)
 		return nil
 	}
@@ -76,6 +81,9 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	waitGroup.Wait()
 
 	logging.Log.WriteInfof("SYNC TIME: %v", time.Now().Sub(before))
+
+	s.infectionCount = ((infectionCount + s.infectionCount - 1) % infectionCount)
+
 	return nil
 }
 
@@ -93,5 +101,5 @@ func (s *SyncerImpl) SyncMeshes() error {
 }
 
 func NewSyncer(m *mesh.MeshManager, r SyncRequester) Syncer {
-	return &SyncerImpl{manager: m, requester: r}
+	return &SyncerImpl{manager: m, requester: r, infectionCount: 0}
 }
