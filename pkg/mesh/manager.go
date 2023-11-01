@@ -218,6 +218,10 @@ func (s *MeshManager) GetSelf(meshId string) (MeshNode, error) {
 	return node, nil
 }
 
+func (s *MeshManager) ApplyConfig() error {
+	return s.configApplyer.ApplyConfig()
+}
+
 // UpdateTimeStamp updates the timestamp of this node in all meshes
 func (s *MeshManager) UpdateTimeStamp() error {
 	for _, mesh := range s.Meshes {

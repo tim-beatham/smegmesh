@@ -1,6 +1,7 @@
 package wg
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os/exec"
@@ -75,9 +76,19 @@ func flushInterface(ifName string) error {
 // EnableInterface flushes the interface and sets the ip address of the
 // interface
 func (m *WgInterfaceManipulatorImpl) EnableInterface(ifName string, ip string) error {
+	if len(ifName) == 0 {
+		return errors.New("ifName not provided")
+	}
+
 	err := flushInterface(ifName)
 
 	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("/usr/bin/ip", "link", "set", "up", "dev", ifName)
+
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 
@@ -87,7 +98,7 @@ func (m *WgInterfaceManipulatorImpl) EnableInterface(ifName string, ip string) e
 		return err
 	}
 
-	cmd := exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", ifName)
+	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", ifName)
 
 	if err := cmd.Run(); err != nil {
 		return err

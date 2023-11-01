@@ -16,7 +16,7 @@ type WgMeshConfigApplyer struct {
 	meshManager *MeshManager
 }
 
-func ConvertMeshNode(node MeshNode) (*wgtypes.PeerConfig, error) {
+func convertMeshNode(node MeshNode) (*wgtypes.PeerConfig, error) {
 	endpoint, err := net.ResolveUDPAddr("udp", node.GetWgEndpoint())
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	var count int = 0
 
 	for _, n := range nodes {
-		peer, err := ConvertMeshNode(n)
+		peer, err := convertMeshNode(n)
 
 		if err != nil {
 			return err
@@ -70,8 +70,7 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	cfg := wgtypes.Config{
-		Peers:        peerConfigs,
-		ReplacePeers: true,
+		Peers: peerConfigs,
 	}
 
 	dev, err := mesh.GetDevice()
