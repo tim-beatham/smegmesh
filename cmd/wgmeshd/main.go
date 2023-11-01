@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"os/signal"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
@@ -71,16 +72,30 @@ func main() {
 	go syncScheduler.Run()
 	go timestampScheduler.Run()
 
+	closeResources := func() {
+		logging.Log.WriteInfof("Closing resources")
+		syncScheduler.Stop()
+		timestampScheduler.Stop()
+		ctrlServer.Close()
+		client.Close()
+	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		for range c {
+			closeResources()
+			os.Exit(0)
+		}
+	}()
+
 	err = ctrlServer.ConnectionServer.Listen()
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
-
 		return
 	}
 
-	defer syncScheduler.Stop()
-	defer timestampScheduler.Stop()
-	defer ctrlServer.Close()
-	defer client.Close()
+	go closeResources()
 }

@@ -187,6 +187,17 @@ func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 	return nil
 }
 
+func (n *IpcHandler) PutDescription(description string, reply *string) error {
+	err := n.Server.MeshManager.SetDescription(description)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = fmt.Sprintf("Set description to %s", description)
+	return nil
+}
+
 type RobinIpcParams struct {
 	CtrlServer *ctrlserver.MeshCtrlServer
 }

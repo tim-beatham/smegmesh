@@ -6,6 +6,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/query"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
@@ -84,11 +85,11 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 // Close closes the ctrl server tearing down any connections that exist
 func (s *MeshCtrlServer) Close() error {
 	if err := s.ConnectionManager.Close(); err != nil {
-		return err
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	if err := s.ConnectionServer.Close(); err != nil {
-		return err
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	return nil

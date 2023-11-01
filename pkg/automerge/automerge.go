@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -161,7 +162,27 @@ func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
 	err = node.Map().Set("timestamp", time.Now().Unix())
 
 	if err == nil {
-		logging.Log.WriteInfof("Timestamp Updated for %s", m.MeshId)
+		logging.Log.WriteInfof("Timestamp Updated for %s", nodeId)
+	}
+
+	return err
+}
+
+func (m *CrdtMeshManager) SetDescription(nodeId string, description string) error {
+	node, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil {
+		return err
+	}
+
+	if node.Kind() != automerge.KindMap {
+		return errors.New(fmt.Sprintf("%s does not exist", nodeId))
+	}
+
+	err = node.Map().Set("description", description)
+
+	if err == nil {
+		logging.Log.WriteInfof("Description Updated for %s", nodeId)
 	}
 
 	return err
@@ -232,6 +253,10 @@ func (m *MeshNodeCrdt) GetRoutes() []string {
 	return lib.MapKeys(m.Routes)
 }
 
+func (m *MeshNodeCrdt) GetDescription() string {
+	return m.Description
+}
+
 func (m *MeshNodeCrdt) GetIdentifier() string {
 	ipv6 := m.WgHost[:len(m.WgHost)-4]
 
@@ -252,6 +277,7 @@ func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 			WgHost:       node.WgHost,
 			Timestamp:    node.Timestamp,
 			Routes:       node.Routes,
+			Description:  node.Description,
 		}
 	}
 
