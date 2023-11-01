@@ -26,6 +26,8 @@ type MeshNode interface {
 	GetRoutes() []string
 	// GetIdentifier: returns the identifier of the node
 	GetIdentifier() string
+	// GetDescription: returns the description for this node
+	GetDescription() string
 }
 
 type MeshSnapshot interface {
@@ -63,6 +65,7 @@ type MeshProvider interface {
 	// AddRoutes: adds routes to the given node
 	AddRoutes(nodeId string, route ...string) error
 	GetSyncer() MeshSyncer
+	SetDescription(nodeId string, description string) error
 }
 
 // HostParameters contains the IDs of a node

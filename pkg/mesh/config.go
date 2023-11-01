@@ -1,6 +1,8 @@
 package mesh
 
 import (
+	"errors"
+	"fmt"
 	"net"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -9,6 +11,7 @@ import (
 // MeshConfigApplyer abstracts applying the mesh configuration
 type MeshConfigApplyer interface {
 	ApplyConfig() error
+	RemovePeers(meshId string) error
 }
 
 // WgMeshConfigApplyer applies WireGuard configuration
@@ -90,6 +93,27 @@ func (m *WgMeshConfigApplyer) ApplyConfig() error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
+	mesh := m.meshManager.GetMesh(meshId)
+
+	if mesh == nil {
+		return errors.New(fmt.Sprintf("mesh %s does not exist", meshId))
+	}
+
+	dev, err := mesh.GetDevice()
+
+	if err != nil {
+		return err
+	}
+
+	m.meshManager.Client.ConfigureDevice(dev.Name, wgtypes.Config{
+		ReplacePeers: true,
+		Peers:        make([]wgtypes.PeerConfig, 1),
+	})
 
 	return nil
 }

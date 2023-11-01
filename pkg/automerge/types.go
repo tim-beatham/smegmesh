@@ -8,6 +8,7 @@ type MeshNodeCrdt struct {
 	WgHost       string                 `automerge:"wgHost"`
 	Timestamp    int64                  `automerge:"timestamp"`
 	Routes       map[string]interface{} `automerge:"routes"`
+	Description  string                 `automerge:"description"`
 }
 
 // MeshCrdt: Represents the mesh network as a whole

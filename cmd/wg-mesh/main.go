@@ -157,6 +157,20 @@ func queryMesh(client *ipcRpc.Client, meshId, query string) {
 	fmt.Println(reply)
 }
 
+// putDescription: puts updates the description about the node to the meshes
+func putDescription(client *ipcRpc.Client, description string) {
+	var reply string
+
+	err := client.Call("IpcHandler.PutDescription", &description, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
 func main() {
 	parser := argparse.NewParser("wg-mesh",
 		"wg-mesh Manipulate WireGuard meshes")
@@ -164,11 +178,12 @@ func main() {
 	newMeshCmd := parser.NewCommand("new-mesh", "Create a new mesh")
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
-	getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
+	// getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
 	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
 	leaveMeshCmd := parser.NewCommand("leave-mesh", "Leave a mesh network")
 	queryMeshCmd := parser.NewCommand("query-mesh", "Query a mesh network using JMESPath")
+	putDescriptionCmd := parser.NewCommand("put-description", "Place a description for the node")
 
 	var newMeshIfName *string = newMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
 	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
@@ -180,14 +195,18 @@ func main() {
 	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
 	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{})
 
-	var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+	// var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
+
 	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	var leaveMeshMeshId *string = leaveMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	var queryMeshMeshId *string = queryMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var queryMeshQuery *string = queryMeshCmd.String("q", "query", &argparse.Options{Required: true})
+
+	var description *string = putDescriptionCmd.String("d", "description", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -226,9 +245,9 @@ func main() {
 		}))
 	}
 
-	if getMeshCmd.Happened() {
-		getMesh(client, *getMeshId)
-	}
+	// if getMeshCmd.Happened() {
+	// getMesh(client, *getMeshId)
+	// }
 
 	if getGraphCmd.Happened() {
 		getGraph(client, *getGraphMeshId)
@@ -244,5 +263,9 @@ func main() {
 
 	if queryMeshCmd.Happened() {
 		queryMesh(client, *queryMeshMeshId, *queryMeshQuery)
+	}
+
+	if putDescriptionCmd.Happened() {
+		putDescription(client, *description)
 	}
 }

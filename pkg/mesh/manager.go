@@ -49,11 +49,23 @@ func (m *MeshManager) CreateMesh(devName string, port int) (string, error) {
 		return "", err
 	}
 
-	m.Meshes[meshId] = nodeManager
-	return meshId, m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
+	err = m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
 		IfName: devName,
 		Port:   port,
 	})
+
+	if err != nil {
+		return "", nil
+	}
+
+	m.Meshes[meshId] = nodeManager
+	err = m.configApplyer.RemovePeers(meshId)
+
+	if err != nil {
+		logging.Log.WriteErrorf(err.Error())
+	}
+
+	return meshId, nil
 }
 
 type AddMeshParams struct {
@@ -220,6 +232,18 @@ func (s *MeshManager) GetSelf(meshId string) (MeshNode, error) {
 
 func (s *MeshManager) ApplyConfig() error {
 	return s.configApplyer.ApplyConfig()
+}
+
+func (s *MeshManager) SetDescription(description string) error {
+	for _, mesh := range s.Meshes {
+		err := mesh.SetDescription(s.HostParameters.HostEndpoint, description)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // UpdateTimeStamp updates the timestamp of this node in all meshes

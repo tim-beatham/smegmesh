@@ -17,7 +17,8 @@ func createInterface(ifName string) error {
 	_, err := net.InterfaceByName(ifName)
 
 	if err == nil {
-		return &WgError{msg: fmt.Sprintf("Interface %s already exists", ifName)}
+		err = flushInterface(ifName)
+		return err
 	}
 
 	// Check if the interface exists
