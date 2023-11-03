@@ -2,5 +2,11 @@ certificatePath: "/wgmesh/cert/cert.pem"
 privateKeyPath: "/wgmesh/cert/priv.pem"
 caCertificatePath: "/wgmesh/cert/cacert.pem"
 skipCertVerification: true
-gRPCPort: "8080"
+gRPCPort: "21906"
 advertiseRoutes: true
+clusterSize: 32
+syncRate: 1
+interClusterChance: 0.15
+branchRate: 3
+infectionCount: 3
+keepAliveRate: 60

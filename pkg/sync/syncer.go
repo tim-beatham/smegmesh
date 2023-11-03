@@ -2,10 +2,12 @@ package sync
 
 import (
 	"errors"
+	"math/rand"
 	"sync"
 	"time"
 
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
+	"github.com/tim-beatham/wgmesh/pkg/conf"
+	"github.com/tim-beatham/wgmesh/pkg/conn"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
@@ -18,14 +20,13 @@ type Syncer interface {
 }
 
 type SyncerImpl struct {
-	manager            *mesh.MeshManager
-	requester          SyncRequester
-	authenticatedNodes []crdt.MeshNodeCrdt
-	infectionCount     int
+	manager        *mesh.MeshManager
+	requester      SyncRequester
+	infectionCount int
+	syncCount      int
+	cluster        conn.ConnCluster
+	conf           *conf.WgMeshConfiguration
 }
-
-const subSetLength = 3
-const infectionCount = 3
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
@@ -37,13 +38,13 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		return nil
 	}
 
-	mesh := s.manager.GetMesh(meshId)
+	theMesh := s.manager.GetMesh(meshId)
 
-	if mesh == nil {
+	if theMesh == nil {
 		return errors.New("the provided mesh does not exist")
 	}
 
-	snapshot, err := mesh.GetMesh()
+	snapshot, err := theMesh.GetMesh()
 
 	if err != nil {
 		return err
@@ -58,31 +59,48 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	excludedNodes := map[string]struct{}{
 		s.manager.HostParameters.HostEndpoint: {},
 	}
-
 	meshNodes := lib.MapValuesWithExclude(nodes, excludedNodes)
-	randomSubset := lib.RandomSubsetOfLength(meshNodes, subSetLength)
+
+	getNames := func(node mesh.MeshNode) string {
+		return node.GetHostEndpoint()
+	}
+
+	nodeNames := lib.Map(meshNodes, getNames)
+
+	neighbours := s.cluster.GetNeighbours(nodeNames, s.manager.HostParameters.HostEndpoint)
+	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
+
+	for _, node := range randomSubset {
+		logging.Log.WriteInfof("Random node: %s", node)
+	}
 
 	before := time.Now()
 
+	if len(meshNodes) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
+		logging.Log.WriteInfof("Sending to random cluster")
+		interCluster := s.cluster.GetInterCluster(nodeNames, s.manager.HostParameters.HostEndpoint)
+		randomSubset = append(randomSubset, interCluster)
+	}
+
 	var waitGroup sync.WaitGroup
 
-	for _, n := range randomSubset {
+	for index := range randomSubset {
 		waitGroup.Add(1)
 
-		syncMeshFunc := func() error {
+		go func(i int) error {
 			defer waitGroup.Done()
-			err := s.requester.SyncMesh(meshId, n.GetHostEndpoint())
+			err := s.requester.SyncMesh(meshId, randomSubset[i])
 			return err
-		}
-
-		go syncMeshFunc()
+		}(index)
 	}
 
 	waitGroup.Wait()
 
+	s.syncCount++
 	logging.Log.WriteInfof("SYNC TIME: %v", time.Now().Sub(before))
+	logging.Log.WriteInfof("SYNC COUNT: %d", s.syncCount)
 
-	s.infectionCount = ((infectionCount + s.infectionCount - 1) % infectionCount)
+	s.infectionCount = ((s.conf.InfectionCount + s.infectionCount - 1) % s.conf.InfectionCount)
 
 	return nil
 }
@@ -100,6 +118,13 @@ func (s *SyncerImpl) SyncMeshes() error {
 	return nil
 }
 
-func NewSyncer(m *mesh.MeshManager, r SyncRequester) Syncer {
-	return &SyncerImpl{manager: m, requester: r, infectionCount: 0}
+func NewSyncer(m *mesh.MeshManager, conf *conf.WgMeshConfiguration, r SyncRequester) Syncer {
+	cluster, _ := conn.NewConnCluster(conf.ClusterSize)
+	return &SyncerImpl{
+		manager:        m,
+		conf:           conf,
+		requester:      r,
+		infectionCount: 0,
+		syncCount:      0,
+		cluster:        cluster}
 }

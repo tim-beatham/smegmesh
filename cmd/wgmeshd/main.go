@@ -51,8 +51,8 @@ func main() {
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
 	syncProvider.Server = ctrlServer
 	syncRequester := sync.NewSyncRequester(ctrlServer)
-	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester, 2)
-	timestampScheduler := timestamp.NewTimestampScheduler(ctrlServer, 60)
+	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester)
+	timestampScheduler := timestamp.NewTimestampScheduler(ctrlServer)
 
 	robinIpcParams := robin.RobinIpcParams{
 		CtrlServer: ctrlServer,

@@ -1,6 +1,8 @@
 package lib
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 // RandomSubsetOfLength: Given an array of nodes generate of random
 // subset of 'num' length.
@@ -17,6 +19,7 @@ func RandomSubsetOfLength[V any](vs []V, num int) []V {
 
 		if _, ok := selectedIndices[randomIndex]; !ok {
 			randomSubset = append(randomSubset, vs[randomIndex])
+			selectedIndices[randomIndex] = struct{}{}
 			i++
 		}
 	}

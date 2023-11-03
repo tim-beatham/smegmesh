@@ -38,8 +38,8 @@ func (s *TimeStampSchedulerImpl) Run() error {
 	}
 }
 
-func NewTimestampScheduler(ctrlServer *ctrlserver.MeshCtrlServer, updateRate int) TimestampScheduler {
-	return &TimeStampSchedulerImpl{meshManager: ctrlServer.MeshManager, updateRate: updateRate}
+func NewTimestampScheduler(ctrlServer *ctrlserver.MeshCtrlServer) TimestampScheduler {
+	return &TimeStampSchedulerImpl{meshManager: ctrlServer.MeshManager, updateRate: ctrlServer.Conf.KeepAliveRate}
 }
 
 func (s *TimeStampSchedulerImpl) Stop() error {

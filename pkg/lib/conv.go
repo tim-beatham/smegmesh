@@ -40,11 +40,28 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 
 type convert[V1 any, V2 any] func(V1) V2
 
+// Map turns a list of type V1 into type V2
 func Map[V1 any, V2 any](list []V1, f convert[V1, V2]) []V2 {
 	newList := make([]V2, len(list))
 
 	for i, elem := range list {
 		newList[i] = f(elem)
+	}
+
+	return newList
+}
+
+type filterFunc[V any] func(V) bool
+
+// Filter filters out elements given a filter function.
+// If filter function is true keep it in otherwise leave it out
+func Filter[V any](list []V, f filterFunc[V]) []V {
+	newList := make([]V, 0)
+
+	for _, elem := range newList {
+		if f(elem) {
+			newList = append(newList, elem)
+		}
 	}
 
 	return newList

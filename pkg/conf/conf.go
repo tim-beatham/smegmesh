@@ -24,7 +24,13 @@ type WgMeshConfiguration struct {
 	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
 	// Endpoint is the IP in which this computer is publicly reachable.
 	// usecase is when the node has multiple IP addresses
-	Endpoint string `yaml:"publicEndpoint"`
+	Endpoint           string  `yaml:"publicEndpoint"`
+	ClusterSize        int     `yaml:"clusterSize"`
+	SyncRate           float64 `yaml:"syncRate"`
+	InterClusterChance float64 `yaml:"interClusterChance"`
+	BranchRate         int     `yaml:"branchRate"`
+	InfectionCount     int     `yaml:"infectionCount"`
+	KeepAliveRate      int     `yaml:"keepAliveRate"`
 }
 
 // ParseConfiguration parses the mesh configuration

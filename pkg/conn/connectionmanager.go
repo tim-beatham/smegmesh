@@ -94,7 +94,12 @@ func NewConnectionManager(params *NewConnectionManageParams) (ConnectionManager,
 	}
 
 	connections := make(map[string]PeerConnection)
-	connMgr := ConnectionManagerImpl{sync.RWMutex{}, connections, serverConfig, clientConfig}
+	connMgr := ConnectionManagerImpl{sync.RWMutex{},
+		connections,
+		serverConfig,
+		clientConfig,
+	}
+
 	return &connMgr, nil
 }
 
@@ -131,6 +136,7 @@ func (m *ConnectionManagerImpl) AddConnection(endPoint string) (PeerConnection, 
 	m.conLoc.Lock()
 	m.clientConnections[endPoint] = connections
 	m.conLoc.Unlock()
+
 	return connections, nil
 }
 
