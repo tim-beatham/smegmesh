@@ -16,15 +16,14 @@ type SyncScheduler interface {
 
 // SyncSchedulerImpl scheduler for sync scheduling
 type SyncSchedulerImpl struct {
-	syncRate int
-	quit     chan struct{}
-	server   *ctrlserver.MeshCtrlServer
-	syncer   Syncer
+	quit   chan struct{}
+	server *ctrlserver.MeshCtrlServer
+	syncer Syncer
 }
 
 // Run implements SyncScheduler.
 func (s *SyncSchedulerImpl) Run() error {
-	ticker := time.NewTicker(time.Duration(s.syncRate) * time.Second)
+	ticker := time.NewTicker(time.Duration(s.server.Conf.SyncRate) * time.Second)
 
 	quit := make(chan struct{})
 	s.quit = quit
@@ -50,7 +49,7 @@ func (s *SyncSchedulerImpl) Stop() error {
 	return nil
 }
 
-func NewSyncScheduler(s *ctrlserver.MeshCtrlServer, syncRequester SyncRequester, syncRate int) SyncScheduler {
-	syncer := NewSyncer(s.MeshManager, syncRequester)
-	return &SyncSchedulerImpl{server: s, syncRate: syncRate, syncer: syncer}
+func NewSyncScheduler(s *ctrlserver.MeshCtrlServer, syncRequester SyncRequester) SyncScheduler {
+	syncer := NewSyncer(s.MeshManager, s.Conf, syncRequester)
+	return &SyncSchedulerImpl{server: s, syncer: syncer}
 }
