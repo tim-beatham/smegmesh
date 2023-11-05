@@ -85,16 +85,6 @@ func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, erro
 	return &manager, nil
 }
 
-func (c *CrdtMeshManager) removeNode(endpoint string) error {
-	err := c.doc.Path("nodes").Map().Delete(endpoint)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // GetNode: returns a mesh node crdt.Close releases resources used by a Client.
 func (m *CrdtMeshManager) GetNode(endpoint string) (*MeshNodeCrdt, error) {
 	node, err := m.doc.Path("nodes").Map().Get(endpoint)
@@ -176,7 +166,7 @@ func (m *CrdtMeshManager) SetDescription(nodeId string, description string) erro
 	}
 
 	if node.Kind() != automerge.KindMap {
-		return errors.New(fmt.Sprintf("%s does not exist", nodeId))
+		return fmt.Errorf("%s does not exist", nodeId)
 	}
 
 	err = node.Map().Set("description", description)
@@ -195,6 +185,10 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 
 	if err != nil {
 		return err
+	}
+
+	if nodeVal.Kind() != automerge.KindMap {
+		return fmt.Errorf("node does not exist")
 	}
 
 	routeMap, err := nodeVal.Map().Get("routes")

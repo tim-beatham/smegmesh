@@ -16,7 +16,7 @@ type MeshConfigApplyer interface {
 
 // WgMeshConfigApplyer applies WireGuard configuration
 type WgMeshConfigApplyer struct {
-	meshManager *MeshManager
+	meshManager MeshManager
 }
 
 func convertMeshNode(node MeshNode) (*wgtypes.PeerConfig, error) {
@@ -82,11 +82,11 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 		return err
 	}
 
-	return m.meshManager.Client.ConfigureDevice(dev.Name, cfg)
+	return m.meshManager.GetClient().ConfigureDevice(dev.Name, cfg)
 }
 
 func (m *WgMeshConfigApplyer) ApplyConfig() error {
-	for _, mesh := range m.meshManager.Meshes {
+	for _, mesh := range m.meshManager.GetMeshes() {
 		err := m.updateWgConf(mesh)
 
 		if err != nil {
@@ -110,7 +110,7 @@ func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
 		return err
 	}
 
-	m.meshManager.Client.ConfigureDevice(dev.Name, wgtypes.Config{
+	m.meshManager.GetClient().ConfigureDevice(dev.Name, wgtypes.Config{
 		ReplacePeers: true,
 		Peers:        make([]wgtypes.PeerConfig, 1),
 	})
@@ -118,6 +118,6 @@ func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
 	return nil
 }
 
-func NewWgMeshConfigApplyer(manager *MeshManager) MeshConfigApplyer {
+func NewWgMeshConfigApplyer(manager MeshManager) MeshConfigApplyer {
 	return &WgMeshConfigApplyer{meshManager: manager}
 }

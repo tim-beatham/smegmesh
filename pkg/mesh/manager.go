@@ -13,7 +13,24 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-type MeshManager struct {
+type MeshManager interface {
+	CreateMesh(devName string, port int) (string, error)
+	AddMesh(params *AddMeshParams) error
+	HasChanges(meshid string) bool
+	GetMesh(meshId string) MeshProvider
+	EnableInterface(meshId string) error
+	GetPublicKey(meshId string) (*wgtypes.Key, error)
+	AddSelf(params *AddSelfParams) error
+	LeaveMesh(meshId string) error
+	GetSelf(meshId string) (MeshNode, error)
+	ApplyConfig() error
+	SetDescription(description string) error
+	UpdateTimeStamp() error
+	GetClient() *wgctrl.Client
+	GetMeshes() map[string]MeshProvider
+}
+
+type MeshManagerImpl struct {
 	Meshes       map[string]MeshProvider
 	RouteManager RouteManager
 	Client       *wgctrl.Client
@@ -30,7 +47,7 @@ type MeshManager struct {
 }
 
 // CreateMesh: Creates a new mesh, stores it and returns the mesh id
-func (m *MeshManager) CreateMesh(devName string, port int) (string, error) {
+func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 	meshId, err := m.idGenerator.GetId()
 
 	if err != nil {
@@ -76,7 +93,7 @@ type AddMeshParams struct {
 }
 
 // AddMesh: Add the mesh to the list of meshes
-func (m *MeshManager) AddMesh(params *AddMeshParams) error {
+func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 	meshProvider, err := m.meshProviderFactory.CreateMesh(&MeshProviderFactoryParams{
 		DevName: params.DevName,
 		Port:    params.WgPort,
@@ -104,18 +121,18 @@ func (m *MeshManager) AddMesh(params *AddMeshParams) error {
 }
 
 // HasChanges returns true if the mesh has changes
-func (m *MeshManager) HasChanges(meshId string) bool {
+func (m *MeshManagerImpl) HasChanges(meshId string) bool {
 	return m.Meshes[meshId].HasChanges()
 }
 
 // GetMesh returns the mesh with the given meshid
-func (m *MeshManager) GetMesh(meshId string) MeshProvider {
-	theMesh, _ := m.Meshes[meshId]
+func (m *MeshManagerImpl) GetMesh(meshId string) MeshProvider {
+	theMesh := m.Meshes[meshId]
 	return theMesh
 }
 
 // EnableInterface: Enables the given WireGuard interface.
-func (s *MeshManager) EnableInterface(meshId string) error {
+func (s *MeshManagerImpl) EnableInterface(meshId string) error {
 	err := s.configApplyer.ApplyConfig()
 
 	if err != nil {
@@ -144,7 +161,7 @@ func (s *MeshManager) EnableInterface(meshId string) error {
 }
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
-func (s *MeshManager) GetPublicKey(meshId string) (*wgtypes.Key, error) {
+func (s *MeshManagerImpl) GetPublicKey(meshId string) (*wgtypes.Key, error) {
 	mesh, ok := s.Meshes[meshId]
 
 	if !ok {
@@ -171,7 +188,7 @@ type AddSelfParams struct {
 }
 
 // AddSelf adds this host to the mesh
-func (s *MeshManager) AddSelf(params *AddSelfParams) error {
+func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 	pubKey, err := s.GetPublicKey(params.MeshId)
 
 	if err != nil {
@@ -196,7 +213,7 @@ func (s *MeshManager) AddSelf(params *AddSelfParams) error {
 }
 
 // LeaveMesh leaves the mesh network
-func (s *MeshManager) LeaveMesh(meshId string) error {
+func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	_, exists := s.Meshes[meshId]
 
 	if !exists {
@@ -208,7 +225,7 @@ func (s *MeshManager) LeaveMesh(meshId string) error {
 	return nil
 }
 
-func (s *MeshManager) GetSelf(meshId string) (MeshNode, error) {
+func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 	meshInstance, ok := s.Meshes[meshId]
 
 	if !ok {
@@ -230,11 +247,11 @@ func (s *MeshManager) GetSelf(meshId string) (MeshNode, error) {
 	return node, nil
 }
 
-func (s *MeshManager) ApplyConfig() error {
+func (s *MeshManagerImpl) ApplyConfig() error {
 	return s.configApplyer.ApplyConfig()
 }
 
-func (s *MeshManager) SetDescription(description string) error {
+func (s *MeshManagerImpl) SetDescription(description string) error {
 	for _, mesh := range s.Meshes {
 		err := mesh.SetDescription(s.HostParameters.HostEndpoint, description)
 
@@ -247,7 +264,7 @@ func (s *MeshManager) SetDescription(description string) error {
 }
 
 // UpdateTimeStamp updates the timestamp of this node in all meshes
-func (s *MeshManager) UpdateTimeStamp() error {
+func (s *MeshManagerImpl) UpdateTimeStamp() error {
 	for _, mesh := range s.Meshes {
 		snapshot, err := mesh.GetMesh()
 
@@ -269,6 +286,14 @@ func (s *MeshManager) UpdateTimeStamp() error {
 	return nil
 }
 
+func (s *MeshManagerImpl) GetClient() *wgctrl.Client {
+	return s.Client
+}
+
+func (s *MeshManagerImpl) GetMeshes() map[string]MeshProvider {
+	return s.Meshes
+}
+
 // NewMeshManagerParams params required to create an instance of a mesh manager
 type NewMeshManagerParams struct {
 	Conf                 conf.WgMeshConfiguration
@@ -278,10 +303,11 @@ type NewMeshManagerParams struct {
 	IdGenerator          lib.IdGenerator
 	IPAllocator          ip.IPAllocator
 	InterfaceManipulator wg.WgInterfaceManipulator
+	ConfigApplyer        MeshConfigApplyer
 }
 
 // Creates a new instance of a mesh manager with the given parameters
-func NewMeshManager(params *NewMeshManagerParams) *MeshManager {
+func NewMeshManager(params *NewMeshManagerParams) *MeshManagerImpl {
 	hostParams := HostParameters{}
 
 	switch params.Conf.Endpoint {
@@ -293,7 +319,7 @@ func NewMeshManager(params *NewMeshManagerParams) *MeshManager {
 
 	logging.Log.WriteInfof("Endpoint %s", hostParams.HostEndpoint)
 
-	m := &MeshManager{
+	m := &MeshManagerImpl{
 		Meshes:              make(map[string]MeshProvider),
 		HostParameters:      &hostParams,
 		meshProviderFactory: params.MeshProvider,
@@ -301,7 +327,7 @@ func NewMeshManager(params *NewMeshManagerParams) *MeshManager {
 		Client:              params.Client,
 		conf:                &params.Conf,
 	}
-	m.configApplyer = NewWgMeshConfigApplyer(m)
+	m.configApplyer = params.ConfigApplyer
 	m.RouteManager = NewRouteManager(m)
 	m.idGenerator = params.IdGenerator
 	m.ipAllocator = params.IPAllocator

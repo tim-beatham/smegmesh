@@ -14,7 +14,7 @@ type TimestampScheduler interface {
 }
 
 type TimeStampSchedulerImpl struct {
-	meshManager *mesh.MeshManager
+	meshManager mesh.MeshManager
 	updateRate  int
 	quit        chan struct{}
 }
@@ -39,7 +39,10 @@ func (s *TimeStampSchedulerImpl) Run() error {
 }
 
 func NewTimestampScheduler(ctrlServer *ctrlserver.MeshCtrlServer) TimestampScheduler {
-	return &TimeStampSchedulerImpl{meshManager: ctrlServer.MeshManager, updateRate: ctrlServer.Conf.KeepAliveRate}
+	return &TimeStampSchedulerImpl{
+		meshManager: ctrlServer.MeshManager,
+		updateRate:  ctrlServer.Conf.KeepAliveRate,
+	}
 }
 
 func (s *TimeStampSchedulerImpl) Stop() error {

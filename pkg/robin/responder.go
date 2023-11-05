@@ -13,29 +13,6 @@ type WgRpc struct {
 	Server *ctrlserver.MeshCtrlServer
 }
 
-func nodeToRpcNode(node ctrlserver.MeshNode) *rpc.MeshNode {
-	return &rpc.MeshNode{
-		PublicKey:  node.PublicKey,
-		WgEndpoint: node.WgEndpoint,
-		WgHost:     node.WgHost,
-		Endpoint:   node.HostEndpoint,
-	}
-}
-
-func nodesToRpcNodes(nodes map[string]ctrlserver.MeshNode) []*rpc.MeshNode {
-	n := len(nodes)
-	meshNodes := make([]*rpc.MeshNode, n)
-
-	var i int = 0
-
-	for _, v := range nodes {
-		meshNodes[i] = nodeToRpcNode(v)
-		i++
-	}
-
-	return meshNodes
-}
-
 func (m *WgRpc) GetMesh(ctx context.Context, request *rpc.GetMeshRequest) (*rpc.GetMeshReply, error) {
 	mesh := m.Server.MeshManager.GetMesh(request.MeshId)
 

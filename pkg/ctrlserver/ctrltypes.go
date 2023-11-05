@@ -25,10 +25,19 @@ type Mesh struct {
 	Nodes     map[string]MeshNode
 }
 
+type CtrlServer interface {
+	GetConfiguration() *conf.WgMeshConfiguration
+	GetClient() *wgctrl.Client
+	GetQuerier() query.Querier
+	GetMeshManager() mesh.MeshManager
+	Close() error
+	GetConnectionManager() conn.ConnectionManager
+}
+
 // Represents a ctrlserver to be used in WireGuard
 type MeshCtrlServer struct {
 	Client            *wgctrl.Client
-	MeshManager       *mesh.MeshManager
+	MeshManager       mesh.MeshManager
 	ConnectionManager conn.ConnectionManager
 	ConnectionServer  *conn.ConnectionServer
 	Conf              *conf.WgMeshConfiguration

@@ -15,7 +15,7 @@ type MeshGraphConverter interface {
 }
 
 type MeshDOTConverter struct {
-	manager *MeshManager
+	manager MeshManager
 }
 
 func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
@@ -34,7 +34,7 @@ func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
 	}
 
 	for _, node := range snapshot.GetNodes() {
-		c.graphNode(g, node)
+		c.graphNode(g, node, meshId)
 	}
 
 	nodes := lib.MapValues(snapshot.GetNodes())
@@ -55,11 +55,13 @@ func (c *MeshDOTConverter) Generate(meshId string) (string, error) {
 }
 
 // graphNode: graphs a node within the mesh
-func (c *MeshDOTConverter) graphNode(g *graph.Graph, node MeshNode) {
+func (c *MeshDOTConverter) graphNode(g *graph.Graph, node MeshNode, meshId string) {
 	nodeId := fmt.Sprintf("\"%s\"", node.GetIdentifier())
 	g.PutNode(nodeId, graph.CIRCLE)
 
-	if node.GetHostEndpoint() == c.manager.HostParameters.HostEndpoint {
+	self, _ := c.manager.GetSelf(meshId)
+
+	if node.GetHostEndpoint() == self.GetHostEndpoint() {
 		return
 	}
 
@@ -70,6 +72,6 @@ func (c *MeshDOTConverter) graphNode(g *graph.Graph, node MeshNode) {
 	}
 }
 
-func NewMeshDotConverter(m *MeshManager) MeshGraphConverter {
+func NewMeshDotConverter(m MeshManager) MeshGraphConverter {
 	return &MeshDOTConverter{manager: m}
 }

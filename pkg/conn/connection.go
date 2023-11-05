@@ -18,6 +18,8 @@ type PeerConnection interface {
 	GetClient() (*grpc.ClientConn, error)
 }
 
+type PeerConnectionFactory = func(clientConfig *tls.Config, server string) (PeerConnection, error)
+
 // WgCtrlConnection implements PeerConnection.
 type WgCtrlConnection struct {
 	clientConfig *tls.Config
@@ -26,12 +28,12 @@ type WgCtrlConnection struct {
 }
 
 // NewWgCtrlConnection creates a new instance of a WireGuard control connection
-func NewWgCtrlConnection(clientConfig *tls.Config, server string) (*WgCtrlConnection, error) {
+func NewWgCtrlConnection(clientConfig *tls.Config, server string) (PeerConnection, error) {
 	var conn WgCtrlConnection
 	conn.clientConfig = clientConfig
 	conn.endpoint = server
 
-	if err := conn.createGrpcConn(); err != nil {
+	if err := conn.CreateGrpcConnection(); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +41,7 @@ func NewWgCtrlConnection(clientConfig *tls.Config, server string) (*WgCtrlConnec
 }
 
 // ConnectWithToken: Connects to a new gRPC peer given the address of the other server.
-func (c *WgCtrlConnection) createGrpcConn() error {
+func (c *WgCtrlConnection) CreateGrpcConnection() error {
 	conn, err := grpc.Dial(c.endpoint,
 		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)))
 
@@ -62,7 +64,7 @@ func (c *WgCtrlConnection) GetClient() (*grpc.ClientConn, error) {
 	var err error = nil
 
 	if c.conn == nil {
-		err = errors.New("The client's config does not exist")
+		err = errors.New("the client's config does not exist")
 	}
 
 	return c.conn, err

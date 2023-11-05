@@ -16,7 +16,7 @@ type Querier interface {
 }
 
 type JmesQuerier struct {
-	manager *mesh.MeshManager
+	manager mesh.MeshManager
 }
 
 type QueryError struct {
@@ -39,7 +39,7 @@ func (m *QueryError) Error() string {
 
 // Query: queries the data
 func (j *JmesQuerier) Query(meshId, queryParams string) ([]byte, error) {
-	mesh, ok := j.manager.Meshes[meshId]
+	mesh, ok := j.manager.GetMeshes()[meshId]
 
 	if !ok {
 		return nil, &QueryError{msg: fmt.Sprintf("%s does not exist", meshId)}
@@ -79,6 +79,6 @@ func meshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	return queryNode
 }
 
-func NewJmesQuerier(manager *mesh.MeshManager) Querier {
+func NewJmesQuerier(manager mesh.MeshManager) Querier {
 	return &JmesQuerier{manager: manager}
 }

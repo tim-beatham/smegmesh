@@ -30,7 +30,7 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 	values := make([]K, len(m))
 
 	i := 0
-	for k, _ := range m {
+	for k := range m {
 		values[i] = k
 		i++
 	}
@@ -58,7 +58,7 @@ type filterFunc[V any] func(V) bool
 func Filter[V any](list []V, f filterFunc[V]) []V {
 	newList := make([]V, 0)
 
-	for _, elem := range newList {
+	for _, elem := range list {
 		if f(elem) {
 			newList = append(newList, elem)
 		}
