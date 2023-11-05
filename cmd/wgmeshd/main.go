@@ -9,7 +9,6 @@ import (
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/middleware"
 	"github.com/tim-beatham/wgmesh/pkg/robin"
 	"github.com/tim-beatham/wgmesh/pkg/sync"
 	"github.com/tim-beatham/wgmesh/pkg/timestamp"
@@ -37,12 +36,10 @@ func main() {
 
 	var robinRpc robin.WgRpc
 	var robinIpc robin.IpcHandler
-	var authProvider middleware.AuthRpcProvider
 	var syncProvider sync.SyncServiceImpl
 
 	ctrlServerParams := ctrlserver.NewCtrlServerParams{
 		Conf:         conf,
-		AuthProvider: &authProvider,
 		CtrlProvider: &robinRpc,
 		SyncProvider: &syncProvider,
 		Client:       client,

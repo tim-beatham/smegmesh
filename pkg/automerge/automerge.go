@@ -187,6 +187,10 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 		return err
 	}
 
+	if nodeVal.Kind() != automerge.KindMap {
+		return fmt.Errorf("node does not exist")
+	}
+
 	routeMap, err := nodeVal.Map().Get("routes")
 
 	if err != nil {

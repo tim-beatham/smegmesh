@@ -14,7 +14,7 @@ type SyncErrorHandler interface {
 
 // SyncErrorHandlerImpl Is an implementation of the SyncErrorHandler
 type SyncErrorHandlerImpl struct {
-	meshManager *mesh.MeshManager
+	meshManager mesh.MeshManager
 }
 
 func (s *SyncErrorHandlerImpl) incrementFailedCount(meshId string, endpoint string) bool {
@@ -40,6 +40,6 @@ func (s *SyncErrorHandlerImpl) Handle(meshId string, endpoint string, err error)
 	return false
 }
 
-func NewSyncErrorHandler(m *mesh.MeshManager) SyncErrorHandler {
+func NewSyncErrorHandler(m mesh.MeshManager) SyncErrorHandler {
 	return &SyncErrorHandlerImpl{meshManager: m}
 }

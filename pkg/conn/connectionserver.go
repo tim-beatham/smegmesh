@@ -16,9 +16,7 @@ type ConnectionServer struct {
 	// tlsConfiguration of the server
 	serverConfig *tls.Config
 	// server an instance of the grpc server
-	server *grpc.Server
-	// the authentication service to authenticate nodes
-	authProvider rpc.AuthenticationServer
+	server *grpc.Server // the authentication service to authenticate nodes
 	// the ctrl service to manage node
 	ctrlProvider rpc.MeshCtrlServerServer
 	// the sync service to synchronise nodes
@@ -30,7 +28,6 @@ type ConnectionServer struct {
 // NewConnectionServerParams contains params for creating a new connection server
 type NewConnectionServerParams struct {
 	Conf         *conf.WgMeshConfiguration
-	AuthProvider rpc.AuthenticationServer
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
 }
@@ -59,14 +56,12 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 		grpc.Creds(credentials.NewTLS(serverConfig)),
 	)
 
-	authProvider := params.AuthProvider
 	ctrlProvider := params.CtrlProvider
 	syncProvider := params.SyncProvider
 
 	connServer := ConnectionServer{
 		serverConfig: serverConfig,
 		server:       server,
-		authProvider: authProvider,
 		ctrlProvider: ctrlProvider,
 		syncProvider: syncProvider,
 		Conf:         params.Conf,
@@ -78,7 +73,6 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 // Listen for incoming requests. Returns an error if something went wrong.
 func (s *ConnectionServer) Listen() error {
 	rpc.RegisterMeshCtrlServerServer(s.server, s.ctrlProvider)
-	rpc.RegisterAuthenticationServer(s.server, s.authProvider)
 
 	rpc.RegisterSyncServiceServer(s.server, s.syncProvider)
 

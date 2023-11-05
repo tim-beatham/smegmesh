@@ -85,8 +85,8 @@ func TestAddNodeAddRoute(t *testing.T) {
 
 	routes := updatedNode.GetRoutes()
 
-	if !slices.Contains(routes, "fdfd:1c64:1d00::/48") {
-		t.Fatal("Route node added")
+	if !slices.Contains(routes, "fd:1c64:1d00::/48") {
+		t.Fatal("Route node not added")
 	}
 
 	if len(routes) != 1 {
@@ -197,7 +197,7 @@ func TestLength1Node(t *testing.T) {
 func TestLengthMultipleNodes(t *testing.T) {
 	testParams := setUpTests()
 	node := getTestNode()
-	node1 := getTestNode()
+	node1 := getTestNode2()
 
 	testParams.manager.AddNode(node)
 	testParams.manager.AddNode(node1)

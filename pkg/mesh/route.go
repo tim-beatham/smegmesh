@@ -11,12 +11,12 @@ type RouteManager interface {
 }
 
 type RouteManagerImpl struct {
-	meshManager    *MeshManager
+	meshManager    MeshManager
 	routeInstaller route.RouteInstaller
 }
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
-	meshes := r.meshManager.Meshes
+	meshes := r.meshManager.GetMeshes()
 	ulaBuilder := new(ip.ULABuilder)
 
 	for _, mesh1 := range meshes {
@@ -32,7 +32,13 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 				return err
 			}
 
-			err = mesh1.AddRoutes(r.meshManager.HostParameters.HostEndpoint, ipNet.String())
+			self, err := r.meshManager.GetSelf(mesh1.GetMeshId())
+
+			if err != nil {
+				return err
+			}
+
+			err = mesh1.AddRoutes(self.GetHostEndpoint(), ipNet.String())
 
 			if err != nil {
 				return err
@@ -43,6 +49,6 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 	return nil
 }
 
-func NewRouteManager(m *MeshManager) RouteManager {
+func NewRouteManager(m MeshManager) RouteManager {
 	return &RouteManagerImpl{meshManager: m, routeInstaller: route.NewRouteInstaller()}
 }

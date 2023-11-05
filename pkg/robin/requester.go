@@ -8,25 +8,23 @@ import (
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
 type IpcHandler struct {
-	Server      *ctrlserver.MeshCtrlServer
-	ipAllocator ip.IPAllocator
+	Server ctrlserver.CtrlServer
 }
 
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
-	meshId, err := n.Server.MeshManager.CreateMesh(args.IfName, args.WgPort)
+	meshId, err := n.Server.GetMeshManager().CreateMesh(args.IfName, args.WgPort)
 
 	if err != nil {
 		return err
 	}
 
-	err = n.Server.MeshManager.AddSelf(&mesh.AddSelfParams{
+	err = n.Server.GetMeshManager().AddSelf(&mesh.AddSelfParams{
 		MeshId:   meshId,
 		WgPort:   args.WgPort,
 		Endpoint: args.Endpoint,
@@ -37,10 +35,10 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 }
 
 func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
-	meshNames := make([]string, len(n.Server.MeshManager.Meshes))
+	meshNames := make([]string, len(n.Server.GetMeshManager().GetMeshes()))
 
 	i := 0
-	for meshId, _ := range n.Server.MeshManager.Meshes {
+	for meshId, _ := range n.Server.GetMeshManager().GetMeshes() {
 		meshNames[i] = meshId
 		i++
 	}
@@ -50,7 +48,7 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 }
 
 func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
-	peerConnection, err := n.Server.ConnectionManager.GetConnection(args.IpAdress)
+	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAdress)
 
 	if err != nil {
 		return err
@@ -77,7 +75,7 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	err = n.Server.MeshManager.AddMesh(&mesh.AddMeshParams{
+	err = n.Server.GetMeshManager().AddMesh(&mesh.AddMeshParams{
 		MeshId:    args.MeshId,
 		DevName:   args.IfName,
 		WgPort:    args.Port,
@@ -88,7 +86,7 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	err = n.Server.MeshManager.AddSelf(&mesh.AddSelfParams{
+	err = n.Server.GetMeshManager().AddSelf(&mesh.AddSelfParams{
 		MeshId:   args.MeshId,
 		WgPort:   args.Port,
 		Endpoint: args.Endpoint,
@@ -104,7 +102,7 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 // LeaveMesh leaves a mesh network
 func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
-	err := n.Server.MeshManager.LeaveMesh(meshId)
+	err := n.Server.GetMeshManager().LeaveMesh(meshId)
 
 	if err == nil {
 		*reply = fmt.Sprintf("Left Mesh %s", meshId)
@@ -114,7 +112,7 @@ func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 }
 
 func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
-	mesh := n.Server.MeshManager.GetMesh(meshId)
+	mesh := n.Server.GetMeshManager().GetMesh(meshId)
 	meshSnapshot, err := mesh.GetMesh()
 
 	if err != nil {
@@ -152,7 +150,7 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 }
 
 func (n *IpcHandler) EnableInterface(meshId string, reply *string) error {
-	err := n.Server.MeshManager.EnableInterface(meshId)
+	err := n.Server.GetMeshManager().EnableInterface(meshId)
 
 	if err != nil {
 		*reply = err.Error()
@@ -164,7 +162,7 @@ func (n *IpcHandler) EnableInterface(meshId string, reply *string) error {
 }
 
 func (n *IpcHandler) GetDOT(meshId string, reply *string) error {
-	g := mesh.NewMeshDotConverter(n.Server.MeshManager)
+	g := mesh.NewMeshDotConverter(n.Server.GetMeshManager())
 
 	result, err := g.Generate(meshId)
 
@@ -177,7 +175,7 @@ func (n *IpcHandler) GetDOT(meshId string, reply *string) error {
 }
 
 func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
-	queryResponse, err := n.Server.Querier.Query(params.MeshId, params.Query)
+	queryResponse, err := n.Server.GetQuerier().Query(params.MeshId, params.Query)
 
 	if err != nil {
 		return err
@@ -188,7 +186,7 @@ func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 }
 
 func (n *IpcHandler) PutDescription(description string, reply *string) error {
-	err := n.Server.MeshManager.SetDescription(description)
+	err := n.Server.GetMeshManager().SetDescription(description)
 
 	if err != nil {
 		return err
@@ -199,7 +197,7 @@ func (n *IpcHandler) PutDescription(description string, reply *string) error {
 }
 
 type RobinIpcParams struct {
-	CtrlServer *ctrlserver.MeshCtrlServer
+	CtrlServer ctrlserver.CtrlServer
 }
 
 func NewRobinIpc(ipcParams RobinIpcParams) IpcHandler {

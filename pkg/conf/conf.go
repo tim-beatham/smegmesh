@@ -8,6 +8,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type WgMeshConfigurationError struct {
+	msg string
+}
+
+func (m *WgMeshConfigurationError) Error() string {
+	return m.msg
+}
+
 type WgMeshConfiguration struct {
 	// CertificatePath is the path to the certificate to use in mTLS
 	CertificatePath string `yaml:"certificatePath"`
@@ -33,6 +41,70 @@ type WgMeshConfiguration struct {
 	KeepAliveRate      int     `yaml:"keepAliveRate"`
 }
 
+func ValidateConfiguration(c *WgMeshConfiguration) error {
+	if len(c.CertificatePath) == 0 {
+		return &WgMeshConfigurationError{
+			msg: "A public certificate must be specified for mTLS",
+		}
+	}
+
+	if len(c.PrivateKeyPath) == 0 {
+		return &WgMeshConfigurationError{
+			msg: "A private key must be specified for mTLS",
+		}
+	}
+
+	if len(c.CaCertificatePath) == 0 {
+		return &WgMeshConfigurationError{
+			msg: "A ca certificate must be specified for mTLS",
+		}
+	}
+
+	if len(c.GrpcPort) == 0 {
+		return &WgMeshConfigurationError{
+			msg: "A grpc port must be specified",
+		}
+	}
+
+	if c.ClusterSize <= 0 {
+		return &WgMeshConfigurationError{
+			msg: "A cluster size must not be 0",
+		}
+	}
+
+	if c.SyncRate <= 0 {
+		return &WgMeshConfigurationError{
+			msg: "SyncRate cannot be negative",
+		}
+	}
+
+	if c.BranchRate <= 0 {
+		return &WgMeshConfigurationError{
+			msg: "Branch rate cannot be negative",
+		}
+	}
+
+	if c.InfectionCount <= 0 {
+		return &WgMeshConfigurationError{
+			msg: "Infection count cannot be less than 1",
+		}
+	}
+
+	if c.KeepAliveRate <= 0 {
+		return &WgMeshConfigurationError{
+			msg: "KeepAliveRate cannot be less than negative",
+		}
+	}
+
+	if c.InterClusterChance <= 0 {
+		return &WgMeshConfigurationError{
+			msg: "Intercluster chance cannot be less than 0",
+		}
+	}
+
+	return nil
+}
+
 // ParseConfiguration parses the mesh configuration
 func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {
 	var conf WgMeshConfiguration
@@ -51,5 +123,5 @@ func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {
 		return nil, err
 	}
 
-	return &conf, nil
+	return &conf, ValidateConfiguration(&conf)
 }

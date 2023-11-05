@@ -18,7 +18,6 @@ import (
 type NewCtrlServerParams struct {
 	Conf         *conf.WgMeshConfiguration
 	Client       *wgctrl.Client
-	AuthProvider rpc.AuthenticationServer
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
 	Querier      query.Querier
@@ -44,16 +43,17 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		IdGenerator:          idGenerator,
 		IPAllocator:          ipAllocator,
 		InterfaceManipulator: interfaceManipulator,
+		ConfigApplyer:        mesh.NewWgMeshConfigApplyer(ctrlServer.MeshManager),
 	}
-
 	ctrlServer.MeshManager = mesh.NewMeshManager(meshManagerParams)
 
 	ctrlServer.Conf = params.Conf
-	connManagerParams := conn.NewConnectionManageParams{
+	connManagerParams := conn.NewConnectionManagerParams{
 		CertificatePath:      params.Conf.CertificatePath,
 		PrivateKey:           params.Conf.PrivateKeyPath,
 		SkipCertVerification: params.Conf.SkipCertVerification,
 		CaCert:               params.Conf.CaCertificatePath,
+		ConnFactory:          conn.NewWgCtrlConnection,
 	}
 
 	connMgr, err := conn.NewConnectionManager(&connManagerParams)
@@ -65,7 +65,6 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer.ConnectionManager = connMgr
 	connServerParams := conn.NewConnectionServerParams{
 		Conf:         params.Conf,
-		AuthProvider: params.AuthProvider,
 		CtrlProvider: params.CtrlProvider,
 		SyncProvider: params.SyncProvider,
 	}
@@ -80,6 +79,26 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer.ConnectionServer = connServer
 
 	return ctrlServer, nil
+}
+
+func (s *MeshCtrlServer) GetConfiguration() *conf.WgMeshConfiguration {
+	return s.Conf
+}
+
+func (s *MeshCtrlServer) GetClient() *wgctrl.Client {
+	return s.Client
+}
+
+func (s *MeshCtrlServer) GetQuerier() query.Querier {
+	return s.Querier
+}
+
+func (s *MeshCtrlServer) GetMeshManager() mesh.MeshManager {
+	return s.MeshManager
+}
+
+func (s *MeshCtrlServer) GetConnectionManager() conn.ConnectionManager {
+	return s.ConnectionManager
 }
 
 // Close closes the ctrl server tearing down any connections that exist

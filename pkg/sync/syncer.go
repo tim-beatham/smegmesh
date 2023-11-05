@@ -20,7 +20,7 @@ type Syncer interface {
 }
 
 type SyncerImpl struct {
-	manager        *mesh.MeshManager
+	manager        mesh.MeshManager
 	requester      SyncRequester
 	infectionCount int
 	syncCount      int
@@ -56,8 +56,14 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		return nil
 	}
 
+	self, err := s.manager.GetSelf(meshId)
+
+	if err != nil {
+		return err
+	}
+
 	excludedNodes := map[string]struct{}{
-		s.manager.HostParameters.HostEndpoint: {},
+		self.GetHostEndpoint(): {},
 	}
 	meshNodes := lib.MapValuesWithExclude(nodes, excludedNodes)
 
@@ -67,7 +73,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	nodeNames := lib.Map(meshNodes, getNames)
 
-	neighbours := s.cluster.GetNeighbours(nodeNames, s.manager.HostParameters.HostEndpoint)
+	neighbours := s.cluster.GetNeighbours(nodeNames, self.GetHostEndpoint())
 	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
 
 	for _, node := range randomSubset {
@@ -78,7 +84,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	if len(meshNodes) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
 		logging.Log.WriteInfof("Sending to random cluster")
-		interCluster := s.cluster.GetInterCluster(nodeNames, s.manager.HostParameters.HostEndpoint)
+		interCluster := s.cluster.GetInterCluster(nodeNames, self.GetHostEndpoint())
 		randomSubset = append(randomSubset, interCluster)
 	}
 
@@ -107,7 +113,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 // SyncMeshes: Sync all meshes
 func (s *SyncerImpl) SyncMeshes() error {
-	for meshId, _ := range s.manager.Meshes {
+	for meshId, _ := range s.manager.GetMeshes() {
 		err := s.Sync(meshId)
 
 		if err != nil {
@@ -118,7 +124,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 	return nil
 }
 
-func NewSyncer(m *mesh.MeshManager, conf *conf.WgMeshConfiguration, r SyncRequester) Syncer {
+func NewSyncer(m mesh.MeshManager, conf *conf.WgMeshConfiguration, r SyncRequester) Syncer {
 	cluster, _ := conn.NewConnCluster(conf.ClusterSize)
 	return &SyncerImpl{
 		manager:        m,

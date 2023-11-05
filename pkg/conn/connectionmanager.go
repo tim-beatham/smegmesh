@@ -34,10 +34,11 @@ type ConnectionManagerImpl struct {
 	clientConnections map[string]PeerConnection
 	serverConfig      *tls.Config
 	clientConfig      *tls.Config
+	connFactory       PeerConnectionFactory
 }
 
 // Create a new instance of a connection manager.
-type NewConnectionManageParams struct {
+type NewConnectionManagerParams struct {
 	// The path to the certificate
 	CertificatePath string
 	// The private key of the node
@@ -45,11 +46,12 @@ type NewConnectionManageParams struct {
 	// Whether or not to skip certificate verification
 	SkipCertVerification bool
 	CaCert               string
+	ConnFactory          PeerConnectionFactory
 }
 
 // NewConnectionManager: Creates a new instance of a ConnectionManager or an error
 // if something went wrong.
-func NewConnectionManager(params *NewConnectionManageParams) (ConnectionManager, error) {
+func NewConnectionManager(params *NewConnectionManagerParams) (ConnectionManager, error) {
 	cert, err := tls.LoadX509KeyPair(params.CertificatePath, params.PrivateKey)
 
 	if err != nil {
@@ -94,10 +96,12 @@ func NewConnectionManager(params *NewConnectionManageParams) (ConnectionManager,
 	}
 
 	connections := make(map[string]PeerConnection)
-	connMgr := ConnectionManagerImpl{sync.RWMutex{},
+	connMgr := ConnectionManagerImpl{
+		sync.RWMutex{},
 		connections,
 		serverConfig,
 		clientConfig,
+		params.ConnFactory,
 	}
 
 	return &connMgr, nil
@@ -127,7 +131,7 @@ func (m *ConnectionManagerImpl) AddConnection(endPoint string) (PeerConnection, 
 		return conn, nil
 	}
 
-	connections, err := NewWgCtrlConnection(m.clientConfig, endPoint)
+	connections, err := m.connFactory(m.clientConfig, endPoint)
 
 	if err != nil {
 		return nil, err
