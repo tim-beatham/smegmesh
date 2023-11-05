@@ -1,6 +1,6 @@
 module github.com/tim-beatham/wgmesh
 
-go 1.20
+go 1.21.3
 
 require (
 	github.com/akamensky/argparse v1.4.0
