@@ -107,7 +107,6 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	logging.Log.WriteInfof("SYNC COUNT: %d", s.syncCount)
 
 	s.infectionCount = ((s.conf.InfectionCount + s.infectionCount - 1) % s.conf.InfectionCount)
-
 	return nil
 }
 
