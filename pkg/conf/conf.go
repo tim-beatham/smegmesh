@@ -43,10 +43,12 @@ type WgMeshConfiguration struct {
 	BranchRate int `yaml:"branchRate"`
 	// InfectionCount number of times we sync before we can no longer catch the udpate
 	InfectionCount int `yaml:"infectionCount"`
-	// KeepAliveTime
+	// KeepAliveTime number of seconds before we update node indicating that we are still alive
 	KeepAliveTime int `yaml:"keepAliveTime"`
-	// Timeout number of seconds before we update node indicating that we are still alive
+	// Timeout number of seconds before we consider the node as dead
 	Timeout int `yaml:"timeout"`
+	// PruneTime number of seconds before we consider the 'node' as dead
+	PruneTime int `yaml:"pruneTime"`
 }
 
 func ValidateConfiguration(c *WgMeshConfiguration) error {
@@ -110,9 +112,21 @@ func ValidateConfiguration(c *WgMeshConfiguration) error {
 		}
 	}
 
-	if c.Timeout <= 1 {
+	if c.Timeout < 1 {
 		return &WgMeshConfigurationError{
-			msg: "Timeout should be less than or equal to 1",
+			msg: "Timeout should be greater than or equal to 1",
+		}
+	}
+
+	if c.PruneTime <= 1 {
+		return &WgMeshConfigurationError{
+			msg: "Prune time cannot be <= 1",
+		}
+	}
+
+	if c.KeepAliveTime <= 1 {
+		return &WgMeshConfigurationError{
+			msg: "Prune time cannot be less than keep alive time",
 		}
 	}
 

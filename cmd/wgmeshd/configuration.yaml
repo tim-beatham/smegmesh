@@ -10,4 +10,5 @@ syncRate: 1
 interClusterChance: 0.15
 branchRate: 3
 infectionCount: 3
-keepAliveTime: 60
+keepAliveTime: 10
+pruneTime: 20

@@ -21,11 +21,6 @@ type MeshNodeStub struct {
 	description  string
 }
 
-// GetHealth implements MeshNode.
-func (*MeshNodeStub) GetHealth() int {
-	return 5
-}
-
 func (m *MeshNodeStub) GetHostEndpoint() string {
 	return m.hostEndpoint
 }
@@ -71,13 +66,8 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
-// DecrementHealth implements MeshProvider.
-func (*MeshProviderStub) DecrementHealth(nodeId string, selfId string) error {
-	return nil
-}
-
-// IncrementHealth implements MeshProvider.
-func (*MeshProviderStub) IncrementHealth(nodeId string, selfId string) error {
+// Prune implements MeshProvider.
+func (*MeshProviderStub) Prune(pruneAmount int) error {
 	return nil
 }
 
@@ -169,8 +159,16 @@ func (a *MeshConfigApplyerStub) RemovePeers(meshId string) error {
 	return nil
 }
 
+func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
+}
+
 type MeshManagerStub struct {
 	meshes map[string]MeshProvider
+}
+
+// Prune implements MeshManager.
+func (*MeshManagerStub) Prune() error {
+	return nil
 }
 
 func NewMeshManagerStub() MeshManager {

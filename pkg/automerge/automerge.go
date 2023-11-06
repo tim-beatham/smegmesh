@@ -34,10 +34,10 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 		panic("node must be of type *MeshNodeCrdt")
 	}
 
+	crdt.Routes = make(map[string]interface{})
+
 	crdt.Timestamp = time.Now().Unix()
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
-	nodeVal, _ := c.doc.Path("nodes").Map().Get(crdt.HostEndpoint)
-	nodeVal.Map().Set("routes", automerge.NewMap())
 }
 
 // GetMesh(): Converts the document into a struct
@@ -204,7 +204,6 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -212,63 +211,53 @@ func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }
 
-// getHealthMap returns the health map from the automerge CRDT
-func (m *CrdtMeshManager) getHealthMap(nodeId string) (*automerge.Map, error) {
-	node, err := m.doc.Path("nodes").Map().Get(nodeId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if node.Kind() != automerge.KindMap {
-		return nil, errors.New("node should be a map")
-	}
-
-	nodeMap := node.Map()
-
-	health, err := nodeMap.Get("health")
-
-	if err != nil {
-		return nil, err
-	}
-
-	if health.Kind() != automerge.KindMap {
-		return nil, errors.New("health should be a map")
-	}
-
-	healthMap := health.Map()
-	return healthMap, nil
-}
-
-// DecrementHealth: indicates that the current node has voted that the health is down
-func (m *CrdtMeshManager) DecrementHealth(nodeId string, selfId string) error {
-	healthMap, err := m.getHealthMap(nodeId)
+func (m *CrdtMeshManager) Prune(pruneTime int) error {
+	nodes, err := m.doc.Path("nodes").Get()
 
 	if err != nil {
 		return err
 	}
 
-	err = healthMap.Set(selfId, struct{}{})
-
-	if err != nil {
-		logging.Log.WriteErrorf(err.Error())
+	if nodes.Kind() != automerge.KindMap {
+		return errors.New("node must be a map")
 	}
 
-	return nil
-}
-
-// IncrementHealth: indicates that the current node thinks that the noden is up
-func (m *CrdtMeshManager) IncrementHealth(nodeId string, selfId string) error {
-	healthMap, err := m.getHealthMap(nodeId)
+	values, err := nodes.Map().Values()
 
 	if err != nil {
 		return err
 	}
 
-	err = healthMap.Delete(selfId)
+	deletionNodes := make([]string, 0)
 
-	if err != nil {
-		logging.Log.WriteErrorf(err.Error())
+	for nodeId, node := range values {
+		if node.Kind() != automerge.KindMap {
+			return errors.New("node must be a map")
+		}
+
+		nodeMap := node.Map()
+
+		timeStamp, err := nodeMap.Get("timestamp")
+
+		if err != nil {
+			return err
+		}
+
+		if timeStamp.Kind() != automerge.KindInt64 {
+			return errors.New("timestamp is not int64")
+		}
+
+		timeValue := timeStamp.Int64()
+		nowValue := time.Now().Unix()
+
+		if nowValue-timeValue >= int64(pruneTime) {
+			deletionNodes = append(deletionNodes, nodeId)
+		}
+	}
+
+	for _, node := range deletionNodes {
+		logging.Log.WriteInfof("Pruning %s", node)
+		nodes.Map().Delete(node)
 	}
 
 	return nil
@@ -320,10 +309,6 @@ func (m *MeshNodeCrdt) GetIdentifier() string {
 	logging.Log.WriteInfof(ipv6)
 	constituents = constituents[4:]
 	return strings.Join(constituents, ":")
-}
-
-func (m *MeshNodeCrdt) GetHealth() int {
-	return len(m.Health)
 }
 
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {

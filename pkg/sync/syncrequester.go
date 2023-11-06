@@ -100,18 +100,6 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 		return s.handleErr(meshId, endpoint, err)
 	}
 
-	self, err := s.server.MeshManager.GetSelf(mesh.GetMeshId())
-
-	if err != nil {
-		return err
-	}
-
-	err = mesh.IncrementHealth(meshId, self.GetHostEndpoint())
-
-	if err != nil {
-		return err
-	}
-
 	logging.Log.WriteInfof("Synced with node: %s meshId: %s\n", endpoint, meshId)
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/robin"
 	"github.com/tim-beatham/wgmesh/pkg/sync"
 	"github.com/tim-beatham/wgmesh/pkg/timestamp"
@@ -44,12 +45,13 @@ func main() {
 		SyncProvider: &syncProvider,
 		Client:       client,
 	}
-
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
+
 	syncProvider.Server = ctrlServer
 	syncRequester := sync.NewSyncRequester(ctrlServer)
 	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester)
 	timestampScheduler := timestamp.NewTimestampScheduler(ctrlServer)
+	pruneScheduler := mesh.NewPruner(ctrlServer.MeshManager, *conf)
 
 	robinIpcParams := robin.RobinIpcParams{
 		CtrlServer: ctrlServer,
@@ -68,6 +70,7 @@ func main() {
 	go ipc.RunIpcHandler(&robinIpc)
 	go syncScheduler.Run()
 	go timestampScheduler.Run()
+	go pruneScheduler.Run()
 
 	closeResources := func() {
 		logging.Log.WriteInfof("Closing resources")

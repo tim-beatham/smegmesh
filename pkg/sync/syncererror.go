@@ -24,13 +24,13 @@ func (s *SyncErrorHandlerImpl) incrementFailedCount(meshId string, endpoint stri
 		return false
 	}
 
-	self, err := s.meshManager.GetSelf(meshId)
+	// self, err := s.meshManager.GetSelf(meshId)
 
-	if err != nil {
-		return false
-	}
+	// if err != nil {
+	// return false
+	// }
 
-	mesh.DecrementHealth(meshId, self.GetHostEndpoint())
+	// mesh.DecrementHealth(endpoint, self.GetHostEndpoint())
 	return true
 }
 

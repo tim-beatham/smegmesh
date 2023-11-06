@@ -28,8 +28,6 @@ type MeshNode interface {
 	GetIdentifier() string
 	// GetDescription: returns the description for this node
 	GetDescription() string
-	// GetHealth: returns the health score for this mesh node
-	GetHealth() int
 }
 
 type MeshSnapshot interface {
@@ -70,12 +68,9 @@ type MeshProvider interface {
 	GetSyncer() MeshSyncer
 	// SetDescription: sets the description of this automerge data type
 	SetDescription(nodeId string, description string) error
-	// DecrementHealth: indicates that the node with selfId thinks that the node
-	// is down
-	DecrementHealth(nodeId string, selfId string) error
-	// IncrementHealth: indicates that the node is up and so increment the health of the
-	// node
-	IncrementHealth(nodeId string, selfId string) error
+	// Prune: prunes all nodes that have not updated their timestamp in
+	// pruneAmount seconds
+	Prune(pruneAmount int) error
 }
 
 // HostParameters contains the IDs of a node
