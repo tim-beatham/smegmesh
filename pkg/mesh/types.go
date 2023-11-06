@@ -28,6 +28,8 @@ type MeshNode interface {
 	GetIdentifier() string
 	// GetDescription: returns the description for this node
 	GetDescription() string
+	// GetHealth: returns the health score for this mesh node
+	GetHealth() int
 }
 
 type MeshSnapshot interface {
@@ -58,20 +60,27 @@ type MeshProvider interface {
 	GetDevice() (*wgtypes.Device, error)
 	// HasChanges returns true if we have changes since last time we synced
 	HasChanges() bool
-	// Record that we have changges and save the corresponding changes
+	// Record that we have changes and save the corresponding changes
 	SaveChanges()
 	// UpdateTimeStamp: update the timestamp of the given node
 	UpdateTimeStamp(nodeId string) error
 	// AddRoutes: adds routes to the given node
 	AddRoutes(nodeId string, route ...string) error
+	// GetSyncer: returns the automerge syncer for sync
 	GetSyncer() MeshSyncer
+	// SetDescription: sets the description of this automerge data type
 	SetDescription(nodeId string, description string) error
+	// DecrementHealth: indicates that the node with selfId thinks that the node
+	// is down
+	DecrementHealth(nodeId string, selfId string) error
+	// IncrementHealth: indicates that the node is up and so increment the health of the
+	// node
+	IncrementHealth(nodeId string, selfId string) error
 }
 
 // HostParameters contains the IDs of a node
 type HostParameters struct {
 	HostEndpoint string
-	// TODO: Contain the WireGungracefullyuard identifier in this
 }
 
 // MeshProviderFactoryParams parameters required to build a mesh provider

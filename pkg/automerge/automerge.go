@@ -212,6 +212,68 @@ func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }
 
+// getHealthMap returns the health map from the automerge CRDT
+func (m *CrdtMeshManager) getHealthMap(nodeId string) (*automerge.Map, error) {
+	node, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if node.Kind() != automerge.KindMap {
+		return nil, errors.New("node should be a map")
+	}
+
+	nodeMap := node.Map()
+
+	health, err := nodeMap.Get("health")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if health.Kind() != automerge.KindMap {
+		return nil, errors.New("health should be a map")
+	}
+
+	healthMap := health.Map()
+	return healthMap, nil
+}
+
+// DecrementHealth: indicates that the current node has voted that the health is down
+func (m *CrdtMeshManager) DecrementHealth(nodeId string, selfId string) error {
+	healthMap, err := m.getHealthMap(nodeId)
+
+	if err != nil {
+		return err
+	}
+
+	err = healthMap.Set(selfId, struct{}{})
+
+	if err != nil {
+		logging.Log.WriteErrorf(err.Error())
+	}
+
+	return nil
+}
+
+// IncrementHealth: indicates that the current node thinks that the noden is up
+func (m *CrdtMeshManager) IncrementHealth(nodeId string, selfId string) error {
+	healthMap, err := m.getHealthMap(nodeId)
+
+	if err != nil {
+		return err
+	}
+
+	err = healthMap.Delete(selfId)
+
+	if err != nil {
+		logging.Log.WriteErrorf(err.Error())
+	}
+
+	return nil
+}
+
 func (m1 *MeshNodeCrdt) Compare(m2 *MeshNodeCrdt) int {
 	return strings.Compare(m1.PublicKey, m2.PublicKey)
 }
@@ -258,6 +320,10 @@ func (m *MeshNodeCrdt) GetIdentifier() string {
 	logging.Log.WriteInfof(ipv6)
 	constituents = constituents[4:]
 	return strings.Join(constituents, ":")
+}
+
+func (m *MeshNodeCrdt) GetHealth() int {
+	return len(m.Health)
 }
 
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {

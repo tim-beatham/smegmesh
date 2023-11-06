@@ -9,6 +9,7 @@ type MeshNodeCrdt struct {
 	Timestamp    int64                  `automerge:"timestamp"`
 	Routes       map[string]interface{} `automerge:"routes"`
 	Description  string                 `automerge:"description"`
+	Health       map[string]interface{} `automerge:"health"`
 }
 
 // MeshCrdt: Represents the mesh network as a whole

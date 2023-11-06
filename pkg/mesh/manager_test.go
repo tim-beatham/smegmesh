@@ -18,7 +18,7 @@ func getMeshConfiguration() *conf.WgMeshConfiguration {
 		BranchRate:         3,
 		InterClusterChance: 0.15,
 		InfectionCount:     2,
-		KeepAliveRate:      60,
+		KeepAliveTime:      60,
 	}
 }
 

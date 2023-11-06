@@ -1,7 +1,6 @@
 package mesh
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -12,6 +11,7 @@ import (
 type MeshConfigApplyer interface {
 	ApplyConfig() error
 	RemovePeers(meshId string) error
+	SetMeshManager(manager MeshManager)
 }
 
 // WgMeshConfigApplyer applies WireGuard configuration
@@ -101,7 +101,7 @@ func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
 	mesh := m.meshManager.GetMesh(meshId)
 
 	if mesh == nil {
-		return errors.New(fmt.Sprintf("mesh %s does not exist", meshId))
+		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
 	dev, err := mesh.GetDevice()
@@ -118,6 +118,10 @@ func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
 	return nil
 }
 
-func NewWgMeshConfigApplyer(manager MeshManager) MeshConfigApplyer {
-	return &WgMeshConfigApplyer{meshManager: manager}
+func (m *WgMeshConfigApplyer) SetMeshManager(manager MeshManager) {
+	m.meshManager = manager
+}
+
+func NewWgMeshConfigApplyer() MeshConfigApplyer {
+	return &WgMeshConfigApplyer{}
 }

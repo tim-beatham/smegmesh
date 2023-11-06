@@ -32,13 +32,21 @@ type WgMeshConfiguration struct {
 	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
 	// Endpoint is the IP in which this computer is publicly reachable.
 	// usecase is when the node has multiple IP addresses
-	Endpoint           string  `yaml:"publicEndpoint"`
-	ClusterSize        int     `yaml:"clusterSize"`
-	SyncRate           float64 `yaml:"syncRate"`
+	Endpoint string `yaml:"publicEndpoint"`
+	// ClusterSize size of the cluster to split on
+	ClusterSize int `yaml:"clusterSize"`
+	// SyncRate number of times per second to perform a sync
+	SyncRate float64 `yaml:"syncRate"`
+	// InterClusterChance proability of inter-cluster communication in a sync round
 	InterClusterChance float64 `yaml:"interClusterChance"`
-	BranchRate         int     `yaml:"branchRate"`
-	InfectionCount     int     `yaml:"infectionCount"`
-	KeepAliveRate      int     `yaml:"keepAliveRate"`
+	// BranchRate number of nodes to randomly communicate with
+	BranchRate int `yaml:"branchRate"`
+	// InfectionCount number of times we sync before we can no longer catch the udpate
+	InfectionCount int `yaml:"infectionCount"`
+	// KeepAliveTime
+	KeepAliveTime int `yaml:"keepAliveTime"`
+	// Timeout number of seconds before we update node indicating that we are still alive
+	Timeout int `yaml:"timeout"`
 }
 
 func ValidateConfiguration(c *WgMeshConfiguration) error {
@@ -90,7 +98,7 @@ func ValidateConfiguration(c *WgMeshConfiguration) error {
 		}
 	}
 
-	if c.KeepAliveRate <= 0 {
+	if c.KeepAliveTime <= 0 {
 		return &WgMeshConfigurationError{
 			msg: "KeepAliveRate cannot be less than negative",
 		}
@@ -99,6 +107,12 @@ func ValidateConfiguration(c *WgMeshConfiguration) error {
 	if c.InterClusterChance <= 0 {
 		return &WgMeshConfigurationError{
 			msg: "Intercluster chance cannot be less than 0",
+		}
+	}
+
+	if c.Timeout <= 1 {
+		return &WgMeshConfigurationError{
+			msg: "Timeout should be less than or equal to 1",
 		}
 	}
 

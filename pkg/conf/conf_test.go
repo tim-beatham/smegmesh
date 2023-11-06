@@ -15,7 +15,7 @@ func getExampleConfiguration() *WgMeshConfiguration {
 		SyncRate:             1,
 		InterClusterChance:   0.1,
 		BranchRate:           2,
-		KeepAliveRate:        1,
+		KeepAliveTime:        1,
 		InfectionCount:       1,
 	}
 }
@@ -110,7 +110,7 @@ func InfectionCountZero(t *testing.T) {
 
 func KeepAliveRateZero(t *testing.T) {
 	conf := getExampleConfiguration()
-	conf.KeepAliveRate = 0
+	conf.KeepAliveTime = 0
 
 	err := ValidateConfiguration(conf)
 

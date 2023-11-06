@@ -76,7 +76,6 @@ func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 	}
 
 	m.Meshes[meshId] = nodeManager
-	err = m.configApplyer.RemovePeers(meshId)
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
@@ -327,6 +326,7 @@ func NewMeshManager(params *NewMeshManagerParams) *MeshManagerImpl {
 		Client:              params.Client,
 		conf:                &params.Conf,
 	}
+
 	m.configApplyer = params.ConfigApplyer
 	m.RouteManager = NewRouteManager(m)
 	m.idGenerator = params.IdGenerator

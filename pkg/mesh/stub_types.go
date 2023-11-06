@@ -21,6 +21,11 @@ type MeshNodeStub struct {
 	description  string
 }
 
+// GetHealth implements MeshNode.
+func (*MeshNodeStub) GetHealth() int {
+	return 5
+}
+
 func (m *MeshNodeStub) GetHostEndpoint() string {
 	return m.hostEndpoint
 }
@@ -64,6 +69,16 @@ func (s *MeshSnapshotStub) GetNodes() map[string]MeshNode {
 type MeshProviderStub struct {
 	meshId   string
 	snapshot *MeshSnapshotStub
+}
+
+// DecrementHealth implements MeshProvider.
+func (*MeshProviderStub) DecrementHealth(nodeId string, selfId string) error {
+	return nil
+}
+
+// IncrementHealth implements MeshProvider.
+func (*MeshProviderStub) IncrementHealth(nodeId string, selfId string) error {
+	return nil
 }
 
 // UpdateTimeStamp implements MeshProvider.
