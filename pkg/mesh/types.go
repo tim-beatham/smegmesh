@@ -58,20 +58,24 @@ type MeshProvider interface {
 	GetDevice() (*wgtypes.Device, error)
 	// HasChanges returns true if we have changes since last time we synced
 	HasChanges() bool
-	// Record that we have changges and save the corresponding changes
+	// Record that we have changes and save the corresponding changes
 	SaveChanges()
 	// UpdateTimeStamp: update the timestamp of the given node
 	UpdateTimeStamp(nodeId string) error
 	// AddRoutes: adds routes to the given node
 	AddRoutes(nodeId string, route ...string) error
+	// GetSyncer: returns the automerge syncer for sync
 	GetSyncer() MeshSyncer
+	// SetDescription: sets the description of this automerge data type
 	SetDescription(nodeId string, description string) error
+	// Prune: prunes all nodes that have not updated their timestamp in
+	// pruneAmount seconds
+	Prune(pruneAmount int) error
 }
 
 // HostParameters contains the IDs of a node
 type HostParameters struct {
 	HostEndpoint string
-	// TODO: Contain the WireGungracefullyuard identifier in this
 }
 
 // MeshProviderFactoryParams parameters required to build a mesh provider

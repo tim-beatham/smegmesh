@@ -28,6 +28,7 @@ type MeshManager interface {
 	UpdateTimeStamp() error
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
+	Prune() error
 }
 
 type MeshManagerImpl struct {
@@ -44,6 +45,19 @@ type MeshManagerImpl struct {
 	idGenerator          lib.IdGenerator
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
+}
+
+// Prune implements MeshManager.
+func (m *MeshManagerImpl) Prune() error {
+	for _, mesh := range m.Meshes {
+		err := mesh.Prune(m.conf.PruneTime)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CreateMesh: Creates a new mesh, stores it and returns the mesh id
@@ -76,7 +90,6 @@ func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 	}
 
 	m.Meshes[meshId] = nodeManager
-	err = m.configApplyer.RemovePeers(meshId)
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
@@ -217,7 +230,7 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	_, exists := s.Meshes[meshId]
 
 	if !exists {
-		return errors.New(fmt.Sprintf("mesh %s does not exist", meshId))
+		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
 	// For now just delete the mesh with the ID.
@@ -229,7 +242,7 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 	meshInstance, ok := s.Meshes[meshId]
 
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("mesh %s does not exist", meshId))
+		return nil, fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
 	snapshot, err := meshInstance.GetMesh()
@@ -327,6 +340,7 @@ func NewMeshManager(params *NewMeshManagerParams) *MeshManagerImpl {
 		Client:              params.Client,
 		conf:                &params.Conf,
 	}
+
 	m.configApplyer = params.ConfigApplyer
 	m.RouteManager = NewRouteManager(m)
 	m.idGenerator = params.IdGenerator

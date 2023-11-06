@@ -15,8 +15,10 @@ func getExampleConfiguration() *WgMeshConfiguration {
 		SyncRate:             1,
 		InterClusterChance:   0.1,
 		BranchRate:           2,
-		KeepAliveRate:        1,
+		KeepAliveTime:        4,
 		InfectionCount:       1,
+		Timeout:              2,
+		PruneTime:            20,
 	}
 }
 
@@ -110,7 +112,7 @@ func InfectionCountZero(t *testing.T) {
 
 func KeepAliveRateZero(t *testing.T) {
 	conf := getExampleConfiguration()
-	conf.KeepAliveRate = 0
+	conf.KeepAliveTime = 0
 
 	err := ValidateConfiguration(conf)
 
@@ -126,5 +128,38 @@ func TestValidCOnfiguration(t *testing.T) {
 
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestTimeout(t *testing.T) {
+	conf := getExampleConfiguration()
+	conf.Timeout = 0
+
+	err := ValidateConfiguration(conf)
+
+	if err == nil {
+		t.Fatal(`error should be thrown`)
+	}
+}
+
+func TestPruneTimeZero(t *testing.T) {
+	conf := getExampleConfiguration()
+	conf.PruneTime = 0
+
+	err := ValidateConfiguration(conf)
+
+	if err == nil {
+		t.Fatalf(`Error should be thrown`)
+	}
+}
+
+func TestPruneTimeLessThanKeepAliveTime(t *testing.T) {
+	conf := getExampleConfiguration()
+	conf.PruneTime = 1
+
+	err := ValidateConfiguration(conf)
+
+	if err == nil {
+		t.Fatalf(`Error should be thrown`)
 	}
 }

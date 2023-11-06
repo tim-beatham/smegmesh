@@ -66,6 +66,11 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
+// Prune implements MeshProvider.
+func (*MeshProviderStub) Prune(pruneAmount int) error {
+	return nil
+}
+
 // UpdateTimeStamp implements MeshProvider.
 func (*MeshProviderStub) UpdateTimeStamp(nodeId string) error {
 	return nil
@@ -154,8 +159,16 @@ func (a *MeshConfigApplyerStub) RemovePeers(meshId string) error {
 	return nil
 }
 
+func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
+}
+
 type MeshManagerStub struct {
 	meshes map[string]MeshProvider
+}
+
+// Prune implements MeshManager.
+func (*MeshManagerStub) Prune() error {
+	return nil
 }
 
 func NewMeshManagerStub() MeshManager {

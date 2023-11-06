@@ -34,10 +34,10 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 		panic("node must be of type *MeshNodeCrdt")
 	}
 
+	crdt.Routes = make(map[string]interface{})
+
 	crdt.Timestamp = time.Now().Unix()
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
-	nodeVal, _ := c.doc.Path("nodes").Map().Get(crdt.HostEndpoint)
-	nodeVal.Map().Set("routes", automerge.NewMap())
 }
 
 // GetMesh(): Converts the document into a struct
@@ -204,12 +204,63 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
 func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
+}
+
+func (m *CrdtMeshManager) Prune(pruneTime int) error {
+	nodes, err := m.doc.Path("nodes").Get()
+
+	if err != nil {
+		return err
+	}
+
+	if nodes.Kind() != automerge.KindMap {
+		return errors.New("node must be a map")
+	}
+
+	values, err := nodes.Map().Values()
+
+	if err != nil {
+		return err
+	}
+
+	deletionNodes := make([]string, 0)
+
+	for nodeId, node := range values {
+		if node.Kind() != automerge.KindMap {
+			return errors.New("node must be a map")
+		}
+
+		nodeMap := node.Map()
+
+		timeStamp, err := nodeMap.Get("timestamp")
+
+		if err != nil {
+			return err
+		}
+
+		if timeStamp.Kind() != automerge.KindInt64 {
+			return errors.New("timestamp is not int64")
+		}
+
+		timeValue := timeStamp.Int64()
+		nowValue := time.Now().Unix()
+
+		if nowValue-timeValue >= int64(pruneTime) {
+			deletionNodes = append(deletionNodes, nodeId)
+		}
+	}
+
+	for _, node := range deletionNodes {
+		logging.Log.WriteInfof("Pruning %s", node)
+		nodes.Map().Delete(node)
+	}
+
+	return nil
 }
 
 func (m1 *MeshNodeCrdt) Compare(m2 *MeshNodeCrdt) int {
