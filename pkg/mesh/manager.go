@@ -29,6 +29,7 @@ type MeshManager interface {
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
 	Prune() error
+	Close() error
 }
 
 type MeshManagerImpl struct {
@@ -77,7 +78,7 @@ func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error creating mesh: %w", err)
 	}
 
 	err = m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
@@ -86,15 +87,10 @@ func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 	})
 
 	if err != nil {
-		return "", nil
+		return "", fmt.Errorf("error creating mesh: %w", err)
 	}
 
 	m.Meshes[meshId] = nodeManager
-
-	if err != nil {
-		logging.Log.WriteErrorf(err.Error())
-	}
-
 	return meshId, nil
 }
 
@@ -152,25 +148,13 @@ func (s *MeshManagerImpl) EnableInterface(meshId string) error {
 		return err
 	}
 
-	meshNode, err := s.GetSelf(meshId)
+	err = s.RouteManager.InstallRoutes()
 
 	if err != nil {
 		return err
 	}
 
-	mesh := s.GetMesh(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	dev, err := mesh.GetDevice()
-
-	if err != nil {
-		return err
-	}
-
-	return s.interfaceManipulator.EnableInterface(dev.Name, meshNode.GetWgHost().String())
+	return nil
 }
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
@@ -202,6 +186,12 @@ type AddSelfParams struct {
 
 // AddSelf adds this host to the mesh
 func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
+	mesh := s.GetMesh(params.MeshId)
+
+	if mesh == nil {
+		return fmt.Errorf("addself: mesh %s does not exist", params.MeshId)
+	}
+
 	pubKey, err := s.GetPublicKey(params.MeshId)
 
 	if err != nil {
@@ -221,21 +211,45 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		Endpoint:  params.Endpoint,
 	})
 
+	device, err := mesh.GetDevice()
+
+	if err != nil {
+		return fmt.Errorf("failed to get device %w", err)
+	}
+
+	err = s.interfaceManipulator.AddAddress(device.Name, fmt.Sprintf("%s/64", nodeIP))
+
+	if err != nil {
+		return fmt.Errorf("addSelf: failed to add address to dev %w", err)
+	}
+
 	s.Meshes[params.MeshId].AddNode(node)
 	return s.RouteManager.UpdateRoutes()
 }
 
 // LeaveMesh leaves the mesh network
 func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
-	_, exists := s.Meshes[meshId]
+	mesh, exists := s.Meshes[meshId]
 
 	if !exists {
 		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	// For now just delete the mesh with the ID.
+	err := s.RouteManager.RemoveRoutes(meshId)
+
+	if err != nil {
+		return err
+	}
+
+	device, err := mesh.GetDevice()
+
+	if err != nil {
+		return err
+	}
+
+	err = s.interfaceManipulator.RemoveInterface(device.Name)
 	delete(s.Meshes, meshId)
-	return nil
+	return err
 }
 
 func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
@@ -261,7 +275,13 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 }
 
 func (s *MeshManagerImpl) ApplyConfig() error {
-	return s.configApplyer.ApplyConfig()
+	err := s.configApplyer.ApplyConfig()
+
+	if err != nil {
+		return err
+	}
+
+	return s.RouteManager.InstallRoutes()
 }
 
 func (s *MeshManagerImpl) SetDescription(description string) error {
@@ -307,6 +327,24 @@ func (s *MeshManagerImpl) GetMeshes() map[string]MeshProvider {
 	return s.Meshes
 }
 
+func (s *MeshManagerImpl) Close() error {
+	for _, mesh := range s.Meshes {
+		dev, err := mesh.GetDevice()
+
+		if err != nil {
+			return err
+		}
+
+		err = s.interfaceManipulator.RemoveInterface(dev.Name)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // NewMeshManagerParams params required to create an instance of a mesh manager
 type NewMeshManagerParams struct {
 	Conf                 conf.WgMeshConfiguration
@@ -317,6 +355,7 @@ type NewMeshManagerParams struct {
 	IPAllocator          ip.IPAllocator
 	InterfaceManipulator wg.WgInterfaceManipulator
 	ConfigApplyer        MeshConfigApplyer
+	RouteManager         RouteManager
 }
 
 // Creates a new instance of a mesh manager with the given parameters
@@ -342,7 +381,12 @@ func NewMeshManager(params *NewMeshManagerParams) *MeshManagerImpl {
 	}
 
 	m.configApplyer = params.ConfigApplyer
-	m.RouteManager = NewRouteManager(m)
+	m.RouteManager = params.RouteManager
+
+	if m.RouteManager == nil {
+		m.RouteManager = NewRouteManager(m)
+	}
+
 	m.idGenerator = params.IdGenerator
 	m.ipAllocator = params.IPAllocator
 	m.interfaceManipulator = params.InterfaceManipulator

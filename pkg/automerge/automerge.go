@@ -207,6 +207,31 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 	return nil
 }
 
+// DeleteRoutes deletes the specified routes
+func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...string) error {
+	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil {
+		return err
+	}
+
+	if nodeVal.Kind() != automerge.KindMap {
+		return fmt.Errorf("node is not a map")
+	}
+
+	routeMap, err := nodeVal.Map().Get("routes")
+
+	if err != nil {
+		return err
+	}
+
+	for _, route := range routes {
+		err = routeMap.Map().Delete(route)
+	}
+
+	return err
+}
+
 func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }

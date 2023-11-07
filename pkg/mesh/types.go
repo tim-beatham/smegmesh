@@ -64,6 +64,8 @@ type MeshProvider interface {
 	UpdateTimeStamp(nodeId string) error
 	// AddRoutes: adds routes to the given node
 	AddRoutes(nodeId string, route ...string) error
+	// DeleteRoutes: deletes the routes from the node
+	RemoveRoutes(nodeId string, route ...string) error
 	// GetSyncer: returns the automerge syncer for sync
 	GetSyncer() MeshSyncer
 	// SetDescription: sets the description of this automerge data type

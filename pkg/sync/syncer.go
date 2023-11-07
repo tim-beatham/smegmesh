@@ -31,7 +31,11 @@ type SyncerImpl struct {
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
 	logging.Log.WriteInfof("UPDATING WG CONF")
-	s.manager.ApplyConfig()
+	err := s.manager.ApplyConfig()
+
+	if err != nil {
+		logging.Log.WriteInfof("Failed to update config %w", err)
+	}
 
 	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
 		logging.Log.WriteInfof("No changes for %s", meshId)

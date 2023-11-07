@@ -32,6 +32,7 @@ func getMeshManager() *MeshManagerImpl {
 		IPAllocator:          &ip.ULABuilder{},
 		InterfaceManipulator: &wg.WgInterfaceManipulatorStub{},
 		ConfigApplyer:        &MeshConfigApplyerStub{},
+		RouteManager:         &RouteManagerStub{},
 	})
 
 	return manager
@@ -186,7 +187,7 @@ func TestLeaveMeshDeletesMesh(t *testing.T) {
 	err = manager.LeaveMesh(meshId)
 
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("%s", err.Error())
 	}
 
 	_, exists := manager.Meshes[meshId]

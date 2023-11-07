@@ -30,6 +30,10 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		Endpoint: args.Endpoint,
 	})
 
+	if err != nil {
+		return err
+	}
+
 	*reply = meshId
 	return err
 }
@@ -122,6 +126,7 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	if mesh == nil {
 		return errors.New("mesh does not exist")
 	}
+
 	nodes := make([]ctrlserver.MeshNode, len(meshSnapshot.GetNodes()))
 
 	i := 0
