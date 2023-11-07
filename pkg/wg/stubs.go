@@ -6,6 +6,10 @@ func (i *WgInterfaceManipulatorStub) CreateInterface(params *CreateInterfacePara
 	return nil
 }
 
-func (i *WgInterfaceManipulatorStub) EnableInterface(ifName string, ip string) error {
+func (i *WgInterfaceManipulatorStub) AddAddress(ifName string, addr string) error {
+	return nil
+}
+
+func (i *WgInterfaceManipulatorStub) RemoveInterface(ifName string) error {
 	return nil
 }

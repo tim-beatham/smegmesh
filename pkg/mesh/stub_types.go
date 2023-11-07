@@ -66,6 +66,11 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
+// RemoveRoutes implements MeshProvider.
+func (*MeshProviderStub) RemoveRoutes(nodeId string, route ...string) error {
+	panic("unimplemented")
+}
+
 // Prune implements MeshProvider.
 func (*MeshProviderStub) Prune(pruneAmount int) error {
 	return nil
@@ -164,6 +169,11 @@ func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
 
 type MeshManagerStub struct {
 	meshes map[string]MeshProvider
+}
+
+// Close implements MeshManager.
+func (*MeshManagerStub) Close() error {
+	panic("unimplemented")
 }
 
 // Prune implements MeshManager.

@@ -16,7 +16,8 @@ type CreateInterfaceParams struct {
 type WgInterfaceManipulator interface {
 	// CreateInterface creates a WireGuard interface
 	CreateInterface(params *CreateInterfaceParams) error
-	// Enable interface enables the given interface with
-	// the IP. It overrides the IP at the interface
-	EnableInterface(ifName string, ip string) error
+	// AddAddress adds an address to the given interface name
+	AddAddress(ifName string, addr string) error
+	// RemoveInterface removes the specified interface
+	RemoveInterface(ifName string) error
 }

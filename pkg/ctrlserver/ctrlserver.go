@@ -35,7 +35,6 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ipAllocator := &ip.ULABuilder{}
 	interfaceManipulator := wg.NewWgInterfaceManipulator(params.Client)
 
-	var meshManager mesh.MeshManagerImpl
 	configApplyer := mesh.NewWgMeshConfigApplyer()
 
 	meshManagerParams := &mesh.NewMeshManagerParams{
@@ -49,8 +48,8 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		ConfigApplyer:        configApplyer,
 	}
 
-	configApplyer.SetMeshManager(&meshManager)
 	ctrlServer.MeshManager = mesh.NewMeshManager(meshManagerParams)
+	configApplyer.SetMeshManager(ctrlServer.MeshManager)
 
 	ctrlServer.Conf = params.Conf
 	connManagerParams := conn.NewConnectionManagerParams{
@@ -109,6 +108,10 @@ func (s *MeshCtrlServer) GetConnectionManager() conn.ConnectionManager {
 // Close closes the ctrl server tearing down any connections that exist
 func (s *MeshCtrlServer) Close() error {
 	if err := s.ConnectionManager.Close(); err != nil {
+		logging.Log.WriteErrorf(err.Error())
+	}
+
+	if err := s.MeshManager.Close(); err != nil {
 		logging.Log.WriteErrorf(err.Error())
 	}
 

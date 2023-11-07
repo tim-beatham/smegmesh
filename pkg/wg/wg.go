@@ -1,50 +1,37 @@
 package wg
 
 import (
-	"errors"
 	"fmt"
-	"net"
-	"os/exec"
 
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// createInterface uses ip link to create an interface. If the interface exists
-// it returns an error
-func createInterface(ifName string) error {
-	_, err := net.InterfaceByName(ifName)
-
-	if err == nil {
-		err = flushInterface(ifName)
-		return err
-	}
-
-	// Check if the interface exists
-	cmd := exec.Command("/usr/bin/ip", "link", "add", "dev", ifName, "type", "wireguard")
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
 type WgInterfaceManipulatorImpl struct {
 	client *wgctrl.Client
 }
 
+// CreateInterface creates a WireGuard interface
 func (m *WgInterfaceManipulatorImpl) CreateInterface(params *CreateInterfaceParams) error {
-	err := createInterface(params.IfName)
+	rtnl, err := lib.NewRtNetlinkConfig()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to access link: %w", err)
+	}
+	defer rtnl.Close()
+
+	err = rtnl.CreateLink(params.IfName)
+
+	if err != nil {
+		return fmt.Errorf("failed to create link: %w", err)
 	}
 
 	privateKey, err := wgtypes.GeneratePrivateKey()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create private key: %w", err)
 	}
 
 	var cfg wgtypes.Config = wgtypes.Config{
@@ -52,59 +39,44 @@ func (m *WgInterfaceManipulatorImpl) CreateInterface(params *CreateInterfacePara
 		ListenPort: &params.Port,
 	}
 
-	m.client.ConfigureDevice(params.IfName, cfg)
+	err = m.client.ConfigureDevice(params.IfName, cfg)
+
+	if err != nil {
+		return fmt.Errorf("failed to configure dev: %w", err)
+	}
+
+	logging.Log.WriteInfof("ip link set up dev %s type wireguard", params.IfName)
 	return nil
 }
 
-// flushInterface flushes the specified interface
-func flushInterface(ifName string) error {
-	_, err := net.InterfaceByName(ifName)
+// Add an address to the given interface
+func (m *WgInterfaceManipulatorImpl) AddAddress(ifName string, addr string) error {
+	rtnl, err := lib.NewRtNetlinkConfig()
 
 	if err != nil {
-		return &WgError{msg: fmt.Sprintf("Interface %s does not exist cannot flush", ifName)}
+		return fmt.Errorf("failed to create config: %w", err)
+	}
+	defer rtnl.Close()
+
+	err = rtnl.AddAddress(ifName, addr)
+
+	if err != nil {
+		err = fmt.Errorf("failed to add address: %w", err)
 	}
 
-	cmd := exec.Command("/usr/bin/ip", "addr", "flush", "dev", ifName)
-
-	if err := cmd.Run(); err != nil {
-		logging.Log.WriteErrorf(fmt.Sprintf("%s error flushing interface %s", err.Error(), ifName))
-		return &WgError{msg: fmt.Sprintf("Failed to flush interface %s", ifName)}
-	}
-
-	return nil
+	return err
 }
 
-// EnableInterface flushes the interface and sets the ip address of the
-// interface
-func (m *WgInterfaceManipulatorImpl) EnableInterface(ifName string, ip string) error {
-	if len(ifName) == 0 {
-		return errors.New("ifName not provided")
-	}
-
-	err := flushInterface(ifName)
+// RemoveInterface implements WgInterfaceManipulator.
+func (*WgInterfaceManipulatorImpl) RemoveInterface(ifName string) error {
+	rtnl, err := lib.NewRtNetlinkConfig()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create config: %w", err)
 	}
+	defer rtnl.Close()
 
-	cmd := exec.Command("/usr/bin/ip", "link", "set", "up", "dev", ifName)
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	hostIp, _, err := net.ParseCIDR(ip)
-
-	if err != nil {
-		return err
-	}
-
-	cmd = exec.Command("/usr/bin/ip", "addr", "add", hostIp.String()+"/64", "dev", ifName)
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+	return rtnl.DeleteLink(ifName)
 }
 
 func NewWgInterfaceManipulator(client *wgctrl.Client) WgInterfaceManipulator {
