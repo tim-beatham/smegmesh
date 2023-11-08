@@ -1,0 +1,42 @@
+version: '3'
+networks:
+  net-1:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.89.0.0/17 
+services:
+  wg-1:
+    image: wg-mesh-base:latest
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    tty: true
+    networks:
+      - net-1
+    volumes:
+      - ./shared:/shared
+    command: "wgmeshd /shared/configuration.yaml"
+  wg-2:
+    image: wg-mesh-base:latest
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    tty: true
+    networks:
+      - net-1
+    volumes:
+      - ./shared:/shared
+    command: "wgmeshd /shared/configuration.yaml"
+  wg-3:
+    image: wg-mesh-base:latest
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    tty: true
+    networks:
+      - net-1
+    volumes:
+      - ./shared:/shared
+    command: "wgmeshd /shared/configuration.yaml" 
