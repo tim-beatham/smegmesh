@@ -63,7 +63,7 @@ const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 func RunIpcHandler(server MeshIpc) error {
 	if err := os.RemoveAll(SockAddr); err != nil {
-		return errors.New("Could not find to address")
+		return errors.New("could not find to address")
 	}
 
 	rpc.Register(server)

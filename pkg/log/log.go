@@ -2,6 +2,7 @@
 package logging
 
 import (
+	"io"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -15,6 +16,7 @@ type Logger interface {
 	WriteInfof(msg string, args ...interface{})
 	WriteErrorf(msg string, args ...interface{})
 	WriteWarnf(msg string, args ...interface{})
+	Writer() io.Writer
 }
 
 type LogrusLogger struct {
@@ -31,6 +33,10 @@ func (l *LogrusLogger) WriteErrorf(msg string, args ...interface{}) {
 
 func (l *LogrusLogger) WriteWarnf(msg string, args ...interface{}) {
 	l.logger.Warnf(msg, args...)
+}
+
+func (l *LogrusLogger) Writer() io.Writer {
+	return l.logger.Writer()
 }
 
 func NewLogrusLogger() *LogrusLogger {
