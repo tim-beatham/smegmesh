@@ -144,6 +144,7 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 			WgHost:       node.GetWgHost().String(),
 			Timestamp:    node.GetTimeStamp(),
 			Routes:       node.GetRoutes(),
+			Description:  node.GetDescription(),
 		}
 
 		nodes[i] = node

@@ -17,6 +17,7 @@ type MeshNode struct {
 	WgHost       string
 	Timestamp    int64
 	Routes       []string
+	Description  string
 }
 
 // Represents a WireGuard Mesh
