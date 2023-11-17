@@ -34,6 +34,11 @@ type JoinMeshArgs struct {
 	Endpoint string
 }
 
+type PutServiceArgs struct {
+	Service string
+	Value   string
+}
+
 type GetMeshReply struct {
 	Nodes []ctrlserver.MeshNode
 }
@@ -58,6 +63,8 @@ type MeshIpc interface {
 	Query(query QueryMesh, reply *string) error
 	PutDescription(description string, reply *string) error
 	PutAlias(alias string, reply *string) error
+	PutService(args PutServiceArgs, reply *string) error
+	DeleteService(service string, reply *string) error
 }
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"

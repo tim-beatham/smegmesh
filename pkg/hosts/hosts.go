@@ -17,34 +17,55 @@ const HOSTS_FILE = "/etc/hosts"
 const DOMAIN_HEADER = "#WG AUTO GENERATED HOSTS"
 const DOMAIN_TRAILER = "#WG AUTO GENERATED HOSTS END"
 
+type HostsEntry struct {
+	Alias string
+	Ip    net.IP
+}
+
 // Generic interface to manipulate /etc/hosts file
 type HostsManipulator interface {
 	// AddrAddr associates an aliasd with a given IP address
-	AddAddr(ipAddr net.IP, alias string)
+	AddAddr(hosts ...HostsEntry)
 	// Remove deletes the entry from /etc/hosts
-	Remove(alias string)
+	Remove(hosts ...HostsEntry)
 	// Writes the changes to /etc/hosts file
 	Write() error
 }
 
 type HostsManipulatorImpl struct {
-	hosts  map[string]net.IP
-	meshid string
+	hosts map[string]HostsEntry
 }
 
 // AddAddr implements HostsManipulator.
-func (m *HostsManipulatorImpl) AddAddr(ipAddr net.IP, alias string) {
-	m.hosts[alias] = ipAddr
+func (m *HostsManipulatorImpl) AddAddr(hosts ...HostsEntry) {
+	changed := false
+
+	for _, host := range hosts {
+		prev, ok := m.hosts[host.Ip.String()]
+
+		if !ok || prev.Alias != host.Alias {
+			changed = true
+		}
+
+		m.hosts[host.Ip.String()] = host
+	}
+
+	if changed {
+		m.Write()
+	}
 }
 
 // Remove implements HostsManipulator.
-func (m *HostsManipulatorImpl) Remove(alias string) {
-	delete(m.hosts, alias)
-}
+func (m *HostsManipulatorImpl) Remove(hosts ...HostsEntry) {
+	lenBefore := len(m.hosts)
 
-type HostsEntry struct {
-	Alias string
-	Ip    net.IP
+	for _, host := range hosts {
+		delete(m.hosts, host.Alias)
+	}
+
+	if lenBefore != len(m.hosts) {
+		m.Write()
+	}
 }
 
 func (m *HostsManipulatorImpl) removeHosts() string {
@@ -69,7 +90,7 @@ func (m *HostsManipulatorImpl) removeHosts() string {
 			return ""
 		}
 
-		if !hostsSection && strings.Contains(line, DOMAIN_HEADER+m.meshid) {
+		if !hostsSection && strings.Contains(line, DOMAIN_HEADER) {
 			hostsSection = true
 		}
 
@@ -77,7 +98,7 @@ func (m *HostsManipulatorImpl) removeHosts() string {
 			contents.WriteString(line + "\n")
 		}
 
-		if hostsSection && strings.Contains(line, DOMAIN_TRAILER+m.meshid) {
+		if hostsSection && strings.Contains(line, DOMAIN_TRAILER) {
 			hostsSection = false
 		}
 	}
@@ -96,36 +117,16 @@ func (m *HostsManipulatorImpl) Write() error {
 	var nextHosts strings.Builder
 	nextHosts.WriteString(contents)
 
-	nextHosts.WriteString(DOMAIN_HEADER + m.meshid + "\n")
+	nextHosts.WriteString(DOMAIN_HEADER + "\n")
 
-	for alias, ip := range m.hosts {
-		nextHosts.WriteString(fmt.Sprintf("%s\t%s\n", ip.String(), alias))
+	for _, host := range m.hosts {
+		nextHosts.WriteString(fmt.Sprintf("%s\t%s\n", host.Ip.String(), host.Alias))
 	}
 
-	nextHosts.WriteString(DOMAIN_TRAILER + m.meshid + "\n")
+	nextHosts.WriteString(DOMAIN_TRAILER + "\n")
 	return os.WriteFile(HOSTS_FILE, []byte(nextHosts.String()), 0644)
 }
 
-// parseLine parses a line in the /etc/hosts file
-func parseLine(line string) (*HostsEntry, error) {
-	fields := strings.Fields(line)
-
-	if len(fields) != 2 {
-		return nil, fmt.Errorf("expected entry length of 2 was %d", len(fields))
-	}
-
-	ipAddr := fields[0]
-	alias := fields[1]
-
-	ip := net.ParseIP(ipAddr)
-
-	if ip == nil {
-		return nil, fmt.Errorf("failed to parse ip for %s", alias)
-	}
-
-	return &HostsEntry{Ip: ip, Alias: alias}, nil
-}
-
-func NewHostsManipulator(meshId string) HostsManipulator {
-	return &HostsManipulatorImpl{hosts: make(map[string]net.IP), meshid: meshId}
+func NewHostsManipulator() HostsManipulator {
+	return &HostsManipulatorImpl{hosts: make(map[string]HostsEntry)}
 }

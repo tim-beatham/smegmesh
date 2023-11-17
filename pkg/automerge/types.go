@@ -10,6 +10,7 @@ type MeshNodeCrdt struct {
 	Routes       map[string]interface{} `automerge:"routes"`
 	Alias        string                 `automerge:"alias"`
 	Description  string                 `automerge:"description"`
+	Services     map[string]string      `automerge:"services"`
 }
 
 // MeshCrdt: Represents the mesh network as a whole

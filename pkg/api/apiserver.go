@@ -37,6 +37,8 @@ func meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNode {
 		Description: meshNode.Description,
 		Routes:      meshNode.Routes,
 		PublicKey:   meshNode.PublicKey,
+		Alias:       meshNode.Alias,
+		Services:    meshNode.Services,
 	}
 }
 

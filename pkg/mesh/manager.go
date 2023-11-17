@@ -26,6 +26,8 @@ type MeshManager interface {
 	ApplyConfig() error
 	SetDescription(description string) error
 	SetAlias(alias string) error
+	SetService(service string, value string) error
+	RemoveService(service string) error
 	UpdateTimeStamp() error
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
@@ -49,6 +51,32 @@ type MeshManagerImpl struct {
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
 	Monitor              MeshMonitor
+}
+
+// RemoveService implements MeshManager.
+func (m *MeshManagerImpl) RemoveService(service string) error {
+	for _, mesh := range m.Meshes {
+		err := mesh.RemoveService(m.HostParameters.HostEndpoint, service)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// SetService implements MeshManager.
+func (m *MeshManagerImpl) SetService(service string, value string) error {
+	for _, mesh := range m.Meshes {
+		err := mesh.AddService(m.HostParameters.HostEndpoint, service, value)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // GetMonitor implements MeshManager.
@@ -411,7 +439,10 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	m.ipAllocator = params.IPAllocator
 	m.interfaceManipulator = params.InterfaceManipulator
 
-	m.Monitor = NewMeshMonitor()
-	m.Monitor.AddCallback(AddAliases)
+	m.Monitor = NewMeshMonitor(m)
+
+	aliasManager := NewAliasManager()
+	m.Monitor.AddUpdateCallback(aliasManager.AddAliases)
+	m.Monitor.AddRemoveCallback(aliasManager.RemoveAliases)
 	return m
 }

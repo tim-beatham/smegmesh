@@ -1,13 +1,15 @@
 package api
 
 type SmegNode struct {
-	WgHost      string   `json:"wgHost"`
-	WgEndpoint  string   `json:"wgEndpoint"`
-	Endpoint    string   `json:"endpoint"`
-	Timestamp   int      `json:"timestamp"`
-	Description string   `json:"description"`
-	PublicKey   string   `json:"publicKey"`
-	Routes      []string `json:"routes"`
+	Alias       string            `json:"alias"`
+	WgHost      string            `json:"wgHost"`
+	WgEndpoint  string            `json:"wgEndpoint"`
+	Endpoint    string            `json:"endpoint"`
+	Timestamp   int               `json:"timestamp"`
+	Description string            `json:"description"`
+	PublicKey   string            `json:"publicKey"`
+	Routes      []string          `json:"routes"`
+	Services    map[string]string `json:"services"`
 }
 
 type SmegMesh struct {
