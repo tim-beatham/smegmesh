@@ -45,8 +45,8 @@ func main() {
 		SyncProvider: &syncProvider,
 		Client:       client,
 	}
-	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
 
+	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
 	syncProvider.Server = ctrlServer
 	syncRequester := sync.NewSyncRequester(ctrlServer)
 	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester)

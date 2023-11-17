@@ -20,7 +20,6 @@ import (
 type CrdtMeshManager struct {
 	MeshId   string
 	IfName   string
-	NodeId   string
 	Client   *wgctrl.Client
 	doc      *automerge.Doc
 	LastHash automerge.ChangeHash
@@ -35,8 +34,9 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	}
 
 	crdt.Routes = make(map[string]interface{})
-
+	crdt.Services = make(map[string]string)
 	crdt.Timestamp = time.Now().Unix()
+
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
 }
 
@@ -176,6 +176,72 @@ func (m *CrdtMeshManager) SetDescription(nodeId string, description string) erro
 	}
 
 	return err
+}
+
+func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
+	node, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil {
+		return err
+	}
+
+	if node.Kind() != automerge.KindMap {
+		return fmt.Errorf("%s does not exist", nodeId)
+	}
+
+	err = node.Map().Set("alias", alias)
+
+	if err == nil {
+		logging.Log.WriteInfof("Updated Alias for %s to %s", nodeId, alias)
+	}
+
+	return err
+}
+
+func (m *CrdtMeshManager) AddService(nodeId, key, value string) error {
+	node, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil || node.Kind() != automerge.KindMap {
+		return fmt.Errorf("AddService: node %s does not exist", nodeId)
+	}
+
+	service, err := node.Map().Get("services")
+
+	if err != nil {
+		return err
+	}
+
+	if service.Kind() != automerge.KindMap {
+		return fmt.Errorf("AddService: services property does not exist in node")
+	}
+
+	return service.Map().Set(key, value)
+}
+
+func (m *CrdtMeshManager) RemoveService(nodeId, key string) error {
+	node, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil || node.Kind() != automerge.KindMap {
+		return fmt.Errorf("RemoveService: node %s does not exist", nodeId)
+	}
+
+	service, err := node.Map().Get("services")
+
+	if err != nil {
+		return err
+	}
+
+	if service.Kind() != automerge.KindMap {
+		return fmt.Errorf("services property does not exist")
+	}
+
+	err = service.Map().Delete(key)
+
+	if err != nil {
+		return fmt.Errorf("service %s does not exist", key)
+	}
+
+	return nil
 }
 
 // AddRoutes: adds routes to the specific nodeId
@@ -336,6 +402,20 @@ func (m *MeshNodeCrdt) GetIdentifier() string {
 	return strings.Join(constituents, ":")
 }
 
+func (m *MeshNodeCrdt) GetAlias() string {
+	return m.Alias
+}
+
+func (m *MeshNodeCrdt) GetServices() map[string]string {
+	services := make(map[string]string)
+
+	for key, service := range m.Services {
+		services[key] = service
+	}
+
+	return services
+}
+
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 	nodes := make(map[string]mesh.MeshNode)
 
@@ -348,6 +428,8 @@ func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 			Timestamp:    node.Timestamp,
 			Routes:       node.Routes,
 			Description:  node.Description,
+			Alias:        node.Alias,
+			Services:     node.GetServices(),
 		}
 	}
 

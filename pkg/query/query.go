@@ -24,13 +24,15 @@ type QueryError struct {
 }
 
 type QueryNode struct {
-	HostEndpoint string   `json:"hostEndpoint"`
-	PublicKey    string   `json:"publicKey"`
-	WgEndpoint   string   `json:"wgEndpoint"`
-	WgHost       string   `json:"wgHost"`
-	Timestamp    int64    `json:"timestmap"`
-	Description  string   `json:"description"`
-	Routes       []string `json:"routes"`
+	HostEndpoint string            `json:"hostEndpoint"`
+	PublicKey    string            `json:"publicKey"`
+	WgEndpoint   string            `json:"wgEndpoint"`
+	WgHost       string            `json:"wgHost"`
+	Timestamp    int64             `json:"timestmap"`
+	Description  string            `json:"description"`
+	Routes       []string          `json:"routes"`
+	Alias        string            `json:"alias"`
+	Services     map[string]string `json:"services"`
 }
 
 func (m *QueryError) Error() string {
@@ -76,6 +78,9 @@ func meshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	queryNode.Timestamp = node.GetTimeStamp()
 	queryNode.Routes = node.GetRoutes()
 	queryNode.Description = node.GetDescription()
+	queryNode.Alias = node.GetAlias()
+	queryNode.Services = node.GetServices()
+
 	return queryNode
 }
 

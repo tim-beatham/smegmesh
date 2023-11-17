@@ -4,6 +4,7 @@ package mesh
 
 import (
 	"net"
+	"slices"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -28,6 +29,51 @@ type MeshNode interface {
 	GetIdentifier() string
 	// GetDescription: returns the description for this node
 	GetDescription() string
+	// GetAlias: associates the node with an alias. Potentially used
+	// for DNS and so forth.
+	GetAlias() string
+	// GetServices: returns a list of services offered by the node
+	GetServices() map[string]string
+}
+
+// NodeEquals: determines if two mesh nodes are equivalent to one another
+func NodeEquals(node1, node2 MeshNode) bool {
+	if node1.GetHostEndpoint() != node2.GetHostEndpoint() {
+		return false
+	}
+
+	node1Pub, _ := node1.GetPublicKey()
+	node2Pub, _ := node2.GetPublicKey()
+
+	if node1Pub != node2Pub {
+		return false
+	}
+
+	if node1.GetWgEndpoint() != node2.GetWgEndpoint() {
+		return false
+	}
+
+	if node1.GetWgHost() != node2.GetWgHost() {
+		return false
+	}
+
+	if !slices.Equal(node1.GetRoutes(), node2.GetRoutes()) {
+		return false
+	}
+
+	if node1.GetIdentifier() != node2.GetIdentifier() {
+		return false
+	}
+
+	if node1.GetDescription() != node2.GetDescription() {
+		return false
+	}
+
+	if node1.GetAlias() != node2.GetAlias() {
+		return false
+	}
+
+	return true
 }
 
 type MeshSnapshot interface {
@@ -70,6 +116,12 @@ type MeshProvider interface {
 	GetSyncer() MeshSyncer
 	// SetDescription: sets the description of this automerge data type
 	SetDescription(nodeId string, description string) error
+	// SetAlias: set the alias of the nodeId
+	SetAlias(nodeId string, alias string) error
+	// AddService: adds the service to the given node
+	AddService(nodeId, key, value string) error
+	// RemoveService: removes the service form the node. throws an error if the service does not exist
+	RemoveService(nodeId, key string) error
 	// Prune: prunes all nodes that have not updated their timestamp in
 	// pruneAmount seconds
 	Prune(pruneAmount int) error

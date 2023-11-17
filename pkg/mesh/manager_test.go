@@ -22,7 +22,7 @@ func getMeshConfiguration() *conf.WgMeshConfiguration {
 	}
 }
 
-func getMeshManager() *MeshManagerImpl {
+func getMeshManager() MeshManager {
 	manager := NewMeshManager(&NewMeshManagerParams{
 		Conf:                 *getMeshConfiguration(),
 		Client:               nil,
@@ -51,7 +51,7 @@ func TestCreateMeshCreatesANewMeshProvider(t *testing.T) {
 		t.Fatal(`meshId should not be empty`)
 	}
 
-	_, exists := manager.Meshes[meshId]
+	_, exists := manager.GetMeshes()[meshId]
 
 	if !exists {
 		t.Fatal(`mesh was not created when it should be`)
@@ -190,7 +190,7 @@ func TestLeaveMeshDeletesMesh(t *testing.T) {
 		t.Fatalf("%s", err.Error())
 	}
 
-	_, exists := manager.Meshes[meshId]
+	_, exists := manager.GetMeshes()[meshId]
 
 	if exists {
 		t.Fatalf(`expected mesh to have been deleted`)

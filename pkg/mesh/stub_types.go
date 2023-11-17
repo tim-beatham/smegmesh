@@ -21,6 +21,16 @@ type MeshNodeStub struct {
 	description  string
 }
 
+// GetServices implements MeshNode.
+func (*MeshNodeStub) GetServices() map[string]string {
+	return make(map[string]string)
+}
+
+// GetAlias implements MeshNode.
+func (*MeshNodeStub) GetAlias() string {
+	return ""
+}
+
 func (m *MeshNodeStub) GetHostEndpoint() string {
 	return m.hostEndpoint
 }
@@ -64,6 +74,21 @@ func (s *MeshSnapshotStub) GetNodes() map[string]MeshNode {
 type MeshProviderStub struct {
 	meshId   string
 	snapshot *MeshSnapshotStub
+}
+
+// AddService implements MeshProvider.
+func (*MeshProviderStub) AddService(nodeId string, key string, value string) error {
+	panic("unimplemented")
+}
+
+// RemoveService implements MeshProvider.
+func (*MeshProviderStub) RemoveService(nodeId string, key string) error {
+	panic("unimplemented")
+}
+
+// SetAlias implements MeshProvider.
+func (*MeshProviderStub) SetAlias(nodeId string, alias string) error {
+	panic("unimplemented")
 }
 
 // RemoveRoutes implements MeshProvider.
@@ -169,6 +194,26 @@ func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
 
 type MeshManagerStub struct {
 	meshes map[string]MeshProvider
+}
+
+// RemoveService implements MeshManager.
+func (*MeshManagerStub) RemoveService(service string) error {
+	panic("unimplemented")
+}
+
+// SetService implements MeshManager.
+func (*MeshManagerStub) SetService(service string, value string) error {
+	panic("unimplemented")
+}
+
+// GetMonitor implements MeshManager.
+func (*MeshManagerStub) GetMonitor() MeshMonitor {
+	panic("unimplemented")
+}
+
+// SetAlias implements MeshManager.
+func (*MeshManagerStub) SetAlias(alias string) error {
+	panic("unimplemented")
 }
 
 // Close implements MeshManager.

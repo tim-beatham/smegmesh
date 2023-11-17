@@ -171,6 +171,51 @@ func putDescription(client *ipcRpc.Client, description string) {
 	fmt.Println(reply)
 }
 
+// putAlias: puts an alias for the node
+func putAlias(client *ipcRpc.Client, alias string) {
+	var reply string
+
+	err := client.Call("IpcHandler.PutAlias", &alias, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
+func setService(client *ipcRpc.Client, service, value string) {
+	var reply string
+
+	serviceArgs := &ipc.PutServiceArgs{
+		Service: service,
+		Value:   value,
+	}
+
+	err := client.Call("IpcHandler.PutService", serviceArgs, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
+func deleteService(client *ipcRpc.Client, service string) {
+	var reply string
+
+	err := client.Call("IpcHandler.PutService", &service, &reply)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(reply)
+}
+
 func main() {
 	parser := argparse.NewParser("wg-mesh",
 		"wg-mesh Manipulate WireGuard meshes")
@@ -184,6 +229,9 @@ func main() {
 	leaveMeshCmd := parser.NewCommand("leave-mesh", "Leave a mesh network")
 	queryMeshCmd := parser.NewCommand("query-mesh", "Query a mesh network using JMESPath")
 	putDescriptionCmd := parser.NewCommand("put-description", "Place a description for the node")
+	putAliasCmd := parser.NewCommand("put-alias", "Place an alias for the node")
+	setServiceCmd := parser.NewCommand("set-service", "Place a service into your advertisements")
+	deleteServiceCmd := parser.NewCommand("delete-service", "Remove a service from your advertisements")
 
 	var newMeshIfName *string = newMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
 	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
@@ -195,8 +243,6 @@ func main() {
 	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
 	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{})
 
-	// var getMeshId *string = getMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
-
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
 
 	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
@@ -207,6 +253,13 @@ func main() {
 	var queryMeshQuery *string = queryMeshCmd.String("q", "query", &argparse.Options{Required: true})
 
 	var description *string = putDescriptionCmd.String("d", "description", &argparse.Options{Required: true})
+
+	var alias *string = putAliasCmd.String("a", "alias", &argparse.Options{Required: true})
+
+	var serviceKey *string = setServiceCmd.String("s", "service", &argparse.Options{Required: true})
+	var serviceValue *string = setServiceCmd.String("v", "value", &argparse.Options{Required: true})
+
+	var deleteServiceKey *string = deleteServiceCmd.String("s", "service", &argparse.Options{Required: true})
 
 	err := parser.Parse(os.Args)
 
@@ -245,10 +298,6 @@ func main() {
 		}))
 	}
 
-	// if getMeshCmd.Happened() {
-	// getMesh(client, *getMeshId)
-	// }
-
 	if getGraphCmd.Happened() {
 		getGraph(client, *getGraphMeshId)
 	}
@@ -267,5 +316,17 @@ func main() {
 
 	if putDescriptionCmd.Happened() {
 		putDescription(client, *description)
+	}
+
+	if putAliasCmd.Happened() {
+		putAlias(client, *alias)
+	}
+
+	if setServiceCmd.Happened() {
+		setService(client, *serviceKey, *serviceValue)
+	}
+
+	if deleteServiceCmd.Happened() {
+		deleteService(client, *deleteServiceKey)
 	}
 }

@@ -117,6 +117,11 @@ func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 
 func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	mesh := n.Server.GetMeshManager().GetMesh(meshId)
+
+	if mesh == nil {
+		return fmt.Errorf("mesh %s does not exist", meshId)
+	}
+
 	meshSnapshot, err := mesh.GetMesh()
 
 	if err != nil {
@@ -145,6 +150,8 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 			Timestamp:    node.GetTimeStamp(),
 			Routes:       node.GetRoutes(),
 			Description:  node.GetDescription(),
+			Alias:        node.GetAlias(),
+			Services:     node.GetServices(),
 		}
 
 		nodes[i] = node
@@ -199,6 +206,39 @@ func (n *IpcHandler) PutDescription(description string, reply *string) error {
 	}
 
 	*reply = fmt.Sprintf("Set description to %s", description)
+	return nil
+}
+
+func (n *IpcHandler) PutAlias(alias string, reply *string) error {
+	err := n.Server.GetMeshManager().SetAlias(alias)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = fmt.Sprintf("Set alias to %s", alias)
+	return nil
+}
+
+func (n *IpcHandler) PutService(service ipc.PutServiceArgs, reply *string) error {
+	err := n.Server.GetMeshManager().SetService(service.Service, service.Value)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = "success"
+	return nil
+}
+
+func (n *IpcHandler) DeleteService(service string, reply *string) error {
+	err := n.Server.GetMeshManager().RemoveService(service)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = "success"
 	return nil
 }
 

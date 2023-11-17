@@ -35,7 +35,9 @@ func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNod
 		WgHost:       fmt.Sprintf("%s/128", params.NodeIP.String()),
 		// Always set the routes as empty.
 		// Routes handled by external component
-		Routes: map[string]interface{}{},
+		Routes:      map[string]interface{}{},
+		Description: "",
+		Alias:       "",
 	}
 }
 

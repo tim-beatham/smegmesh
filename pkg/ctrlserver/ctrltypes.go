@@ -18,6 +18,8 @@ type MeshNode struct {
 	Timestamp    int64
 	Routes       []string
 	Description  string
+	Alias        string
+	Services     map[string]string
 }
 
 // Represents a WireGuard Mesh

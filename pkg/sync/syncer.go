@@ -30,16 +30,16 @@ type SyncerImpl struct {
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
+	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
+		logging.Log.WriteInfof("No changes for %s", meshId)
+		return nil
+	}
+
 	logging.Log.WriteInfof("UPDATING WG CONF")
 	err := s.manager.ApplyConfig()
 
 	if err != nil {
 		logging.Log.WriteInfof("Failed to update config %w", err)
-	}
-
-	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
-		logging.Log.WriteInfof("No changes for %s", meshId)
-		return nil
 	}
 
 	theMesh := s.manager.GetMesh(meshId)
@@ -48,12 +48,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		return errors.New("the provided mesh does not exist")
 	}
 
-	snapshot, err := theMesh.GetMesh()
-
-	if err != nil {
-		return err
-	}
-
+	snapshot, _ := theMesh.GetMesh()
 	nodes := snapshot.GetNodes()
 
 	if len(nodes) <= 1 {
@@ -107,16 +102,19 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	waitGroup.Wait()
 
 	s.syncCount++
-	logging.Log.WriteInfof("SYNC TIME: %v", time.Now().Sub(before))
+	logging.Log.WriteInfof("SYNC TIME: %v", time.Since(before))
 	logging.Log.WriteInfof("SYNC COUNT: %d", s.syncCount)
 
 	s.infectionCount = ((s.conf.InfectionCount + s.infectionCount - 1) % s.conf.InfectionCount)
-	return nil
+
+	// Check if any changes have occurred and trigger callbacks
+	// if changes have occurred.
+	return s.manager.GetMonitor().Trigger()
 }
 
 // SyncMeshes: Sync all meshes
 func (s *SyncerImpl) SyncMeshes() error {
-	for meshId, _ := range s.manager.GetMeshes() {
+	for meshId := range s.manager.GetMeshes() {
 		err := s.Sync(meshId)
 
 		if err != nil {
