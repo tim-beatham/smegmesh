@@ -202,6 +202,17 @@ func (n *IpcHandler) PutDescription(description string, reply *string) error {
 	return nil
 }
 
+func (n *IpcHandler) PutAlias(alias string, reply *string) error {
+	err := n.Server.GetMeshManager().SetAlias(alias)
+
+	if err != nil {
+		return err
+	}
+
+	*reply = fmt.Sprintf("Set alias to %s", alias)
+	return nil
+}
+
 type RobinIpcParams struct {
 	CtrlServer ctrlserver.CtrlServer
 }

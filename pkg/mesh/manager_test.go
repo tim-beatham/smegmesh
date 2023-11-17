@@ -22,7 +22,7 @@ func getMeshConfiguration() *conf.WgMeshConfiguration {
 	}
 }
 
-func getMeshManager() *MeshManagerImpl {
+func getMeshManager() MeshManager {
 	manager := NewMeshManager(&NewMeshManagerParams{
 		Conf:                 *getMeshConfiguration(),
 		Client:               nil,

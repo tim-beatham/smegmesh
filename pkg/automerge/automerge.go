@@ -178,6 +178,26 @@ func (m *CrdtMeshManager) SetDescription(nodeId string, description string) erro
 	return err
 }
 
+func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
+	node, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil {
+		return err
+	}
+
+	if node.Kind() != automerge.KindMap {
+		return fmt.Errorf("%s does not exist", nodeId)
+	}
+
+	err = node.Map().Set("alias", alias)
+
+	if err == nil {
+		logging.Log.WriteInfof("Updated Alias for %s to %s", nodeId, alias)
+	}
+
+	return err
+}
+
 // AddRoutes: adds routes to the specific nodeId
 func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
@@ -336,6 +356,10 @@ func (m *MeshNodeCrdt) GetIdentifier() string {
 	return strings.Join(constituents, ":")
 }
 
+func (m *MeshNodeCrdt) GetAlias() string {
+	return m.Alias
+}
+
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 	nodes := make(map[string]mesh.MeshNode)
 
@@ -348,6 +372,7 @@ func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 			Timestamp:    node.Timestamp,
 			Routes:       node.Routes,
 			Description:  node.Description,
+			Alias:        node.Alias,
 		}
 	}
 

@@ -30,16 +30,16 @@ type SyncerImpl struct {
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
+	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
+		logging.Log.WriteInfof("No changes for %s", meshId)
+		return nil
+	}
+
 	logging.Log.WriteInfof("UPDATING WG CONF")
 	err := s.manager.ApplyConfig()
 
 	if err != nil {
 		logging.Log.WriteInfof("Failed to update config %w", err)
-	}
-
-	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
-		logging.Log.WriteInfof("No changes for %s", meshId)
-		return nil
 	}
 
 	theMesh := s.manager.GetMesh(meshId)
@@ -49,6 +49,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	}
 
 	snapshot, err := theMesh.GetMesh()
+
+	s.manager.GetMonitor().Trigger(meshId, snapshot)
 
 	if err != nil {
 		return err
@@ -111,6 +113,14 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	logging.Log.WriteInfof("SYNC COUNT: %d", s.syncCount)
 
 	s.infectionCount = ((s.conf.InfectionCount + s.infectionCount - 1) % s.conf.InfectionCount)
+
+	newMesh := s.manager.GetMesh(meshId)
+	snapshot, err = newMesh.GetMesh()
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

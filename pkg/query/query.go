@@ -31,6 +31,7 @@ type QueryNode struct {
 	Timestamp    int64    `json:"timestmap"`
 	Description  string   `json:"description"`
 	Routes       []string `json:"routes"`
+	Alias        string   `json:"alias"`
 }
 
 func (m *QueryError) Error() string {
@@ -76,6 +77,8 @@ func meshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	queryNode.Timestamp = node.GetTimeStamp()
 	queryNode.Routes = node.GetRoutes()
 	queryNode.Description = node.GetDescription()
+	queryNode.Alias = node.GetAlias()
+
 	return queryNode
 }
 

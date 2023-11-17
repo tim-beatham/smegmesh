@@ -57,6 +57,7 @@ type MeshIpc interface {
 	GetDOT(meshId string, reply *string) error
 	Query(query QueryMesh, reply *string) error
 	PutDescription(description string, reply *string) error
+	PutAlias(alias string, reply *string) error
 }
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"

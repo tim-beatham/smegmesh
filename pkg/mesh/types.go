@@ -28,6 +28,9 @@ type MeshNode interface {
 	GetIdentifier() string
 	// GetDescription: returns the description for this node
 	GetDescription() string
+	// GetAlias: associates the node with an alias. Potentially used
+	// for DNS and so forth.
+	GetAlias() string
 }
 
 type MeshSnapshot interface {
@@ -70,6 +73,8 @@ type MeshProvider interface {
 	GetSyncer() MeshSyncer
 	// SetDescription: sets the description of this automerge data type
 	SetDescription(nodeId string, description string) error
+	// SetAlias: set the alias of the nodeId
+	SetAlias(nodeId string, alias string) error
 	// Prune: prunes all nodes that have not updated their timestamp in
 	// pruneAmount seconds
 	Prune(pruneAmount int) error

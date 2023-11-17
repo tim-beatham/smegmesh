@@ -25,11 +25,13 @@ type MeshManager interface {
 	GetSelf(meshId string) (MeshNode, error)
 	ApplyConfig() error
 	SetDescription(description string) error
+	SetAlias(alias string) error
 	UpdateTimeStamp() error
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
 	Prune() error
 	Close() error
+	GetMonitor() MeshMonitor
 }
 
 type MeshManagerImpl struct {
@@ -46,6 +48,12 @@ type MeshManagerImpl struct {
 	idGenerator          lib.IdGenerator
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
+	Monitor              MeshMonitor
+}
+
+// GetMonitor implements MeshManager.
+func (m *MeshManagerImpl) GetMonitor() MeshMonitor {
+	return m.Monitor
 }
 
 // Prune implements MeshManager.
@@ -296,6 +304,18 @@ func (s *MeshManagerImpl) SetDescription(description string) error {
 	return nil
 }
 
+// SetAlias implements MeshManager.
+func (s *MeshManagerImpl) SetAlias(alias string) error {
+	for _, mesh := range s.Meshes {
+		err := mesh.SetAlias(s.HostParameters.HostEndpoint, alias)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UpdateTimeStamp updates the timestamp of this node in all meshes
 func (s *MeshManagerImpl) UpdateTimeStamp() error {
 	for _, mesh := range s.Meshes {
@@ -359,7 +379,7 @@ type NewMeshManagerParams struct {
 }
 
 // Creates a new instance of a mesh manager with the given parameters
-func NewMeshManager(params *NewMeshManagerParams) *MeshManagerImpl {
+func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	hostParams := HostParameters{}
 
 	switch params.Conf.Endpoint {
@@ -390,5 +410,8 @@ func NewMeshManager(params *NewMeshManagerParams) *MeshManagerImpl {
 	m.idGenerator = params.IdGenerator
 	m.ipAllocator = params.IPAllocator
 	m.interfaceManipulator = params.InterfaceManipulator
+
+	m.Monitor = NewMeshMonitor()
+	m.Monitor.AddCallback(AddAliases)
 	return m
 }
