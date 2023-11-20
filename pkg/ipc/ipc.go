@@ -11,8 +11,6 @@ import (
 )
 
 type NewMeshArgs struct {
-	// IfName is the interface that the mesh instance will run on
-	IfName string
 	// WgPort is the WireGuard port to expose
 	WgPort int
 	// Endpoint is the routable alias of the machine. Can be an IP
@@ -25,8 +23,6 @@ type JoinMeshArgs struct {
 	MeshId string
 	// IpAddress is a routable IP in another mesh
 	IpAdress string
-	// IfName is the interface name of the mesh
-	IfName string
 	// Port is the WireGuard port to expose
 	Port int
 	// Endpoint is the routable address of this machine. If not provided

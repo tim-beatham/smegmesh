@@ -18,13 +18,11 @@ type SmegMesh struct {
 }
 
 type CreateMeshRequest struct {
-	IfName string `json:"ifName" binding:"required"`
-	WgPort int    `json:"port" binding:"required,gte=1024,lt=65535"`
+	WgPort int `json:"port" binding:"gte=1024,lt=65535"`
 }
 
 type JoinMeshRequest struct {
-	IfName    string `json:"ifName" binding:"required"`
-	WgPort    int    `json:"port" binding:"required,gte=1024,lt=65535"`
+	WgPort    int    `json:"port" binding:"gte=1024,lt=65535"`
 	Bootstrap string `json:"bootstrap" binding:"required"`
 	MeshId    string `json:"meshid" binding:"required"`
 }

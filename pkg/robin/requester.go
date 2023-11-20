@@ -20,7 +20,7 @@ type IpcHandler struct {
 }
 
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
-	meshId, err := n.Server.GetMeshManager().CreateMesh(args.IfName, args.WgPort)
+	meshId, err := n.Server.GetMeshManager().CreateMesh(args.WgPort)
 
 	if err != nil {
 		return err
@@ -83,7 +83,6 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 	err = n.Server.GetMeshManager().AddMesh(&mesh.AddMeshParams{
 		MeshId:    args.MeshId,
-		DevName:   args.IfName,
 		WgPort:    args.Port,
 		MeshBytes: meshReply.Mesh,
 	})

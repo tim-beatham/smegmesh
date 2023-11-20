@@ -250,7 +250,7 @@ func NewMeshManagerStub() MeshManager {
 	return &MeshManagerStub{meshes: make(map[string]MeshProvider)}
 }
 
-func (m *MeshManagerStub) CreateMesh(devName string, port int) (string, error) {
+func (m *MeshManagerStub) CreateMesh(port int) (string, error) {
 	return "tim123", nil
 }
 

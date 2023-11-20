@@ -16,7 +16,6 @@ const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 type CreateMeshParams struct {
 	Client   *ipcRpc.Client
-	IfName   string
 	WgPort   int
 	Endpoint string
 }
@@ -24,7 +23,6 @@ type CreateMeshParams struct {
 func createMesh(args *CreateMeshParams) string {
 	var reply string
 	newMeshParams := ipc.NewMeshArgs{
-		IfName:   args.IfName,
 		WgPort:   args.WgPort,
 		Endpoint: args.Endpoint,
 	}
@@ -68,7 +66,6 @@ func joinMesh(params *JoinMeshParams) string {
 	args := ipc.JoinMeshArgs{
 		MeshId:   params.MeshId,
 		IpAdress: params.IpAddress,
-		IfName:   params.IfName,
 		Port:     params.WgPort,
 	}
 
@@ -251,14 +248,12 @@ func main() {
 	deleteServiceCmd := parser.NewCommand("delete-service", "Remove a service from your advertisements")
 	getNodeCmd := parser.NewCommand("get-node", "Get a specific node from the mesh")
 
-	var newMeshIfName *string = newMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
-	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
+	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{})
 	var newMeshEndpoint *string = newMeshCmd.String("e", "endpoint", &argparse.Options{})
 
 	var joinMeshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var joinMeshIpAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
-	var joinMeshIfName *string = joinMeshCmd.String("f", "ifname", &argparse.Options{Required: true})
-	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{Required: true})
+	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{})
 	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{})
 
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
@@ -298,7 +293,6 @@ func main() {
 	if newMeshCmd.Happened() {
 		fmt.Println(createMesh(&CreateMeshParams{
 			Client:   client,
-			IfName:   *newMeshIfName,
 			WgPort:   *newMeshPort,
 			Endpoint: *newMeshEndpoint,
 		}))
@@ -311,7 +305,6 @@ func main() {
 	if joinMeshCmd.Happened() {
 		fmt.Println(joinMesh(&JoinMeshParams{
 			Client:    client,
-			IfName:    *joinMeshIfName,
 			WgPort:    *joinMeshPort,
 			IpAddress: *joinMeshIpAddress,
 			MeshId:    *joinMeshId,
