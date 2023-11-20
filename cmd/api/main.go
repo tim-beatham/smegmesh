@@ -13,5 +13,5 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	apiServer.Run(":40000")
+	apiServer.Run(":8080")
 }
