@@ -1,6 +1,9 @@
 package wg
 
 import (
+	"crypto"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/tim-beatham/wgmesh/pkg/lib"
@@ -13,40 +16,54 @@ type WgInterfaceManipulatorImpl struct {
 	client *wgctrl.Client
 }
 
+const hashLength = 6
+
 // CreateInterface creates a WireGuard interface
-func (m *WgInterfaceManipulatorImpl) CreateInterface(params *CreateInterfaceParams) error {
+func (m *WgInterfaceManipulatorImpl) CreateInterface(port int) (string, error) {
 	rtnl, err := lib.NewRtNetlinkConfig()
 
 	if err != nil {
-		return fmt.Errorf("failed to access link: %w", err)
+		return "", fmt.Errorf("failed to access link: %w", err)
 	}
 	defer rtnl.Close()
 
-	err = rtnl.CreateLink(params.IfName)
+	randomBuf := make([]byte, 32)
+	_, err = rand.Read(randomBuf)
 
 	if err != nil {
-		return fmt.Errorf("failed to create link: %w", err)
+		return "", err
+	}
+
+	md5 := crypto.MD5.New().Sum(randomBuf)
+
+	md5Str := fmt.Sprintf("wg%s", base64.StdEncoding.EncodeToString(md5)[:hashLength])
+
+	err = rtnl.CreateLink(md5Str)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to create link: %w", err)
 	}
 
 	privateKey, err := wgtypes.GeneratePrivateKey()
 
 	if err != nil {
-		return fmt.Errorf("failed to create private key: %w", err)
+		return "", fmt.Errorf("failed to create private key: %w", err)
 	}
 
 	var cfg wgtypes.Config = wgtypes.Config{
 		PrivateKey: &privateKey,
-		ListenPort: &params.Port,
+		ListenPort: &port,
 	}
 
-	err = m.client.ConfigureDevice(params.IfName, cfg)
+	err = m.client.ConfigureDevice(md5Str, cfg)
 
 	if err != nil {
-		return fmt.Errorf("failed to configure dev: %w", err)
+		m.RemoveInterface(md5Str)
+		return "", fmt.Errorf("failed to configure dev: %w", err)
 	}
 
-	logging.Log.WriteInfof("ip link set up dev %s type wireguard", params.IfName)
-	return nil
+	logging.Log.WriteInfof("ip link set up dev %s type wireguard", md5Str)
+	return md5Str, nil
 }
 
 // Add an address to the given interface

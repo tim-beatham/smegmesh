@@ -62,11 +62,11 @@ func (s *SmegServer) CreateMesh(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, &gin.H{
 			"error": err.Error(),
 		})
+
 		return
 	}
 
 	ipcRequest := ipc.NewMeshArgs{
-		IfName: createMesh.IfName,
 		WgPort: createMesh.WgPort,
 	}
 
@@ -100,7 +100,6 @@ func (s *SmegServer) JoinMesh(c *gin.Context) {
 	ipcRequest := ipc.JoinMeshArgs{
 		MeshId:   joinMesh.MeshId,
 		IpAdress: joinMesh.Bootstrap,
-		IfName:   joinMesh.IfName,
 		Port:     joinMesh.WgPort,
 	}
 

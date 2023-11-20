@@ -2,7 +2,7 @@ package wg
 
 type WgInterfaceManipulatorStub struct{}
 
-func (i *WgInterfaceManipulatorStub) CreateInterface(params *CreateInterfaceParams) error {
+func (i *WgInterfaceManipulatorStub) CreateInterface(port int) error {
 	return nil
 }
 

@@ -14,7 +14,7 @@ import (
 )
 
 type MeshManager interface {
-	CreateMesh(devName string, port int) (string, error)
+	CreateMesh(port int) (string, error)
 	AddMesh(params *AddMeshParams) error
 	HasChanges(meshid string) bool
 	GetMesh(meshId string) MeshProvider
@@ -115,15 +115,25 @@ func (m *MeshManagerImpl) Prune() error {
 }
 
 // CreateMesh: Creates a new mesh, stores it and returns the mesh id
-func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
+func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 	meshId, err := m.idGenerator.GetId()
+
+	var ifName string = ""
 
 	if err != nil {
 		return "", err
 	}
 
+	if !m.conf.StubWg {
+		ifName, err = m.interfaceManipulator.CreateInterface(port)
+
+		if err != nil {
+			return "", fmt.Errorf("error creating mesh: %w", err)
+		}
+	}
+
 	nodeManager, err := m.meshProviderFactory.CreateMesh(&MeshProviderFactoryParams{
-		DevName: devName,
+		DevName: ifName,
 		Port:    port,
 		Conf:    m.conf,
 		Client:  m.Client,
@@ -134,32 +144,31 @@ func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 		return "", fmt.Errorf("error creating mesh: %w", err)
 	}
 
-	if !m.conf.StubWg {
-		err = m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
-			IfName: devName,
-			Port:   port,
-		})
-
-		if err != nil {
-			return "", fmt.Errorf("error creating mesh: %w", err)
-		}
-	}
-
 	m.Meshes[meshId] = nodeManager
 	return meshId, nil
 }
 
 type AddMeshParams struct {
 	MeshId    string
-	DevName   string
 	WgPort    int
 	MeshBytes []byte
 }
 
 // AddMesh: Add the mesh to the list of meshes
 func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
+	var ifName string
+	var err error
+
+	if !m.conf.StubWg {
+		ifName, err = m.interfaceManipulator.CreateInterface(params.WgPort)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	meshProvider, err := m.meshProviderFactory.CreateMesh(&MeshProviderFactoryParams{
-		DevName: params.DevName,
+		DevName: ifName,
 		Port:    params.WgPort,
 		Conf:    m.conf,
 		Client:  m.Client,
@@ -177,14 +186,6 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 	}
 
 	m.Meshes[params.MeshId] = meshProvider
-
-	if !m.conf.StubWg {
-		return m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
-			IfName: params.DevName,
-			Port:   params.WgPort,
-		})
-	}
-
 	return nil
 }
 
