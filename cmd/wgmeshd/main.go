@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 
@@ -35,6 +36,12 @@ func main() {
 		return
 	}
 
+	if conf.Profile {
+		go func() {
+			http.ListenAndServe("localhost:6060", nil)
+		}()
+	}
+
 	var robinRpc robin.WgRpc
 	var robinIpc robin.IpcHandler
 	var syncProvider sync.SyncServiceImpl
@@ -65,7 +72,7 @@ func main() {
 		return
 	}
 
-	log.Println("Running IPC Handler")
+	logging.Log.WriteInfof("Running IPC Handler")
 
 	go ipc.RunIpcHandler(&robinIpc)
 	go syncScheduler.Run()

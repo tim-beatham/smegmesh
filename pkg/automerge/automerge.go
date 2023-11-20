@@ -18,12 +18,14 @@ import (
 
 // CrdtMeshManager manages nodes in the crdt mesh
 type CrdtMeshManager struct {
-	MeshId   string
-	IfName   string
-	Client   *wgctrl.Client
-	doc      *automerge.Doc
-	LastHash automerge.ChangeHash
-	conf     *conf.WgMeshConfiguration
+	MeshId        string
+	IfName        string
+	Client        *wgctrl.Client
+	doc           *automerge.Doc
+	LastHash      automerge.ChangeHash
+	conf          *conf.WgMeshConfiguration
+	cache         *MeshCrdt
+	lastCacheHash automerge.ChangeHash
 }
 
 func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
@@ -40,9 +42,31 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
 }
 
+func (c *CrdtMeshManager) GetNodeIds() []string {
+	keys, _ := c.doc.Path("nodes").Map().Keys()
+	return keys
+}
+
 // GetMesh(): Converts the document into a struct
 func (c *CrdtMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
-	return automerge.As[*MeshCrdt](c.doc.Root())
+	changes, err := c.doc.Changes(c.lastCacheHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if c.cache == nil || len(changes) > 3 {
+		c.lastCacheHash = c.LastHash
+		cache, err := automerge.As[*MeshCrdt](c.doc.Root())
+
+		if err != nil {
+			return nil, err
+		}
+
+		c.cache = cache
+	}
+
+	return c.cache, nil
 }
 
 // GetMeshId returns the meshid of the mesh
@@ -82,12 +106,22 @@ func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, erro
 	manager.IfName = params.DevName
 	manager.Client = params.Client
 	manager.conf = &params.Conf
+	manager.cache = nil
 	return &manager, nil
 }
 
-// GetNode: returns a mesh node crdt.Close releases resources used by a Client.
-func (m *CrdtMeshManager) GetNode(endpoint string) (*MeshNodeCrdt, error) {
+// NodeExists: returns true if the node exists. Returns false
+func (m *CrdtMeshManager) NodeExists(key string) bool {
+	node, err := m.doc.Path("nodes").Map().Get(key)
+	return node.Kind() == automerge.KindMap && err != nil
+}
+
+func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {
 	node, err := m.doc.Path("nodes").Map().Get(endpoint)
+
+	if node.Kind() != automerge.KindMap {
+		return nil, fmt.Errorf("GetNode: something went wrong %s is not a map type")
+	}
 
 	if err != nil {
 		return nil, err

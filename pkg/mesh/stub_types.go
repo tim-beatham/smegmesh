@@ -76,6 +76,21 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
+// GetNodeIds implements MeshProvider.
+func (*MeshProviderStub) GetNodeIds() []string {
+	panic("unimplemented")
+}
+
+// GetNode implements MeshProvider.
+func (*MeshProviderStub) GetNode(string) (MeshNode, error) {
+	panic("unimplemented")
+}
+
+// NodeExists implements MeshProvider.
+func (*MeshProviderStub) NodeExists(string) bool {
+	panic("unimplemented")
+}
+
 // AddService implements MeshProvider.
 func (*MeshProviderStub) AddService(nodeId string, key string, value string) error {
 	panic("unimplemented")
@@ -194,6 +209,11 @@ func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
 
 type MeshManagerStub struct {
 	meshes map[string]MeshProvider
+}
+
+// GetNode implements MeshManager.
+func (*MeshManagerStub) GetNode(string, string) MeshNode {
+	panic("unimplemented")
 }
 
 // RemoveService implements MeshManager.

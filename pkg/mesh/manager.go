@@ -34,6 +34,7 @@ type MeshManager interface {
 	Prune() error
 	Close() error
 	GetMonitor() MeshMonitor
+	GetNode(string, string) MeshNode
 }
 
 type MeshManagerImpl struct {
@@ -79,6 +80,22 @@ func (m *MeshManagerImpl) SetService(service string, value string) error {
 	return nil
 }
 
+func (m *MeshManagerImpl) GetNode(meshid, nodeId string) MeshNode {
+	mesh, ok := m.Meshes[meshid]
+
+	if !ok {
+		return nil
+	}
+
+	node, err := mesh.GetNode(nodeId)
+
+	if err != nil {
+		return nil
+	}
+
+	return node
+}
+
 // GetMonitor implements MeshManager.
 func (m *MeshManagerImpl) GetMonitor() MeshMonitor {
 	return m.Monitor
@@ -117,13 +134,15 @@ func (m *MeshManagerImpl) CreateMesh(devName string, port int) (string, error) {
 		return "", fmt.Errorf("error creating mesh: %w", err)
 	}
 
-	err = m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
-		IfName: devName,
-		Port:   port,
-	})
+	if !m.conf.StubWg {
+		err = m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
+			IfName: devName,
+			Port:   port,
+		})
 
-	if err != nil {
-		return "", fmt.Errorf("error creating mesh: %w", err)
+		if err != nil {
+			return "", fmt.Errorf("error creating mesh: %w", err)
+		}
 	}
 
 	m.Meshes[meshId] = nodeManager
@@ -159,10 +178,14 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 
 	m.Meshes[params.MeshId] = meshProvider
 
-	return m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
-		IfName: params.DevName,
-		Port:   params.WgPort,
-	})
+	if !m.conf.StubWg {
+		return m.interfaceManipulator.CreateInterface(&wg.CreateInterfaceParams{
+			IfName: params.DevName,
+			Port:   params.WgPort,
+		})
+	}
+
+	return nil
 }
 
 // HasChanges returns true if the mesh has changes
@@ -195,6 +218,11 @@ func (s *MeshManagerImpl) EnableInterface(meshId string) error {
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
 func (s *MeshManagerImpl) GetPublicKey(meshId string) (*wgtypes.Key, error) {
+	if s.conf.StubWg {
+		zeroedKey := make([]byte, wgtypes.KeyLen)
+		return (*wgtypes.Key)(zeroedKey), nil
+	}
+
 	mesh, ok := s.Meshes[meshId]
 
 	if !ok {
@@ -216,7 +244,6 @@ type AddSelfParams struct {
 	// WgPort is the WireGuard port to advertise
 	WgPort int
 	// Endpoint is the alias of the machine to send routable packets
-	// to
 	Endpoint string
 }
 
@@ -247,16 +274,18 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		Endpoint:  params.Endpoint,
 	})
 
-	device, err := mesh.GetDevice()
+	if !s.conf.StubWg {
+		device, err := mesh.GetDevice()
 
-	if err != nil {
-		return fmt.Errorf("failed to get device %w", err)
-	}
+		if err != nil {
+			return fmt.Errorf("failed to get device %w", err)
+		}
 
-	err = s.interfaceManipulator.AddAddress(device.Name, fmt.Sprintf("%s/64", nodeIP))
+		err = s.interfaceManipulator.AddAddress(device.Name, fmt.Sprintf("%s/64", nodeIP))
 
-	if err != nil {
-		return fmt.Errorf("addSelf: failed to add address to dev %w", err)
+		if err != nil {
+			return fmt.Errorf("addSelf: failed to add address to dev %w", err)
+		}
 	}
 
 	s.Meshes[params.MeshId].AddNode(node)
@@ -277,13 +306,16 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 		return err
 	}
 
-	device, err := mesh.GetDevice()
+	if !s.conf.StubWg {
+		device, e := mesh.GetDevice()
 
-	if err != nil {
-		return err
+		if e != nil {
+			return err
+		}
+
+		err = s.interfaceManipulator.RemoveInterface(device.Name)
 	}
 
-	err = s.interfaceManipulator.RemoveInterface(device.Name)
 	delete(s.Meshes, meshId)
 	return err
 }
@@ -295,15 +327,9 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 		return nil, fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	snapshot, err := meshInstance.GetMesh()
+	node, err := meshInstance.GetNode(s.HostParameters.HostEndpoint)
 
 	if err != nil {
-		return nil, err
-	}
-
-	node, ok := snapshot.GetNodes()[s.HostParameters.HostEndpoint]
-
-	if !ok {
 		return nil, errors.New("the node doesn't exist in the mesh")
 	}
 
@@ -317,15 +343,17 @@ func (s *MeshManagerImpl) ApplyConfig() error {
 		return err
 	}
 
-	return s.RouteManager.InstallRoutes()
+	return nil
 }
 
 func (s *MeshManagerImpl) SetDescription(description string) error {
 	for _, mesh := range s.Meshes {
-		err := mesh.SetDescription(s.HostParameters.HostEndpoint, description)
+		if mesh.NodeExists(s.HostParameters.HostEndpoint) {
+			err := mesh.SetDescription(s.HostParameters.HostEndpoint, description)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -335,10 +363,12 @@ func (s *MeshManagerImpl) SetDescription(description string) error {
 // SetAlias implements MeshManager.
 func (s *MeshManagerImpl) SetAlias(alias string) error {
 	for _, mesh := range s.Meshes {
-		err := mesh.SetAlias(s.HostParameters.HostEndpoint, alias)
+		if mesh.NodeExists(s.HostParameters.HostEndpoint) {
+			err := mesh.SetAlias(s.HostParameters.HostEndpoint, alias)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -347,16 +377,8 @@ func (s *MeshManagerImpl) SetAlias(alias string) error {
 // UpdateTimeStamp updates the timestamp of this node in all meshes
 func (s *MeshManagerImpl) UpdateTimeStamp() error {
 	for _, mesh := range s.Meshes {
-		snapshot, err := mesh.GetMesh()
-
-		if err != nil {
-			return err
-		}
-
-		_, exists := snapshot.GetNodes()[s.HostParameters.HostEndpoint]
-
-		if exists {
-			err = mesh.UpdateTimeStamp(s.HostParameters.HostEndpoint)
+		if mesh.NodeExists(s.HostParameters.HostEndpoint) {
+			err := mesh.UpdateTimeStamp(s.HostParameters.HostEndpoint)
 
 			if err != nil {
 				return err
@@ -375,7 +397,12 @@ func (s *MeshManagerImpl) GetMeshes() map[string]MeshProvider {
 	return s.Meshes
 }
 
+// Close the mesh manager
 func (s *MeshManagerImpl) Close() error {
+	if s.conf.StubWg {
+		return nil
+	}
+
 	for _, mesh := range s.Meshes {
 		dev, err := mesh.GetDevice()
 
