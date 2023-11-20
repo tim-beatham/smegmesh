@@ -10,6 +10,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/wgmesh/pkg/what8words"
 )
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
@@ -22,11 +23,37 @@ type ApiServer interface {
 type SmegServer struct {
 	router *gin.Engine
 	client *ipcRpc.Client
+	words  *what8words.What8Words
 }
 
-func meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNode {
+func (s *SmegServer) routeToApiRoute(meshNode ctrlserver.MeshNode) []Route {
+	routes := make([]Route, len(meshNode.Routes))
+
+	for index, route := range meshNode.Routes {
+		word, err := s.words.Convert(route)
+
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		routes[index] = Route{
+			Prefix:  route,
+			RouteId: word,
+		}
+	}
+
+	return routes
+}
+
+func (s *SmegServer) meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNode {
 	if meshNode.Routes == nil {
 		meshNode.Routes = make([]string, 0)
+	}
+
+	alias := meshNode.Alias
+
+	if alias == "" {
+		alias, _ = s.words.ConvertIdentifier(meshNode.WgHost)
 	}
 
 	return &SmegNode{
@@ -35,20 +62,20 @@ func meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNode {
 		Endpoint:    meshNode.HostEndpoint,
 		Timestamp:   int(meshNode.Timestamp),
 		Description: meshNode.Description,
-		Routes:      meshNode.Routes,
+		Routes:      s.routeToApiRoute(meshNode),
 		PublicKey:   meshNode.PublicKey,
-		Alias:       meshNode.Alias,
+		Alias:       alias,
 		Services:    meshNode.Services,
 	}
 }
 
-func meshToAPIMesh(meshId string, nodes []ctrlserver.MeshNode) SmegMesh {
+func (s *SmegServer) meshToAPIMesh(meshId string, nodes []ctrlserver.MeshNode) SmegMesh {
 	var smegMesh SmegMesh
 	smegMesh.MeshId = meshId
 	smegMesh.Nodes = make(map[string]SmegNode)
 
 	for _, node := range nodes {
-		smegMesh.Nodes[node.WgHost] = *meshNodeToAPIMeshNode(node)
+		smegMesh.Nodes[node.WgHost] = *s.meshNodeToAPIMeshNode(node)
 	}
 
 	return smegMesh
@@ -138,7 +165,7 @@ func (s *SmegServer) GetMesh(c *gin.Context) {
 		return
 	}
 
-	mesh := meshToAPIMesh(meshidParam, getMeshReply.Nodes)
+	mesh := s.meshToAPIMesh(meshidParam, getMeshReply.Nodes)
 
 	c.JSON(http.StatusOK, mesh)
 }
@@ -167,7 +194,7 @@ func (s *SmegServer) GetMeshes(c *gin.Context) {
 			return
 		}
 
-		meshes = append(meshes, meshToAPIMesh(mesh, getMeshReply.Nodes))
+		meshes = append(meshes, s.meshToAPIMesh(mesh, getMeshReply.Nodes))
 	}
 
 	c.JSON(http.StatusOK, meshes)
@@ -178,8 +205,14 @@ func (s *SmegServer) Run(addr string) error {
 	return s.router.Run(addr)
 }
 
-func NewSmegServer() (ApiServer, error) {
+func NewSmegServer(conf ApiServerConf) (ApiServer, error) {
 	client, err := ipcRpc.DialHTTP("unix", SockAddr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	words, err := what8words.NewWhat8Words(conf.WordsFile)
 
 	if err != nil {
 		return nil, err
@@ -194,6 +227,7 @@ func NewSmegServer() (ApiServer, error) {
 	smegServer := &SmegServer{
 		router: router,
 		client: client,
+		words:  words,
 	}
 
 	router.GET("/meshes", smegServer.GetMeshes)

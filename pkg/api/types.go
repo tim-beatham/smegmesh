@@ -1,5 +1,10 @@
 package api
 
+type Route struct {
+	RouteId string `json:"routeId"`
+	Prefix  string `json:"prefix"`
+}
+
 type SmegNode struct {
 	Alias       string            `json:"alias"`
 	WgHost      string            `json:"wgHost"`
@@ -8,7 +13,7 @@ type SmegNode struct {
 	Timestamp   int               `json:"timestamp"`
 	Description string            `json:"description"`
 	PublicKey   string            `json:"publicKey"`
-	Routes      []string          `json:"routes"`
+	Routes      []Route           `json:"routes"`
 	Services    map[string]string `json:"services"`
 }
 
@@ -25,4 +30,8 @@ type JoinMeshRequest struct {
 	WgPort    int    `json:"port" binding:"omitempty,gte=1024,lt=65535"`
 	Bootstrap string `json:"bootstrap" binding:"required"`
 	MeshId    string `json:"meshid" binding:"required"`
+}
+
+type ApiServerConf struct {
+	WordsFile string
 }
