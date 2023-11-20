@@ -52,6 +52,11 @@ type QueryMesh struct {
 	Query  string
 }
 
+type GetNodeArgs struct {
+	NodeId string
+	MeshId string
+}
+
 type MeshIpc interface {
 	CreateMesh(args *NewMeshArgs, reply *string) error
 	ListMeshes(name string, reply *ListMeshReply) error
@@ -64,6 +69,7 @@ type MeshIpc interface {
 	PutDescription(description string, reply *string) error
 	PutAlias(alias string, reply *string) error
 	PutService(args PutServiceArgs, reply *string) error
+	GetNode(args GetNodeArgs, reply *string) error
 	DeleteService(service string, reply *string) error
 }
 

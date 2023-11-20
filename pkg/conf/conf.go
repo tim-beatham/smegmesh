@@ -49,6 +49,10 @@ type WgMeshConfiguration struct {
 	Timeout int `yaml:"timeout"`
 	// PruneTime number of seconds before we consider the 'node' as dead
 	PruneTime int `yaml:"pruneTime"`
+	// Profile whether or not to include a http server that profiles the code
+	Profile bool `yaml:"profile"`
+	// StubWg whether or not to stub the WireGuard types
+	StubWg bool `yaml:"stubWg"`
 }
 
 func ValidateConfiguration(c *WgMeshConfiguration) error {

@@ -92,7 +92,7 @@ type MeshSyncer interface {
 type MeshProvider interface {
 	// AddNode() adds a node to the mesh
 	AddNode(node MeshNode)
-	// GetMesh() returns a snapshot of the mesh provided by the mesh provider
+	// GetMesh() returns a snapshot of the mesh provided by the mesh provider.
 	GetMesh() (MeshSnapshot, error)
 	// GetMeshId() returns the ID of the mesh network
 	GetMeshId() string
@@ -114,6 +114,10 @@ type MeshProvider interface {
 	RemoveRoutes(nodeId string, route ...string) error
 	// GetSyncer: returns the automerge syncer for sync
 	GetSyncer() MeshSyncer
+	// GetNode get a particular not within the mesh
+	GetNode(string) (MeshNode, error)
+	// NodeExists: returns true if a particular node exists false otherwise
+	NodeExists(string) bool
 	// SetDescription: sets the description of this automerge data type
 	SetDescription(nodeId string, description string) error
 	// SetAlias: set the alias of the nodeId
@@ -125,6 +129,7 @@ type MeshProvider interface {
 	// Prune: prunes all nodes that have not updated their timestamp in
 	// pruneAmount seconds
 	Prune(pruneAmount int) error
+	GetNodeIds() []string
 }
 
 // HostParameters contains the IDs of a node

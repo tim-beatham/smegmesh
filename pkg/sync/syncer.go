@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"errors"
 	"math/rand"
 	"sync"
 	"time"
@@ -36,41 +35,22 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	}
 
 	logging.Log.WriteInfof("UPDATING WG CONF")
-	err := s.manager.ApplyConfig()
 
-	if err != nil {
-		logging.Log.WriteInfof("Failed to update config %w", err)
+	if s.manager.HasChanges(meshId) {
+		err := s.manager.ApplyConfig()
+
+		if err != nil {
+			logging.Log.WriteInfof("Failed to update config %w", err)
+		}
 	}
 
-	theMesh := s.manager.GetMesh(meshId)
-
-	if theMesh == nil {
-		return errors.New("the provided mesh does not exist")
-	}
-
-	snapshot, _ := theMesh.GetMesh()
-	nodes := snapshot.GetNodes()
-
-	if len(nodes) <= 1 {
-		return nil
-	}
+	nodeNames := s.manager.GetMesh(meshId).GetNodeIds()
 
 	self, err := s.manager.GetSelf(meshId)
 
 	if err != nil {
 		return err
 	}
-
-	excludedNodes := map[string]struct{}{
-		self.GetHostEndpoint(): {},
-	}
-	meshNodes := lib.MapValuesWithExclude(nodes, excludedNodes)
-
-	getNames := func(node mesh.MeshNode) string {
-		return node.GetHostEndpoint()
-	}
-
-	nodeNames := lib.Map(meshNodes, getNames)
 
 	neighbours := s.cluster.GetNeighbours(nodeNames, self.GetHostEndpoint())
 	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
@@ -81,7 +61,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	before := time.Now()
 
-	if len(meshNodes) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
+	if len(nodeNames) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
 		logging.Log.WriteInfof("Sending to random cluster")
 		interCluster := s.cluster.GetInterCluster(nodeNames, self.GetHostEndpoint())
 		randomSubset = append(randomSubset, interCluster)
@@ -109,7 +89,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	// Check if any changes have occurred and trigger callbacks
 	// if changes have occurred.
-	return s.manager.GetMonitor().Trigger()
+	// return s.manager.GetMonitor().Trigger()
+	return nil
 }
 
 // SyncMeshes: Sync all meshes

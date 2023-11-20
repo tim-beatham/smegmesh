@@ -53,7 +53,7 @@ func (j *JmesQuerier) Query(meshId, queryParams string) ([]byte, error) {
 		return nil, err
 	}
 
-	nodes := lib.Map(lib.MapValues(snapshot.GetNodes()), meshNodeToQueryNode)
+	nodes := lib.Map(lib.MapValues(snapshot.GetNodes()), MeshNodeToQueryNode)
 
 	result, err := jmespath.Search(queryParams, nodes)
 
@@ -65,7 +65,7 @@ func (j *JmesQuerier) Query(meshId, queryParams string) ([]byte, error) {
 	return bytes, err
 }
 
-func meshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
+func MeshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	queryNode := new(QueryNode)
 	queryNode.HostEndpoint = node.GetHostEndpoint()
 	pubKey, _ := node.GetPublicKey()

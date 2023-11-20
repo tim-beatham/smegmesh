@@ -2,6 +2,7 @@ package robin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
+	"github.com/tim-beatham/wgmesh/pkg/query"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
@@ -239,6 +241,27 @@ func (n *IpcHandler) DeleteService(service string, reply *string) error {
 	}
 
 	*reply = "success"
+	return nil
+}
+
+func (n *IpcHandler) GetNode(args ipc.GetNodeArgs, reply *string) error {
+	node := n.Server.GetMeshManager().GetNode(args.MeshId, args.NodeId)
+
+	if node == nil {
+		*reply = "nil"
+		return nil
+	}
+
+	queryNode := query.MeshNodeToQueryNode(node)
+
+	bytes, err := json.Marshal(queryNode)
+
+	if err != nil {
+		*reply = err.Error()
+		return nil
+	}
+
+	*reply = string(bytes)
 	return nil
 }
 
