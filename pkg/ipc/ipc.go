@@ -28,6 +28,9 @@ type JoinMeshArgs struct {
 	// Endpoint is the routable address of this machine. If not provided
 	// defaults to the default address
 	Endpoint string
+	// Client specifies whether we should join as a client of the peer
+	// we are connecting to
+	Client bool
 }
 
 type PutServiceArgs struct {

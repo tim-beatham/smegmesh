@@ -42,8 +42,29 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
 }
 
-func (c *CrdtMeshManager) GetNodeIds() []string {
+func (c *CrdtMeshManager) isPeer(nodeId string) bool {
+	node, err := c.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil || node.Kind() != automerge.KindMap {
+		return false
+	}
+
+	nodeType, err := node.Map().Get("type")
+
+	if err != nil || nodeType.Kind() != automerge.KindStr {
+		return false
+	}
+
+	return nodeType.Str() == string(conf.PEER_ROLE)
+}
+
+func (c *CrdtMeshManager) GetPeers() []string {
 	keys, _ := c.doc.Path("nodes").Map().Keys()
+
+	keys = lib.Filter(keys, func(s string) bool {
+		return c.isPeer(s)
+	})
+
 	return keys
 }
 
@@ -450,6 +471,12 @@ func (m *MeshNodeCrdt) GetServices() map[string]string {
 	return services
 }
 
+// GetType refers to the type of the node. Peer means that the node is globally accessible
+// Client means the node is only accessible through another peer
+func (n *MeshNodeCrdt) GetType() conf.NodeType {
+	return conf.NodeType(n.Type)
+}
+
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 	nodes := make(map[string]mesh.MeshNode)
 
@@ -464,6 +491,7 @@ func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 			Description:  node.Description,
 			Alias:        node.Alias,
 			Services:     node.GetServices(),
+			Type:         node.Type,
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmespath/go-jmespath"
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 )
@@ -28,11 +29,12 @@ type QueryNode struct {
 	PublicKey    string            `json:"publicKey"`
 	WgEndpoint   string            `json:"wgEndpoint"`
 	WgHost       string            `json:"wgHost"`
-	Timestamp    int64             `json:"timestmap"`
+	Timestamp    int64             `json:"timestamp"`
 	Description  string            `json:"description"`
 	Routes       []string          `json:"routes"`
 	Alias        string            `json:"alias"`
 	Services     map[string]string `json:"services"`
+	Type         conf.NodeType     `json:"type"`
 }
 
 func (m *QueryError) Error() string {
@@ -80,6 +82,7 @@ func MeshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	queryNode.Description = node.GetDescription()
 	queryNode.Alias = node.GetAlias()
 	queryNode.Services = node.GetServices()
+	queryNode.Type = node.GetType()
 
 	return queryNode
 }

@@ -4,11 +4,17 @@ package mesh
 
 import (
 	"net"
-	"slices"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+)
+
+const (
+	// Data Exchanged Between Peers
+	PEER conf.NodeType = "peer"
+	// Data Exchanged Between Clients
+	CLIENT conf.NodeType = "client"
 )
 
 // MeshNode represents an implementation of a node in a mesh
@@ -34,46 +40,12 @@ type MeshNode interface {
 	GetAlias() string
 	// GetServices: returns a list of services offered by the node
 	GetServices() map[string]string
+	GetType() conf.NodeType
 }
 
 // NodeEquals: determines if two mesh nodes are equivalent to one another
 func NodeEquals(node1, node2 MeshNode) bool {
-	if node1.GetHostEndpoint() != node2.GetHostEndpoint() {
-		return false
-	}
-
-	node1Pub, _ := node1.GetPublicKey()
-	node2Pub, _ := node2.GetPublicKey()
-
-	if node1Pub != node2Pub {
-		return false
-	}
-
-	if node1.GetWgEndpoint() != node2.GetWgEndpoint() {
-		return false
-	}
-
-	if node1.GetWgHost() != node2.GetWgHost() {
-		return false
-	}
-
-	if !slices.Equal(node1.GetRoutes(), node2.GetRoutes()) {
-		return false
-	}
-
-	if node1.GetIdentifier() != node2.GetIdentifier() {
-		return false
-	}
-
-	if node1.GetDescription() != node2.GetDescription() {
-		return false
-	}
-
-	if node1.GetAlias() != node2.GetAlias() {
-		return false
-	}
-
-	return true
+	return node1.GetHostEndpoint() == node2.GetHostEndpoint()
 }
 
 type MeshSnapshot interface {
@@ -129,7 +101,7 @@ type MeshProvider interface {
 	// Prune: prunes all nodes that have not updated their timestamp in
 	// pruneAmount seconds
 	Prune(pruneAmount int) error
-	GetNodeIds() []string
+	GetPeers() []string
 }
 
 // HostParameters contains the IDs of a node
@@ -158,6 +130,7 @@ type MeshNodeFactoryParams struct {
 	NodeIP    net.IP
 	WgPort    int
 	Endpoint  string
+	Role      conf.NodeType
 }
 
 // MeshBuilder build the hosts mesh node for it to be added to the mesh

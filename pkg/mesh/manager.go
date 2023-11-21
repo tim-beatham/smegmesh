@@ -256,6 +256,16 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		return fmt.Errorf("addself: mesh %s does not exist", params.MeshId)
 	}
 
+	if params.WgPort == 0 && !s.conf.StubWg {
+		device, err := mesh.GetDevice()
+
+		if err != nil {
+			return err
+		}
+
+		params.WgPort = device.ListenPort
+	}
+
 	pubKey, err := s.GetPublicKey(params.MeshId)
 
 	if err != nil {
@@ -273,6 +283,7 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		NodeIP:    nodeIP,
 		WgPort:    params.WgPort,
 		Endpoint:  params.Endpoint,
+		Role:      s.conf.Role,
 	})
 
 	if !s.conf.StubWg {

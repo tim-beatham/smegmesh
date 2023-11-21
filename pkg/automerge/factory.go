@@ -38,6 +38,7 @@ func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNod
 		Routes:      map[string]interface{}{},
 		Description: "",
 		Alias:       "",
+		Type:        string(params.Role),
 	}
 }
 

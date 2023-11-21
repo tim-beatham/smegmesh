@@ -21,6 +21,11 @@ type MeshNodeStub struct {
 	description  string
 }
 
+// GetType implements MeshNode.
+func (*MeshNodeStub) GetType() conf.NodeType {
+	return PEER
+}
+
 // GetServices implements MeshNode.
 func (*MeshNodeStub) GetServices() map[string]string {
 	return make(map[string]string)
@@ -77,28 +82,28 @@ type MeshProviderStub struct {
 }
 
 // GetNodeIds implements MeshProvider.
-func (*MeshProviderStub) GetNodeIds() []string {
-	panic("unimplemented")
+func (*MeshProviderStub) GetPeers() []string {
+	return make([]string, 0)
 }
 
 // GetNode implements MeshProvider.
 func (*MeshProviderStub) GetNode(string) (MeshNode, error) {
-	panic("unimplemented")
+	return nil, nil
 }
 
 // NodeExists implements MeshProvider.
 func (*MeshProviderStub) NodeExists(string) bool {
-	panic("unimplemented")
+	return false
 }
 
 // AddService implements MeshProvider.
 func (*MeshProviderStub) AddService(nodeId string, key string, value string) error {
-	panic("unimplemented")
+	return nil
 }
 
 // RemoveService implements MeshProvider.
 func (*MeshProviderStub) RemoveService(nodeId string, key string) error {
-	panic("unimplemented")
+	return nil
 }
 
 // SetAlias implements MeshProvider.
@@ -108,7 +113,7 @@ func (*MeshProviderStub) SetAlias(nodeId string, alias string) error {
 
 // RemoveRoutes implements MeshProvider.
 func (*MeshProviderStub) RemoveRoutes(nodeId string, route ...string) error {
-	panic("unimplemented")
+	return nil
 }
 
 // Prune implements MeshProvider.
