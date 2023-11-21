@@ -55,7 +55,7 @@ func (c *CrdtMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
 		return nil, err
 	}
 
-	if c.cache == nil || len(changes) > 3 {
+	if c.cache == nil || len(changes) > 0 {
 		c.lastCacheHash = c.LastHash
 		cache, err := automerge.As[*MeshCrdt](c.doc.Root())
 
@@ -113,7 +113,7 @@ func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, erro
 // NodeExists: returns true if the node exists. Returns false
 func (m *CrdtMeshManager) NodeExists(key string) bool {
 	node, err := m.doc.Path("nodes").Map().Get(key)
-	return node.Kind() == automerge.KindMap && err != nil
+	return node.Kind() == automerge.KindMap && err == nil
 }
 
 func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {

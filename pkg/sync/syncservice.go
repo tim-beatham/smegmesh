@@ -64,11 +64,11 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 
 			syncer = mesh.GetSyncer()
 		} else if meshId != in.MeshId {
-			return errors.New("Differing MeshIDs")
+			return errors.New("differing meshids")
 		}
 
 		if syncer == nil {
-			return errors.New("Syncer should not be nil")
+			return errors.New("syncer should not be nil")
 		}
 
 		msg, moreMessages := syncer.GenerateMessage()

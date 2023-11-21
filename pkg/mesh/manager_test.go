@@ -201,8 +201,8 @@ func TestSetDescription(t *testing.T) {
 	manager := getMeshManager()
 	description := "wooooo"
 
-	meshId1, _ := manager.CreateMesh("wg0", 5000)
-	meshId2, _ := manager.CreateMesh("wg0", 5001)
+	meshId1, _ := manager.CreateMesh(5000)
+	meshId2, _ := manager.CreateMesh(5001)
 
 	manager.AddSelf(&AddSelfParams{
 		MeshId:   meshId1,
@@ -225,8 +225,8 @@ func TestSetDescription(t *testing.T) {
 func TestUpdateTimeStampUpdatesAllMeshes(t *testing.T) {
 	manager := getMeshManager()
 
-	meshId1, _ := manager.CreateMesh("wg0", 5000)
-	meshId2, _ := manager.CreateMesh("wg0", 5001)
+	meshId1, _ := manager.CreateMesh(5000)
+	meshId2, _ := manager.CreateMesh(5001)
 
 	manager.AddSelf(&AddSelfParams{
 		MeshId:   meshId1,

@@ -53,8 +53,6 @@ type WgMeshConfiguration struct {
 	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
 	StubWg bool `yaml:"stubWg"`
-	// What8Words file path for the what 8 words word list.
-	What8Words string `yaml:"what8Words"`
 }
 
 func ValidateConfiguration(c *WgMeshConfiguration) error {

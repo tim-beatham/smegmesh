@@ -338,6 +338,10 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 }
 
 func (s *MeshManagerImpl) ApplyConfig() error {
+	if s.conf.StubWg {
+		return nil
+	}
+
 	err := s.configApplyer.ApplyConfig()
 
 	if err != nil {
