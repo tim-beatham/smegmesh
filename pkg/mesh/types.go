@@ -4,7 +4,6 @@ package mesh
 
 import (
 	"net"
-	"slices"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -46,42 +45,7 @@ type MeshNode interface {
 
 // NodeEquals: determines if two mesh nodes are equivalent to one another
 func NodeEquals(node1, node2 MeshNode) bool {
-	if node1.GetHostEndpoint() != node2.GetHostEndpoint() {
-		return false
-	}
-
-	node1Pub, _ := node1.GetPublicKey()
-	node2Pub, _ := node2.GetPublicKey()
-
-	if node1Pub != node2Pub {
-		return false
-	}
-
-	if node1.GetWgEndpoint() != node2.GetWgEndpoint() {
-		return false
-	}
-
-	if node1.GetWgHost() != node2.GetWgHost() {
-		return false
-	}
-
-	if !slices.Equal(node1.GetRoutes(), node2.GetRoutes()) {
-		return false
-	}
-
-	if node1.GetIdentifier() != node2.GetIdentifier() {
-		return false
-	}
-
-	if node1.GetDescription() != node2.GetDescription() {
-		return false
-	}
-
-	if node1.GetAlias() != node2.GetAlias() {
-		return false
-	}
-
-	return true
+	return node1.GetHostEndpoint() == node2.GetHostEndpoint()
 }
 
 type MeshSnapshot interface {
