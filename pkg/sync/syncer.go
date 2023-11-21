@@ -44,7 +44,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		}
 	}
 
-	nodeNames := s.manager.GetMesh(meshId).GetNodeIds()
+	nodeNames := s.manager.GetMesh(meshId).GetPeers()
 
 	self, err := s.manager.GetSelf(meshId)
 

@@ -11,6 +11,13 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+const (
+	// Data Exchanged Between Peers
+	PEER conf.NodeType = "peer"
+	// Data Exchanged Between Clients
+	CLIENT conf.NodeType = "client"
+)
+
 // MeshNode represents an implementation of a node in a mesh
 type MeshNode interface {
 	// GetHostEndpoint: gets the gRPC endpoint of the node
@@ -34,6 +41,7 @@ type MeshNode interface {
 	GetAlias() string
 	// GetServices: returns a list of services offered by the node
 	GetServices() map[string]string
+	GetType() conf.NodeType
 }
 
 // NodeEquals: determines if two mesh nodes are equivalent to one another
@@ -129,7 +137,7 @@ type MeshProvider interface {
 	// Prune: prunes all nodes that have not updated their timestamp in
 	// pruneAmount seconds
 	Prune(pruneAmount int) error
-	GetNodeIds() []string
+	GetPeers() []string
 }
 
 // HostParameters contains the IDs of a node
@@ -158,6 +166,7 @@ type MeshNodeFactoryParams struct {
 	NodeIP    net.IP
 	WgPort    int
 	Endpoint  string
+	Role      conf.NodeType
 }
 
 // MeshBuilder build the hosts mesh node for it to be added to the mesh

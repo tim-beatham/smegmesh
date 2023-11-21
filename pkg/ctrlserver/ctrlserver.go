@@ -35,7 +35,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ipAllocator := &ip.ULABuilder{}
 	interfaceManipulator := wg.NewWgInterfaceManipulator(params.Client)
 
-	configApplyer := mesh.NewWgMeshConfigApplyer()
+	configApplyer := mesh.NewWgMeshConfigApplyer(params.Conf)
 
 	meshManagerParams := &mesh.NewMeshManagerParams{
 		Conf:                 *params.Conf,

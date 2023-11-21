@@ -16,6 +16,13 @@ func (m *WgMeshConfigurationError) Error() string {
 	return m.msg
 }
 
+type NodeType string
+
+const (
+	PEER_ROLE   NodeType = "peer"
+	CLIENT_ROLE NodeType = "client"
+)
+
 type WgMeshConfiguration struct {
 	// CertificatePath is the path to the certificate to use in mTLS
 	CertificatePath string `yaml:"certificatePath"`
@@ -53,6 +60,12 @@ type WgMeshConfiguration struct {
 	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
 	StubWg bool `yaml:"stubWg"`
+	// Role specifies whether or not the user is globally accessible.
+	// If the user is globaly accessible they specify themselves as a client.
+	Role NodeType `yaml:"role"`
+	// KeepAliveWg configures the implementation so that we send keep alive packets to peers.
+	// KeepAlive can only be set if role is type client
+	KeepAliveWg int `yaml:"keepAliveWg"`
 }
 
 func ValidateConfiguration(c *WgMeshConfiguration) error {
@@ -132,6 +145,10 @@ func ValidateConfiguration(c *WgMeshConfiguration) error {
 		return &WgMeshConfigurationError{
 			msg: "Prune time cannot be less than keep alive time",
 		}
+	}
+
+	if c.Role == "" {
+		c.Role = PEER_ROLE
 	}
 
 	return nil
