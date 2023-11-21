@@ -2,7 +2,6 @@ package mesh
 
 import (
 	"fmt"
-	"hash/fnv"
 	"net"
 	"time"
 
@@ -88,14 +87,16 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	for _, n := range nodes {
+		if NodeEquals(n, self) {
+			continue
+		}
+
 		if n.GetType() == conf.CLIENT_ROLE && len(peers) > 0 {
-			a := fnv.New32a()
-			a.Write([]byte(n.GetHostEndpoint()))
-			sum := a.Sum32()
+			peer := lib.ConsistentHash(peers, n, func(mn MeshNode) int {
+				return lib.HashString(mn.GetWgHost().String())
+			})
 
-			responsiblePeer := peers[int(sum)%len(peers)]
-
-			if responsiblePeer.GetHostEndpoint() != self.GetHostEndpoint() {
+			if !NodeEquals(peer, self) {
 				dev, err := mesh.GetDevice()
 
 				if err != nil {
@@ -103,7 +104,7 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 				}
 
 				rtnl.AddRoute(dev.Name, lib.Route{
-					Gateway:     responsiblePeer.GetWgHost().IP,
+					Gateway:     peer.GetWgHost().IP,
 					Destination: *n.GetWgHost(),
 				})
 
