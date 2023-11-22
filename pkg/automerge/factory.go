@@ -51,7 +51,13 @@ func (f *MeshNodeFactory) getAddress(params *mesh.MeshNodeFactoryParams) string 
 	} else if len(f.Config.Endpoint) != 0 {
 		hostName = f.Config.Endpoint
 	} else {
-		hostName = lib.GetOutboundIP().String()
+		ip, err := lib.GetPublicIP()
+
+		if err != nil {
+			return ""
+		}
+
+		hostName = ip.String()
 	}
 
 	return hostName
