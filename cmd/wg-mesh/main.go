@@ -237,7 +237,6 @@ func main() {
 	newMeshCmd := parser.NewCommand("new-mesh", "Create a new mesh")
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
-	// getMeshCmd := parser.NewCommand("get-mesh", "Get a mesh network")
 	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
 	leaveMeshCmd := parser.NewCommand("leave-mesh", "Leave a mesh network")

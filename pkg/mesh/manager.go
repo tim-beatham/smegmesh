@@ -339,6 +339,7 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 		return nil, fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
+	logging.Log.WriteInfof(s.HostParameters.HostEndpoint)
 	node, err := meshInstance.GetNode(s.HostParameters.HostEndpoint)
 
 	if err != nil {
@@ -455,7 +456,8 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 
 	switch params.Conf.Endpoint {
 	case "":
-		hostParams.HostEndpoint = fmt.Sprintf("%s:%s", lib.GetOutboundIP().String(), params.Conf.GrpcPort)
+		ip, _ := lib.GetPublicIP()
+		hostParams.HostEndpoint = fmt.Sprintf("%s:%s", ip.String(), params.Conf.GrpcPort)
 	default:
 		hostParams.HostEndpoint = fmt.Sprintf("%s:%s", params.Conf.Endpoint, params.Conf.GrpcPort)
 	}
