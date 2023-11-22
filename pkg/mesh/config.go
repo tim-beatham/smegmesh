@@ -3,6 +3,7 @@ package mesh
 import (
 	"fmt"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
@@ -25,7 +26,7 @@ type WgMeshConfigApplyer struct {
 	routeInstaller route.RouteInstaller
 }
 
-func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, peerToClients map[string][]net.IPNet) (*wgtypes.PeerConfig, error) {
+func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Device, peerToClients map[string][]net.IPNet) (*wgtypes.PeerConfig, error) {
 	endpoint, err := net.ResolveUDPAddr("udp", node.GetWgEndpoint())
 
 	if err != nil {
@@ -53,6 +54,15 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, peerToClients map[s
 	}
 
 	keepAlive := time.Duration(m.config.KeepAliveWg) * time.Second
+
+	existing := slices.IndexFunc(device.Peers, func(p wgtypes.Peer) bool {
+		pubKey, _ := node.GetPublicKey()
+		return p.PublicKey.String() == pubKey.String()
+	})
+
+	if existing != -1 {
+		endpoint = device.Peers[existing].Endpoint
+	}
 
 	peerConfig := wgtypes.PeerConfig{
 		PublicKey:                   pubKey,
@@ -130,7 +140,9 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 			continue
 		}
 
-		peer, err := m.convertMeshNode(n, peerToClients)
+		dev, _ := mesh.GetDevice()
+
+		peer, err := m.convertMeshNode(n, dev, peerToClients)
 
 		if err != nil {
 			return err
@@ -180,7 +192,7 @@ func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
 
 	m.meshManager.GetClient().ConfigureDevice(dev.Name, wgtypes.Config{
 		ReplacePeers: true,
-		Peers:        make([]wgtypes.PeerConfig, 1),
+		Peers:        make([]wgtypes.PeerConfig, 0),
 	})
 
 	return nil
