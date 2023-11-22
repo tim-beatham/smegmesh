@@ -8,4 +8,5 @@ RUN apt-get update && apt-get install -y \
     tmux \
     vim
 WORKDIR /wgmesh
+RUN go mod tidy
 RUN go build -o /usr/local/bin ./...
