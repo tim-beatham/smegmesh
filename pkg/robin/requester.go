@@ -72,7 +72,9 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	configuration := n.Server.GetConfiguration()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(configuration.Timeout))
 	defer cancel()
 
 	meshReply, err := c.GetMesh(ctx, &rpc.GetMeshRequest{MeshId: args.MeshId})

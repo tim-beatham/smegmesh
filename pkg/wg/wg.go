@@ -19,7 +19,7 @@ type WgInterfaceManipulatorImpl struct {
 const hashLength = 6
 
 // CreateInterface creates a WireGuard interface
-func (m *WgInterfaceManipulatorImpl) CreateInterface(port int) (string, error) {
+func (m *WgInterfaceManipulatorImpl) CreateInterface(port int, privKey *wgtypes.Key) (string, error) {
 	rtnl, err := lib.NewRtNetlinkConfig()
 
 	if err != nil {
@@ -44,14 +44,8 @@ func (m *WgInterfaceManipulatorImpl) CreateInterface(port int) (string, error) {
 		return "", fmt.Errorf("failed to create link: %w", err)
 	}
 
-	privateKey, err := wgtypes.GeneratePrivateKey()
-
-	if err != nil {
-		return "", fmt.Errorf("failed to create private key: %w", err)
-	}
-
 	var cfg wgtypes.Config = wgtypes.Config{
-		PrivateKey: &privateKey,
+		PrivateKey: privKey,
 		ListenPort: &port,
 	}
 

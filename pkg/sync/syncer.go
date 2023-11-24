@@ -45,14 +45,19 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	}
 
 	nodeNames := s.manager.GetMesh(meshId).GetPeers()
-
 	self, err := s.manager.GetSelf(meshId)
 
 	if err != nil {
 		return err
 	}
 
-	neighbours := s.cluster.GetNeighbours(nodeNames, self.GetHostEndpoint())
+	selfPublickey, err := self.GetPublicKey()
+
+	if err != nil {
+		return err
+	}
+
+	neighbours := s.cluster.GetNeighbours(nodeNames, selfPublickey.String())
 	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
 
 	for _, node := range randomSubset {
@@ -63,7 +68,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	if len(nodeNames) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
 		logging.Log.WriteInfof("Sending to random cluster")
-		interCluster := s.cluster.GetInterCluster(nodeNames, self.GetHostEndpoint())
+		interCluster := s.cluster.GetInterCluster(nodeNames, selfPublickey.String())
 		randomSubset = append(randomSubset, interCluster)
 	}
 
@@ -74,7 +79,14 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 		go func(i int) error {
 			defer waitGroup.Done()
-			err := s.requester.SyncMesh(meshId, randomSubset[i])
+
+			correspondingPeer := s.manager.GetNode(meshId, randomSubset[i])
+
+			if correspondingPeer == nil {
+				logging.Log.WriteErrorf("node %s does not exist", randomSubset[i])
+			}
+
+			err := s.requester.SyncMesh(meshId, correspondingPeer.GetHostEndpoint())
 			return err
 		}(index)
 	}

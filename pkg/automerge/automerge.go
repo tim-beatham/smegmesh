@@ -39,7 +39,7 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	crdt.Services = make(map[string]string)
 	crdt.Timestamp = time.Now().Unix()
 
-	c.doc.Path("nodes").Map().Set(crdt.HostEndpoint, crdt)
+	c.doc.Path("nodes").Map().Set(crdt.PublicKey, crdt)
 }
 
 func (c *CrdtMeshManager) isPeer(nodeId string) bool {

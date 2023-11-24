@@ -28,8 +28,14 @@ type MeshNodeFactory struct {
 func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNode {
 	hostName := f.getAddress(params)
 
+	grpcEndpoint := fmt.Sprintf("%s:%s", hostName, f.Config.GrpcPort)
+
+	if f.Config.Role == conf.CLIENT_ROLE {
+		grpcEndpoint = "-"
+	}
+
 	return &MeshNodeCrdt{
-		HostEndpoint: fmt.Sprintf("%s:%s", hostName, f.Config.GrpcPort),
+		HostEndpoint: grpcEndpoint,
 		PublicKey:    params.PublicKey.String(),
 		WgEndpoint:   fmt.Sprintf("%s:%d", hostName, params.WgPort),
 		WgHost:       fmt.Sprintf("%s/128", params.NodeIP.String()),
@@ -38,7 +44,7 @@ func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNod
 		Routes:      map[string]interface{}{},
 		Description: "",
 		Alias:       "",
-		Type:        string(params.Role),
+		Type:        string(f.Config.Role),
 	}
 }
 
@@ -51,7 +57,13 @@ func (f *MeshNodeFactory) getAddress(params *mesh.MeshNodeFactoryParams) string 
 	} else if len(f.Config.Endpoint) != 0 {
 		hostName = f.Config.Endpoint
 	} else {
-		ip, err := lib.GetPublicIP()
+		ipFunc := lib.GetPublicIP
+
+		if f.Config.IPDiscovery == conf.DNS_IP_DISCOVERY {
+			ipFunc = lib.GetOutboundIP
+		}
+
+		ip, err := ipFunc()
 
 		if err != nil {
 			return ""

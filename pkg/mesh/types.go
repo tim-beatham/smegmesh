@@ -106,7 +106,12 @@ type MeshProvider interface {
 
 // HostParameters contains the IDs of a node
 type HostParameters struct {
-	HostEndpoint string
+	PrivateKey *wgtypes.Key
+}
+
+// GetPublicKey: gets the public key of the node
+func (h *HostParameters) GetPublicKey() string {
+	return h.PrivateKey.PublicKey().String()
 }
 
 // MeshProviderFactoryParams parameters required to build a mesh provider
@@ -130,7 +135,6 @@ type MeshNodeFactoryParams struct {
 	NodeIP    net.IP
 	WgPort    int
 	Endpoint  string
-	Role      conf.NodeType
 }
 
 // MeshBuilder build the hosts mesh node for it to be added to the mesh
