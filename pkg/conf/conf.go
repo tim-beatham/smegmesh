@@ -64,8 +64,11 @@ type WgMeshConfiguration struct {
 	KeepAliveTime int `yaml:"keepAliveTime"`
 	// Timeout number of seconds before we consider the node as dead
 	Timeout int `yaml:"timeout"`
-	// PruneTime number of seconds before we consider the 'node' as dead
+	// PruneTime number of seconds before we remove nodes that are likely to be dead
 	PruneTime int `yaml:"pruneTime"`
+	// DeadTime: number of seconds before we consider the node as dead and stop considering it
+	// when picking a random peer
+	DeadTime int `yaml:"deadTime"`
 	// Profile whether or not to include a http server that profiles the code
 	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
@@ -145,9 +148,15 @@ func ValidateConfiguration(c *WgMeshConfiguration) error {
 		}
 	}
 
-	if c.PruneTime <= 1 {
+	if c.PruneTime < 1 {
 		return &WgMeshConfigurationError{
-			msg: "Prune time cannot be <= 1",
+			msg: "Prune time cannot be < 1",
+		}
+	}
+
+	if c.DeadTime < 1 {
+		return &WgMeshConfigurationError{
+			msg: "Dead time cannot be < 1",
 		}
 	}
 

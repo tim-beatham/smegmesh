@@ -101,6 +101,7 @@ type MeshProvider interface {
 	// Prune: prunes all nodes that have not updated their timestamp in
 	// pruneAmount seconds
 	Prune(pruneAmount int) error
+	// GetPeers: get a list of contactable peers
 	GetPeers() []string
 }
 
