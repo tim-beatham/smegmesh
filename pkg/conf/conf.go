@@ -23,6 +23,13 @@ const (
 	CLIENT_ROLE NodeType = "client"
 )
 
+type IPDiscovery string
+
+const (
+	PUBLIC_IP_DISCOVERY = "public"
+	DNS_IP_DISCOVERY    = "dns"
+)
+
 type WgMeshConfiguration struct {
 	// CertificatePath is the path to the certificate to use in mTLS
 	CertificatePath string `yaml:"certificatePath"`
@@ -35,6 +42,9 @@ type WgMeshConfiguration struct {
 	SkipCertVerification bool `yaml:"skipCertVerification"`
 	// Port to run the GrpcServer on
 	GrpcPort string `yaml:"gRPCPort"`
+	// IPDIscovery: how to discover your IP if not specified. Use DNS server 8.8.8.8 or
+	// use public IP discovery library
+	IPDiscovery IPDiscovery `yaml:"ipDiscovery"`
 	// AdvertiseRoutes advertises other meshes if the node is in multiple meshes
 	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
 	// Endpoint is the IP in which this computer is publicly reachable.
@@ -149,6 +159,10 @@ func ValidateConfiguration(c *WgMeshConfiguration) error {
 
 	if c.Role == "" {
 		c.Role = PEER_ROLE
+	}
+
+	if c.IPDiscovery == "" {
+		c.IPDiscovery = PUBLIC_IP_DISCOVERY
 	}
 
 	return nil

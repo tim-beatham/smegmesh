@@ -57,7 +57,7 @@ type MeshManagerImpl struct {
 // RemoveService implements MeshManager.
 func (m *MeshManagerImpl) RemoveService(service string) error {
 	for _, mesh := range m.Meshes {
-		err := mesh.RemoveService(m.HostParameters.HostEndpoint, service)
+		err := mesh.RemoveService(m.HostParameters.GetPublicKey(), service)
 
 		if err != nil {
 			return err
@@ -70,7 +70,7 @@ func (m *MeshManagerImpl) RemoveService(service string) error {
 // SetService implements MeshManager.
 func (m *MeshManagerImpl) SetService(service string, value string) error {
 	for _, mesh := range m.Meshes {
-		err := mesh.AddService(m.HostParameters.HostEndpoint, service, value)
+		err := mesh.AddService(m.HostParameters.GetPublicKey(), service, value)
 
 		if err != nil {
 			return err
@@ -125,7 +125,7 @@ func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 	}
 
 	if !m.conf.StubWg {
-		ifName, err = m.interfaceManipulator.CreateInterface(port)
+		ifName, err = m.interfaceManipulator.CreateInterface(port, m.HostParameters.PrivateKey)
 
 		if err != nil {
 			return "", fmt.Errorf("error creating mesh: %w", err)
@@ -160,7 +160,7 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 	var err error
 
 	if !m.conf.StubWg {
-		ifName, err = m.interfaceManipulator.CreateInterface(params.WgPort)
+		ifName, err = m.interfaceManipulator.CreateInterface(params.WgPort, m.HostParameters.PrivateKey)
 
 		if err != nil {
 			return err
@@ -283,7 +283,6 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		NodeIP:    nodeIP,
 		WgPort:    params.WgPort,
 		Endpoint:  params.Endpoint,
-		Role:      s.conf.Role,
 	})
 
 	if !s.conf.StubWg {
@@ -339,8 +338,8 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 		return nil, fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	logging.Log.WriteInfof(s.HostParameters.HostEndpoint)
-	node, err := meshInstance.GetNode(s.HostParameters.HostEndpoint)
+	logging.Log.WriteInfof(s.HostParameters.GetPublicKey())
+	node, err := meshInstance.GetNode(s.HostParameters.GetPublicKey())
 
 	if err != nil {
 		return nil, errors.New("the node doesn't exist in the mesh")
@@ -365,8 +364,8 @@ func (s *MeshManagerImpl) ApplyConfig() error {
 
 func (s *MeshManagerImpl) SetDescription(description string) error {
 	for _, mesh := range s.Meshes {
-		if mesh.NodeExists(s.HostParameters.HostEndpoint) {
-			err := mesh.SetDescription(s.HostParameters.HostEndpoint, description)
+		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
+			err := mesh.SetDescription(s.HostParameters.GetPublicKey(), description)
 
 			if err != nil {
 				return err
@@ -380,8 +379,8 @@ func (s *MeshManagerImpl) SetDescription(description string) error {
 // SetAlias implements MeshManager.
 func (s *MeshManagerImpl) SetAlias(alias string) error {
 	for _, mesh := range s.Meshes {
-		if mesh.NodeExists(s.HostParameters.HostEndpoint) {
-			err := mesh.SetAlias(s.HostParameters.HostEndpoint, alias)
+		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
+			err := mesh.SetAlias(s.HostParameters.GetPublicKey(), alias)
 
 			if err != nil {
 				return err
@@ -394,8 +393,8 @@ func (s *MeshManagerImpl) SetAlias(alias string) error {
 // UpdateTimeStamp updates the timestamp of this node in all meshes
 func (s *MeshManagerImpl) UpdateTimeStamp() error {
 	for _, mesh := range s.Meshes {
-		if mesh.NodeExists(s.HostParameters.HostEndpoint) {
-			err := mesh.UpdateTimeStamp(s.HostParameters.HostEndpoint)
+		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
+			err := mesh.UpdateTimeStamp(s.HostParameters.GetPublicKey())
 
 			if err != nil {
 				return err
@@ -452,17 +451,10 @@ type NewMeshManagerParams struct {
 
 // Creates a new instance of a mesh manager with the given parameters
 func NewMeshManager(params *NewMeshManagerParams) MeshManager {
-	hostParams := HostParameters{}
-
-	switch params.Conf.Endpoint {
-	case "":
-		ip, _ := lib.GetPublicIP()
-		hostParams.HostEndpoint = fmt.Sprintf("%s:%s", ip.String(), params.Conf.GrpcPort)
-	default:
-		hostParams.HostEndpoint = fmt.Sprintf("%s:%s", params.Conf.Endpoint, params.Conf.GrpcPort)
+	privateKey, _ := wgtypes.GeneratePrivateKey()
+	hostParams := HostParameters{
+		PrivateKey: &privateKey,
 	}
-
-	logging.Log.WriteInfof("Endpoint %s", hostParams.HostEndpoint)
 
 	m := &MeshManagerImpl{
 		Meshes:              make(map[string]MeshProvider),
