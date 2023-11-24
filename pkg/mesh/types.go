@@ -10,13 +10,6 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-const (
-	// Data Exchanged Between Peers
-	PEER conf.NodeType = "peer"
-	// Data Exchanged Between Clients
-	CLIENT conf.NodeType = "client"
-)
-
 // MeshNode represents an implementation of a node in a mesh
 type MeshNode interface {
 	// GetHostEndpoint: gets the gRPC endpoint of the node
@@ -45,7 +38,15 @@ type MeshNode interface {
 
 // NodeEquals: determines if two mesh nodes are equivalent to one another
 func NodeEquals(node1, node2 MeshNode) bool {
-	return node1.GetHostEndpoint() == node2.GetHostEndpoint()
+	key1, _ := node1.GetPublicKey()
+	key2, _ := node2.GetPublicKey()
+
+	return key1.String() == key2.String()
+}
+
+func NodeID(node MeshNode) string {
+	key, _ := node.GetPublicKey()
+	return key.String()
 }
 
 type MeshSnapshot interface {

@@ -45,7 +45,7 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 				return err
 			}
 
-			err = mesh1.AddRoutes(self.GetHostEndpoint(), ipNet.String())
+			err = mesh1.AddRoutes(NodeID(self), ipNet.String())
 
 			if err != nil {
 				return err
@@ -74,7 +74,7 @@ func (r *RouteManagerImpl) RemoveRoutes(meshId string) error {
 			return err
 		}
 
-		mesh1.RemoveRoutes(self.GetHostEndpoint(), ipNet.String())
+		mesh1.RemoveRoutes(NodeID(self), ipNet.String())
 	}
 	return nil
 }
@@ -152,7 +152,7 @@ func (m *RouteManagerImpl) installRoutes(meshProvider MeshProvider) error {
 	}
 
 	for _, node := range mesh.GetNodes() {
-		if self.GetHostEndpoint() == node.GetHostEndpoint() {
+		if NodeEquals(self, node) {
 			continue
 		}
 

@@ -23,7 +23,7 @@ type MeshNodeStub struct {
 
 // GetType implements MeshNode.
 func (*MeshNodeStub) GetType() conf.NodeType {
-	return PEER
+	return conf.PEER_ROLE
 }
 
 // GetServices implements MeshNode.

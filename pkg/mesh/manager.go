@@ -266,20 +266,16 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		params.WgPort = device.ListenPort
 	}
 
-	pubKey, err := s.GetPublicKey(params.MeshId)
+	pubKey := s.HostParameters.PrivateKey.PublicKey()
 
-	if err != nil {
-		return err
-	}
-
-	nodeIP, err := s.ipAllocator.GetIP(*pubKey, params.MeshId)
+	nodeIP, err := s.ipAllocator.GetIP(pubKey, params.MeshId)
 
 	if err != nil {
 		return err
 	}
 
 	node := s.nodeFactory.Build(&MeshNodeFactoryParams{
-		PublicKey: pubKey,
+		PublicKey: &pubKey,
 		NodeIP:    nodeIP,
 		WgPort:    params.WgPort,
 		Endpoint:  params.Endpoint,

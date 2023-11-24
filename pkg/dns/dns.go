@@ -29,7 +29,7 @@ func (d *DNSHandler) queryMesh(meshId, alias string) net.IP {
 
 	err := d.client.Call("IpcHandler.Query", &ipc.QueryMesh{
 		MeshId: meshId,
-		Query:  "[?alias == 'tim'] | [0]",
+		Query:  fmt.Sprintf("[?alias == '%s'] | [0]", alias),
 	}, &reply)
 
 	if err != nil {

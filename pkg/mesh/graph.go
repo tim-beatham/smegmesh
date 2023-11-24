@@ -61,7 +61,7 @@ func (c *MeshDOTConverter) graphNode(g *graph.Graph, node MeshNode, meshId strin
 
 	self, _ := c.manager.GetSelf(meshId)
 
-	if node.GetHostEndpoint() == self.GetHostEndpoint() {
+	if NodeEquals(self, node) {
 		return
 	}
 
