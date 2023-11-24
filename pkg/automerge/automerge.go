@@ -58,11 +58,30 @@ func (c *CrdtMeshManager) isPeer(nodeId string) bool {
 	return nodeType.Str() == string(conf.PEER_ROLE)
 }
 
+// isAlive: checks that the node's configuration has been updated
+// since the rquired keep alive time
+func (c *CrdtMeshManager) isAlive(nodeId string) bool {
+	node, err := c.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil || node.Kind() != automerge.KindMap {
+		return false
+	}
+
+	timestamp, err := node.Map().Get("timestamp")
+
+	if err != nil || timestamp.Kind() != automerge.KindInt64 {
+		return false
+	}
+
+	keepAliveTime := timestamp.Int64()
+	return (time.Now().Unix() - keepAliveTime) < int64(c.conf.DeadTime)
+}
+
 func (c *CrdtMeshManager) GetPeers() []string {
 	keys, _ := c.doc.Path("nodes").Map().Keys()
 
-	keys = lib.Filter(keys, func(s string) bool {
-		return c.isPeer(s)
+	keys = lib.Filter(keys, func(publicKey string) bool {
+		return c.isPeer(publicKey) && c.isAlive(publicKey)
 	})
 
 	return keys
