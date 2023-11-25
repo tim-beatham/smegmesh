@@ -43,8 +43,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 	allowedips[0] = *node.GetWgHost()
 
 	for _, route := range node.GetRoutes() {
-		_, ipnet, _ := net.ParseCIDR(route)
-		allowedips = append(allowedips, *ipnet)
+		allowedips = append(allowedips, *route.GetDestination())
 	}
 
 	clients, ok := peerToClients[node.GetWgHost().String()]
@@ -96,38 +95,27 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 		return err
 	}
 
-	rtnl, err := lib.NewRtNetlinkConfig()
-
-	if err != nil {
-		return err
-	}
-
 	peerToClients := make(map[string][]net.IPNet)
+
+	routes := make([]lib.Route, 1)
 
 	for _, n := range nodes {
 		if NodeEquals(n, self) {
 			continue
 		}
 
+		for _, route := range n.GetRoutes() {
+
+			routes = append(routes, lib.Route{
+				Gateway:     n.GetWgHost().IP,
+				Destination: *route.GetDestination(),
+			})
+		}
+
 		if n.GetType() == conf.CLIENT_ROLE && len(peers) > 0 && self.GetType() == conf.CLIENT_ROLE {
 			peer := lib.ConsistentHash(peers, n, func(mn MeshNode) int {
 				return lib.HashString(mn.GetWgHost().String())
 			})
-
-			dev, err := mesh.GetDevice()
-
-			if err != nil {
-				return err
-			}
-
-			rtnl.AddRoute(dev.Name, lib.Route{
-				Gateway:     peer.GetWgHost().IP,
-				Destination: *n.GetWgHost(),
-			})
-
-			if err != nil {
-				return err
-			}
 
 			clients, ok := peerToClients[peer.GetWgHost().String()]
 
@@ -153,10 +141,17 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	cfg := wgtypes.Config{
-		Peers: peerConfigs,
+		Peers:        peerConfigs,
+		ReplacePeers: true,
 	}
 
 	dev, err := mesh.GetDevice()
+
+	if err != nil {
+		return err
+	}
+
+	err = m.routeInstaller.InstallRoutes(dev.Name, routes...)
 
 	if err != nil {
 		return err

@@ -7,19 +7,16 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/route"
 	"golang.org/x/sys/unix"
 )
 
 type RouteManager interface {
 	UpdateRoutes() error
-	InstallRoutes() error
 	RemoveRoutes(meshId string) error
 }
 
 type RouteManagerImpl struct {
-	meshManager    MeshManager
-	routeInstaller route.RouteInstaller
+	meshManager MeshManager
 }
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
@@ -27,6 +24,24 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 	ulaBuilder := new(ip.ULABuilder)
 
 	for _, mesh1 := range meshes {
+		self, err := r.meshManager.GetSelf(mesh1.GetMeshId())
+
+		if err != nil {
+			return err
+		}
+
+		pubKey, err := self.GetPublicKey()
+
+		if err != nil {
+			return err
+		}
+
+		routes, err := mesh1.GetRoutes(pubKey.String())
+
+		if err != nil {
+			return err
+		}
+
 		for _, mesh2 := range meshes {
 			if mesh1 == mesh2 {
 				continue
@@ -39,13 +54,10 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 				return err
 			}
 
-			self, err := r.meshManager.GetSelf(mesh1.GetMeshId())
-
-			if err != nil {
-				return err
-			}
-
-			err = mesh1.AddRoutes(NodeID(self), ipNet.String())
+			err = mesh2.AddRoutes(NodeID(self), append(lib.MapValues(routes), &RouteStub{
+				Destination: ipNet,
+				HopCount:    0,
+			})...)
 
 			if err != nil {
 				return err
@@ -128,7 +140,11 @@ func (m *RouteManagerImpl) installRoute(ifName string, meshid string, node MeshN
 		return err
 	}
 
-	routes := lib.Map(append(node.GetRoutes(), ipNet.String()), routeMapFunc)
+	theRoutes := lib.Map(node.GetRoutes(), func(r Route) string {
+		return r.GetDestination().String()
+	})
+
+	routes := lib.Map(append(theRoutes, ipNet.String()), routeMapFunc)
 	return m.addRoute(ifName, ipNet.String(), routes...)
 }
 
@@ -180,5 +196,5 @@ func (r *RouteManagerImpl) InstallRoutes() error {
 }
 
 func NewRouteManager(m MeshManager) RouteManager {
-	return &RouteManagerImpl{meshManager: m, routeInstaller: route.NewRouteInstaller()}
+	return &RouteManagerImpl{meshManager: m}
 }

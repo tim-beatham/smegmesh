@@ -18,7 +18,6 @@ type MeshManager interface {
 	AddMesh(params *AddMeshParams) error
 	HasChanges(meshid string) bool
 	GetMesh(meshId string) MeshProvider
-	EnableInterface(meshId string) error
 	GetPublicKey(meshId string) (*wgtypes.Key, error)
 	AddSelf(params *AddSelfParams) error
 	LeaveMesh(meshId string) error
@@ -35,6 +34,7 @@ type MeshManager interface {
 	Close() error
 	GetMonitor() MeshMonitor
 	GetNode(string, string) MeshNode
+	GetRouteManager() RouteManager
 }
 
 type MeshManagerImpl struct {
@@ -52,6 +52,11 @@ type MeshManagerImpl struct {
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
 	Monitor              MeshMonitor
+}
+
+// GetRouteManager implements MeshManager.
+func (m *MeshManagerImpl) GetRouteManager() RouteManager {
+	return m.RouteManager
 }
 
 // RemoveService implements MeshManager.
@@ -200,23 +205,6 @@ func (m *MeshManagerImpl) GetMesh(meshId string) MeshProvider {
 	return theMesh
 }
 
-// EnableInterface: Enables the given WireGuard interface.
-func (s *MeshManagerImpl) EnableInterface(meshId string) error {
-	err := s.configApplyer.ApplyConfig()
-
-	if err != nil {
-		return err
-	}
-
-	err = s.RouteManager.InstallRoutes()
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // GetPublicKey: Gets the public key of the WireGuard mesh
 func (s *MeshManagerImpl) GetPublicKey(meshId string) (*wgtypes.Key, error) {
 	if s.conf.StubWg {
@@ -307,22 +295,23 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	err := s.RouteManager.RemoveRoutes(meshId)
-
-	if err != nil {
-		return err
-	}
+	var err error
 
 	if !s.conf.StubWg {
-		device, e := mesh.GetDevice()
+		device, err := mesh.GetDevice()
 
-		if e != nil {
+		if err != nil {
 			return err
 		}
 
 		err = s.interfaceManipulator.RemoveInterface(device.Name)
+
+		if err != nil {
+			return err
+		}
 	}
 
+	err = s.RouteManager.RemoveRoutes(meshId)
 	delete(s.Meshes, meshId)
 	return err
 }

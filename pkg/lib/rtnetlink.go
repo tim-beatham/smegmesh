@@ -201,7 +201,7 @@ func (c *RtNetlinkConfig) DeleteRoute(ifName string, route Route) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to delete route %w", err)
+		return fmt.Errorf("failed to delete route %s", dst.IP.String())
 	}
 
 	return nil
@@ -219,22 +219,15 @@ func (r1 Route) equal(r2 Route) bool {
 
 // DeleteRoutes deletes all routes not in exclude
 func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...Route) error {
-	routes := make([]rtnetlink.RouteMessage, 0)
+	routes, err := c.listRoutes(ifName, family)
 
-	if len(exclude) != 0 {
-		lRoutes, err := c.listRoutes(ifName, family, exclude[0].Gateway)
-
-		if err != nil {
-			return err
-		}
-
-		routes = lRoutes
+	if err != nil {
+		return err
 	}
 
 	ifRoutes := make([]Route, 0)
 
 	for _, rtRoute := range routes {
-		logging.Log.WriteInfof("Routes: %s", rtRoute.Attributes.Dst.String())
 		maskSize := 128
 
 		if family == unix.AF_INET {
@@ -262,7 +255,7 @@ func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...R
 	toDelete := Filter(ifRoutes, shouldExclude)
 
 	for _, route := range toDelete {
-		logging.Log.WriteInfof("Deleting route %s", route.Destination.String())
+		logging.Log.WriteInfof("Deleting route: %s", route.Gateway.String())
 		err := c.DeleteRoute(ifName, route)
 
 		if err != nil {
@@ -274,7 +267,7 @@ func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...R
 }
 
 // listRoutes lists all routes on the interface
-func (c *RtNetlinkConfig) listRoutes(ifName string, family uint8, gateway net.IP) ([]rtnetlink.RouteMessage, error) {
+func (c *RtNetlinkConfig) listRoutes(ifName string, family uint8) ([]rtnetlink.RouteMessage, error) {
 	iface, err := net.InterfaceByName(ifName)
 
 	if err != nil {
@@ -288,7 +281,7 @@ func (c *RtNetlinkConfig) listRoutes(ifName string, family uint8, gateway net.IP
 	}
 
 	filterFunc := func(r rtnetlink.RouteMessage) bool {
-		return r.Attributes.Gateway.Equal(gateway) && r.Attributes.OutIface == uint32(iface.Index)
+		return r.Attributes.Gateway != nil && r.Attributes.OutIface == uint32(iface.Index)
 	}
 
 	routes = Filter(routes, filterFunc)

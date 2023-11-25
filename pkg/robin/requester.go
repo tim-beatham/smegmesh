@@ -10,6 +10,7 @@ import (
 
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/query"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
@@ -119,19 +120,19 @@ func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 }
 
 func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
-	mesh := n.Server.GetMeshManager().GetMesh(meshId)
+	theMesh := n.Server.GetMeshManager().GetMesh(meshId)
 
-	if mesh == nil {
+	if theMesh == nil {
 		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	meshSnapshot, err := mesh.GetMesh()
+	meshSnapshot, err := theMesh.GetMesh()
 
 	if err != nil {
 		return err
 	}
 
-	if mesh == nil {
+	if theMesh == nil {
 		return errors.New("mesh does not exist")
 	}
 
@@ -151,10 +152,12 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 			PublicKey:    pubKey.String(),
 			WgHost:       node.GetWgHost().String(),
 			Timestamp:    node.GetTimeStamp(),
-			Routes:       node.GetRoutes(),
-			Description:  node.GetDescription(),
-			Alias:        node.GetAlias(),
-			Services:     node.GetServices(),
+			Routes: lib.Map(node.GetRoutes(), func(r mesh.Route) string {
+				return r.GetDestination().String()
+			}),
+			Description: node.GetDescription(),
+			Alias:       node.GetAlias(),
+			Services:    node.GetServices(),
 		}
 
 		nodes[i] = node
@@ -162,18 +165,6 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	}
 
 	*reply = ipc.GetMeshReply{Nodes: nodes}
-	return nil
-}
-
-func (n *IpcHandler) EnableInterface(meshId string, reply *string) error {
-	err := n.Server.GetMeshManager().EnableInterface(meshId)
-
-	if err != nil {
-		*reply = err.Error()
-		return err
-	}
-
-	*reply = "up"
 	return nil
 }
 

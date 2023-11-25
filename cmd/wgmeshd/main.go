@@ -13,7 +13,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/robin"
 	"github.com/tim-beatham/wgmesh/pkg/sync"
-	"github.com/tim-beatham/wgmesh/pkg/timestamp"
+	timer "github.com/tim-beatham/wgmesh/pkg/timers"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
@@ -57,8 +57,9 @@ func main() {
 	syncProvider.Server = ctrlServer
 	syncRequester := sync.NewSyncRequester(ctrlServer)
 	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester)
-	timestampScheduler := timestamp.NewTimestampScheduler(ctrlServer)
+	timestampScheduler := timer.NewTimestampScheduler(ctrlServer)
 	pruneScheduler := mesh.NewPruner(ctrlServer.MeshManager, *conf)
+	routeScheduler := timer.NewRouteScheduler(ctrlServer)
 
 	robinIpcParams := robin.RobinIpcParams{
 		CtrlServer: ctrlServer,
@@ -78,6 +79,7 @@ func main() {
 	go syncScheduler.Run()
 	go timestampScheduler.Run()
 	go pruneScheduler.Run()
+	go routeScheduler.Run()
 
 	closeResources := func() {
 		logging.Log.WriteInfof("Closing resources")
