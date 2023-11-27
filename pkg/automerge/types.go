@@ -2,8 +2,8 @@ package crdt
 
 // Route: Represents a CRDT of the given route
 type Route struct {
-	Destination string `automerge:"destination"`
-	HopCount    int64  `automerge:"hopCount"`
+	Destination string   `automerge:"destination"`
+	Path        []string `automerge:"path"`
 }
 
 // MeshNodeCrdt: Represents a CRDT for a mesh nodes

@@ -108,14 +108,35 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 
 // getRoutes: finds the routes with the least hop distance. If more than one route exists
 // consistently hash to evenly spread the distribution of traffic
-func (m *WgMeshConfigApplyer) getRoutes(mesh MeshSnapshot) map[string][]routeNode {
+func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]routeNode {
+	mesh, _ := meshProvider.GetMesh()
+
 	routes := make(map[string][]routeNode)
 
+	meshPrefixes := lib.Map(lib.MapValues(m.meshManager.GetMeshes()), func(mesh MeshProvider) *net.IPNet {
+		ula := &ip.ULABuilder{}
+		ipNet, _ := ula.GetIPNet(mesh.GetMeshId())
+
+		return ipNet
+	})
+
 	for _, node := range mesh.GetNodes() {
-		for _, route := range node.GetRoutes() {
+		pubKey, _ := node.GetPublicKey()
+		meshRoutes, _ := meshProvider.GetRoutes(pubKey.String())
+
+		for _, route := range meshRoutes {
+			if lib.Contains(meshPrefixes, func(prefix *net.IPNet) bool {
+				if prefix == nil || route == nil || route.GetDestination() == nil {
+					return false
+				}
+
+				return prefix.Contains(route.GetDestination().IP)
+			}) {
+				continue
+			}
+
 			destination := route.GetDestination().String()
 			otherRoute, ok := routes[destination]
-			pubKey, _ := node.GetPublicKey()
 
 			rn := routeNode{
 				gateway: pubKey.String(),
@@ -126,7 +147,7 @@ func (m *WgMeshConfigApplyer) getRoutes(mesh MeshSnapshot) map[string][]routeNod
 				otherRoute = make([]routeNode, 1)
 				otherRoute[0] = rn
 				routes[destination] = otherRoute
-			} else if otherRoute[0].route.GetHopCount() > route.GetHopCount() {
+			} else if route.GetHopCount() < otherRoute[0].route.GetHopCount() {
 				otherRoute[0] = rn
 			} else if otherRoute[0].route.GetHopCount() == route.GetHopCount() {
 				routes[destination] = append(otherRoute, rn)
@@ -160,7 +181,7 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	peerToClients := make(map[string][]net.IPNet)
-	routes := m.getRoutes(snap)
+	routes := m.getRoutes(mesh)
 	installedRoutes := make([]lib.Route, 0)
 
 	for _, n := range nodes {

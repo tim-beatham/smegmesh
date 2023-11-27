@@ -340,7 +340,7 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
 	for _, route := range routes {
 		err = routeMap.Map().Set(route.GetDestination().String(), Route{
 			Destination: route.GetDestination().String(),
-			HopCount:    int64(route.GetHopCount()),
+			Path:        route.GetPath(),
 		})
 
 		if err != nil {
@@ -372,6 +372,7 @@ func (m *CrdtMeshManager) getRoutes(nodeId string) ([]Route, error) {
 	}
 
 	routes, err := automerge.As[map[string]Route](routeMap)
+
 	return lib.MapValues(routes), err
 }
 
@@ -398,10 +399,10 @@ func (m *CrdtMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, e
 		for _, route := range nodeRoutes {
 			otherRoute, ok := routes[route.GetDestination().String()]
 
-			if !ok || route.GetHopCount() < otherRoute.GetHopCount() {
+			if !ok || route.GetHopCount()+1 < otherRoute.GetHopCount() {
 				routes[route.GetDestination().String()] = &Route{
 					Destination: route.GetDestination().String(),
-					HopCount:    int64(route.GetHopCount()) + 1,
+					Path:        append(route.Path, m.GetMeshId()),
 				}
 			}
 		}
@@ -524,7 +525,10 @@ func (m *MeshNodeCrdt) GetTimeStamp() int64 {
 
 func (m *MeshNodeCrdt) GetRoutes() []mesh.Route {
 	return lib.Map(lib.MapValues(m.Routes), func(r Route) mesh.Route {
-		return &r
+		return &Route{
+			Destination: r.Destination,
+			Path:        r.Path,
+		}
 	})
 }
 
@@ -588,5 +592,9 @@ func (r *Route) GetDestination() *net.IPNet {
 }
 
 func (r *Route) GetHopCount() int {
-	return int(r.HopCount)
+	return len(r.Path)
+}
+
+func (r *Route) GetPath() []string {
+	return r.Path
 }

@@ -3,6 +3,7 @@ package query
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jmespath/go-jmespath"
 	"github.com/tim-beatham/wgmesh/pkg/conf"
@@ -27,6 +28,7 @@ type QueryError struct {
 type QueryRoute struct {
 	Destination string `json:"destination"`
 	HopCount    int    `json:"hopCount"`
+	Path        string `json:"path"`
 }
 
 type QueryNode struct {
@@ -87,6 +89,7 @@ func MeshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 		return QueryRoute{
 			Destination: r.GetDestination().String(),
 			HopCount:    r.GetHopCount(),
+			Path:        strings.Join(r.GetPath(), ","),
 		}
 	})
 	queryNode.Description = node.GetDescription()
