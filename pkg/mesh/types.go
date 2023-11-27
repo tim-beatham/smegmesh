@@ -10,6 +10,26 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+type Route interface {
+	// GetDestination: returns the destination of the route
+	GetDestination() *net.IPNet
+	// GetHopCount: get the total hopcount of the prefix
+	GetHopCount() int
+}
+
+type RouteStub struct {
+	Destination *net.IPNet
+	HopCount    int
+}
+
+func (r *RouteStub) GetDestination() *net.IPNet {
+	return r.Destination
+}
+
+func (r *RouteStub) GetHopCount() int {
+	return r.HopCount
+}
+
 // MeshNode represents an implementation of a node in a mesh
 type MeshNode interface {
 	// GetHostEndpoint: gets the gRPC endpoint of the node
@@ -23,7 +43,7 @@ type MeshNode interface {
 	// GetTimestamp: get the UNIX time stamp of the ndoe
 	GetTimeStamp() int64
 	// GetRoutes: returns the routes that the nodes provides
-	GetRoutes() []string
+	GetRoutes() []Route
 	// GetIdentifier: returns the identifier of the node
 	GetIdentifier() string
 	// GetDescription: returns the description for this node
@@ -42,6 +62,11 @@ func NodeEquals(node1, node2 MeshNode) bool {
 	key2, _ := node2.GetPublicKey()
 
 	return key1.String() == key2.String()
+}
+
+func RouteEquals(route1, route2 Route) bool {
+	return route1.GetDestination().String() == route2.GetDestination().String() &&
+		route1.GetHopCount() == route2.GetHopCount()
 }
 
 func NodeID(node MeshNode) string {
@@ -82,7 +107,7 @@ type MeshProvider interface {
 	// UpdateTimeStamp: update the timestamp of the given node
 	UpdateTimeStamp(nodeId string) error
 	// AddRoutes: adds routes to the given node
-	AddRoutes(nodeId string, route ...string) error
+	AddRoutes(nodeId string, route ...Route) error
 	// DeleteRoutes: deletes the routes from the node
 	RemoveRoutes(nodeId string, route ...string) error
 	// GetSyncer: returns the automerge syncer for sync
@@ -104,6 +129,8 @@ type MeshProvider interface {
 	Prune(pruneAmount int) error
 	// GetPeers: get a list of contactable peers
 	GetPeers() []string
+	// GetRoutes(): Get all unique routes. Where the route with the least hop count is chosen
+	GetRoutes(targetNode string) (map[string]Route, error)
 }
 
 // HostParameters contains the IDs of a node

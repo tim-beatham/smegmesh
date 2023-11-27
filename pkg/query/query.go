@@ -24,6 +24,11 @@ type QueryError struct {
 	msg string
 }
 
+type QueryRoute struct {
+	Destination string `json:"destination"`
+	HopCount    int    `json:"hopCount"`
+}
+
 type QueryNode struct {
 	HostEndpoint string            `json:"hostEndpoint"`
 	PublicKey    string            `json:"publicKey"`
@@ -31,7 +36,7 @@ type QueryNode struct {
 	WgHost       string            `json:"wgHost"`
 	Timestamp    int64             `json:"timestamp"`
 	Description  string            `json:"description"`
-	Routes       []string          `json:"routes"`
+	Routes       []QueryRoute      `json:"routes"`
 	Alias        string            `json:"alias"`
 	Services     map[string]string `json:"services"`
 	Type         conf.NodeType     `json:"type"`
@@ -78,7 +83,12 @@ func MeshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	queryNode.WgHost = node.GetWgHost().String()
 
 	queryNode.Timestamp = node.GetTimeStamp()
-	queryNode.Routes = node.GetRoutes()
+	queryNode.Routes = lib.Map(node.GetRoutes(), func(r mesh.Route) QueryRoute {
+		return QueryRoute{
+			Destination: r.GetDestination().String(),
+			HopCount:    r.GetHopCount(),
+		}
+	})
 	queryNode.Description = node.GetDescription()
 	queryNode.Alias = node.GetAlias()
 	queryNode.Services = node.GetServices()

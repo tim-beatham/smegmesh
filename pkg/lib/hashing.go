@@ -18,7 +18,7 @@ func HashString(value string) int {
 
 // ConsistentHash implementation. Traverse the values until we find a key
 // less than ours.
-func ConsistentHash[V any](values []V, client V, keyFunc func(V) int) V {
+func ConsistentHash[V any, K any](values []V, client K, bucketFunc func(V) int, keyFunc func(K) int) V {
 	if len(values) == 0 {
 		panic("values is empty")
 	}
@@ -26,7 +26,7 @@ func ConsistentHash[V any](values []V, client V, keyFunc func(V) int) V {
 	vs := Map(values, func(v V) consistentHashRecord[V] {
 		return consistentHashRecord[V]{
 			v,
-			keyFunc(v),
+			bucketFunc(v),
 		}
 	})
 

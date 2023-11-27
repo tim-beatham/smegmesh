@@ -35,7 +35,7 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 		panic("node must be of type *MeshNodeCrdt")
 	}
 
-	crdt.Routes = make(map[string]interface{})
+	crdt.Routes = make(map[string]Route)
 	crdt.Services = make(map[string]string)
 	crdt.Timestamp = time.Now().Unix()
 
@@ -319,7 +319,7 @@ func (m *CrdtMeshManager) RemoveService(nodeId, key string) error {
 }
 
 // AddRoutes: adds routes to the specific nodeId
-func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
+func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 	logging.Log.WriteInfof("Adding route to %s", nodeId)
 
@@ -338,13 +338,76 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...string) error {
 	}
 
 	for _, route := range routes {
-		err = routeMap.Map().Set(route, struct{}{})
+		err = routeMap.Map().Set(route.GetDestination().String(), Route{
+			Destination: route.GetDestination().String(),
+			HopCount:    int64(route.GetHopCount()),
+		})
 
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (m *CrdtMeshManager) getRoutes(nodeId string) ([]Route, error) {
+	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if nodeVal.Kind() != automerge.KindMap {
+		return nil, fmt.Errorf("node does not exist")
+	}
+
+	routeMap, err := nodeVal.Map().Get("routes")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if routeMap.Kind() != automerge.KindMap {
+		return nil, fmt.Errorf("node %s is not a map", nodeId)
+	}
+
+	routes, err := automerge.As[map[string]Route](routeMap)
+	return lib.MapValues(routes), err
+}
+
+func (m *CrdtMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, error) {
+	node, err := m.GetNode(targetNode)
+
+	if err != nil {
+		return nil, err
+	}
+
+	routes := make(map[string]mesh.Route)
+
+	for _, route := range node.GetRoutes() {
+		routes[route.GetDestination().String()] = route
+	}
+
+	for _, node := range m.GetPeers() {
+		nodeRoutes, err := m.getRoutes(node)
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, route := range nodeRoutes {
+			otherRoute, ok := routes[route.GetDestination().String()]
+
+			if !ok || route.GetHopCount() < otherRoute.GetHopCount() {
+				routes[route.GetDestination().String()] = &Route{
+					Destination: route.GetDestination().String(),
+					HopCount:    int64(route.GetHopCount()) + 1,
+				}
+			}
+		}
+	}
+
+	return routes, nil
 }
 
 // DeleteRoutes deletes the specified routes
@@ -459,8 +522,10 @@ func (m *MeshNodeCrdt) GetTimeStamp() int64 {
 	return m.Timestamp
 }
 
-func (m *MeshNodeCrdt) GetRoutes() []string {
-	return lib.MapKeys(m.Routes)
+func (m *MeshNodeCrdt) GetRoutes() []mesh.Route {
+	return lib.Map(lib.MapValues(m.Routes), func(r Route) mesh.Route {
+		return &r
+	})
 }
 
 func (m *MeshNodeCrdt) GetDescription() string {
@@ -515,4 +580,13 @@ func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 	}
 
 	return nodes
+}
+
+func (r *Route) GetDestination() *net.IPNet {
+	_, ipnet, _ := net.ParseCIDR(r.Destination)
+	return ipnet
+}
+
+func (r *Route) GetHopCount() int {
+	return int(r.HopCount)
 }

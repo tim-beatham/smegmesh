@@ -16,7 +16,7 @@ type MeshNodeStub struct {
 	wgEndpoint   string
 	wgHost       *net.IPNet
 	timeStamp    int64
-	routes       []string
+	routes       []Route
 	identifier   string
 	description  string
 }
@@ -56,7 +56,7 @@ func (m *MeshNodeStub) GetTimeStamp() int64 {
 	return m.timeStamp
 }
 
-func (m *MeshNodeStub) GetRoutes() []string {
+func (m *MeshNodeStub) GetRoutes() []Route {
 	return m.routes
 }
 
@@ -79,6 +79,10 @@ func (s *MeshSnapshotStub) GetNodes() map[string]MeshNode {
 type MeshProviderStub struct {
 	meshId   string
 	snapshot *MeshSnapshotStub
+}
+
+func (*MeshProviderStub) GetRoutes(targetId string) (map[string]Route, error) {
+	return nil, nil
 }
 
 // GetNodeIds implements MeshProvider.
@@ -159,7 +163,7 @@ func (s *MeshProviderStub) HasChanges() bool {
 	return false
 }
 
-func (s *MeshProviderStub) AddRoutes(nodeId string, route ...string) error {
+func (s *MeshProviderStub) AddRoutes(nodeId string, route ...Route) error {
 	return nil
 }
 
@@ -193,7 +197,7 @@ func (s *StubNodeFactory) Build(params *MeshNodeFactoryParams) MeshNode {
 		wgEndpoint:   fmt.Sprintf("%s:%s", params.Endpoint, s.Config.GrpcPort),
 		wgHost:       wgHost,
 		timeStamp:    time.Now().Unix(),
-		routes:       make([]string, 0),
+		routes:       make([]Route, 0),
 		identifier:   "abc",
 		description:  "A Mesh Node Stub",
 	}
@@ -214,6 +218,11 @@ func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
 
 type MeshManagerStub struct {
 	meshes map[string]MeshProvider
+}
+
+// GetRouteManager implements MeshManager.
+func (*MeshManagerStub) GetRouteManager() RouteManager {
+	panic("unimplemented")
 }
 
 // GetNode implements MeshManager.
@@ -276,10 +285,6 @@ func (m *MeshManagerStub) GetMesh(meshId string) MeshProvider {
 	return &MeshProviderStub{
 		meshId:   meshId,
 		snapshot: &MeshSnapshotStub{nodes: make(map[string]MeshNode)}}
-}
-
-func (m *MeshManagerStub) EnableInterface(meshId string) error {
-	return nil
 }
 
 func (m *MeshManagerStub) GetPublicKey(meshId string) (*wgtypes.Key, error) {

@@ -64,7 +64,6 @@ func TestAddMeshAddsAMesh(t *testing.T) {
 
 	manager.AddMesh(&AddMeshParams{
 		MeshId:    meshId,
-		DevName:   "wg0",
 		WgPort:    6000,
 		MeshBytes: make([]byte, 0),
 	})
@@ -83,7 +82,6 @@ func TestAddMeshMeshAlreadyExistsReplacesIt(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		err := manager.AddMesh(&AddMeshParams{
 			MeshId:    meshId,
-			DevName:   "wg0",
 			WgPort:    6000,
 			MeshBytes: make([]byte, 0),
 		})
@@ -106,7 +104,6 @@ func TestAddSelfAddsSelfToTheMesh(t *testing.T) {
 
 	err := manager.AddMesh(&AddMeshParams{
 		MeshId:    meshId,
-		DevName:   "wg0",
 		WgPort:    6000,
 		MeshBytes: make([]byte, 0),
 	})
@@ -175,7 +172,6 @@ func TestLeaveMeshDeletesMesh(t *testing.T) {
 
 	err := manager.AddMesh(&AddMeshParams{
 		MeshId:    meshId,
-		DevName:   "wg0",
 		WgPort:    6000,
 		MeshBytes: make([]byte, 0),
 	})
