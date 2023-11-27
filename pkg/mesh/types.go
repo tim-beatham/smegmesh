@@ -64,6 +64,11 @@ func NodeEquals(node1, node2 MeshNode) bool {
 	return key1.String() == key2.String()
 }
 
+func RouteEquals(route1, route2 Route) bool {
+	return route1.GetDestination().String() == route2.GetDestination().String() &&
+		route1.GetHopCount() == route2.GetHopCount()
+}
+
 func NodeID(node MeshNode) string {
 	key, _ := node.GetPublicKey()
 	return key.String()
