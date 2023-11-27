@@ -152,8 +152,11 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 			PublicKey:    pubKey.String(),
 			WgHost:       node.GetWgHost().String(),
 			Timestamp:    node.GetTimeStamp(),
-			Routes: lib.Map(node.GetRoutes(), func(r mesh.Route) string {
-				return r.GetDestination().String()
+			Routes: lib.Map(node.GetRoutes(), func(r mesh.Route) ctrlserver.MeshRoute {
+				return ctrlserver.MeshRoute{
+					Destination: r.GetDestination().String(),
+					Path:        r.GetPath(),
+				}
 			}),
 			Description: node.GetDescription(),
 			Alias:       node.GetAlias(),

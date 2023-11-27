@@ -30,15 +30,14 @@ func (s *SmegServer) routeToApiRoute(meshNode ctrlserver.MeshNode) []Route {
 	routes := make([]Route, len(meshNode.Routes))
 
 	for index, route := range meshNode.Routes {
-		word, err := s.words.Convert(route)
 
-		if err != nil {
-			fmt.Println(err.Error())
+		if route.Path == nil {
+			route.Path = make([]string, 0)
 		}
 
 		routes[index] = Route{
-			Prefix:  route,
-			RouteId: word,
+			Prefix: route.Destination,
+			Path:   route.Path,
 		}
 	}
 
@@ -47,7 +46,7 @@ func (s *SmegServer) routeToApiRoute(meshNode ctrlserver.MeshNode) []Route {
 
 func (s *SmegServer) meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNode {
 	if meshNode.Routes == nil {
-		meshNode.Routes = make([]string, 0)
+		meshNode.Routes = make([]ctrlserver.MeshRoute, 0)
 	}
 
 	alias := meshNode.Alias

@@ -66,3 +66,13 @@ func Filter[V any](list []V, f filterFunc[V]) []V {
 
 	return newList
 }
+
+func Contains[V any](list []V, proposition func(V) bool) bool {
+	for _, elem := range list {
+		if proposition(elem) {
+			return true
+		}
+	}
+
+	return false
+}

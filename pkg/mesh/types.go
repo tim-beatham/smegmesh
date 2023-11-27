@@ -15,11 +15,14 @@ type Route interface {
 	GetDestination() *net.IPNet
 	// GetHopCount: get the total hopcount of the prefix
 	GetHopCount() int
+	// GetPath: get a list of AS paths to get to the destination
+	GetPath() []string
 }
 
 type RouteStub struct {
 	Destination *net.IPNet
 	HopCount    int
+	Path        []string
 }
 
 func (r *RouteStub) GetDestination() *net.IPNet {
@@ -28,6 +31,10 @@ func (r *RouteStub) GetDestination() *net.IPNet {
 
 func (r *RouteStub) GetHopCount() int {
 	return r.HopCount
+}
+
+func (r *RouteStub) GetPath() []string {
+	return r.Path
 }
 
 // MeshNode represents an implementation of a node in a mesh

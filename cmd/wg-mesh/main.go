@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/akamensky/argparse"
+	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
@@ -93,9 +95,13 @@ func getMesh(client *ipcRpc.Client, meshId string) {
 		fmt.Println("Control Endpoint: " + node.HostEndpoint)
 		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
 		fmt.Println("Wg IP: " + node.WgHost)
-		fmt.Println(fmt.Sprintf("Timestamp: %s", time.Unix(node.Timestamp, 0).String()))
+		fmt.Printf("Timestamp: %s", time.Unix(node.Timestamp, 0).String())
 
-		advertiseRoutes := strings.Join(node.Routes, ",")
+		mapFunc := func(r ctrlserver.MeshRoute) string {
+			return r.Destination
+		}
+
+		advertiseRoutes := strings.Join(lib.Map(node.Routes, mapFunc), ",")
 		fmt.Printf("Routes: %s\n", advertiseRoutes)
 
 		fmt.Println("---")

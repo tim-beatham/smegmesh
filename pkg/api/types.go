@@ -1,8 +1,8 @@
 package api
 
 type Route struct {
-	RouteId string `json:"routeId"`
-	Prefix  string `json:"prefix"`
+	Prefix string   `json:"prefix"`
+	Path   []string `json:"path"`
 }
 
 type SmegNode struct {

@@ -9,6 +9,11 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+type MeshRoute struct {
+	Destination string
+	Path        []string
+}
+
 // Represents a WireGuard MeshNode
 type MeshNode struct {
 	HostEndpoint string
@@ -16,7 +21,7 @@ type MeshNode struct {
 	PublicKey    string
 	WgHost       string
 	Timestamp    int64
-	Routes       []string
+	Routes       []MeshRoute
 	Description  string
 	Alias        string
 	Services     map[string]string
