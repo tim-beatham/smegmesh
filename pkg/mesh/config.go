@@ -9,6 +9,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
+	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/route"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -30,10 +31,6 @@ type WgMeshConfigApplyer struct {
 type routeNode struct {
 	gateway string
 	route   Route
-}
-
-func (r *routeNode) equals(route2 *routeNode) bool {
-	return r.gateway == route2.gateway && RouteEquals(r.route, route2.route)
 }
 
 func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Device,
@@ -63,9 +60,10 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 
 	for _, route := range node.GetRoutes() {
 		bestRoutes := routes[route.GetDestination().String()]
+		var pickedRoute routeNode
 
 		if len(bestRoutes) == 1 {
-			allowedips = append(allowedips, *route.GetDestination())
+			pickedRoute = bestRoutes[0]
 		} else if len(bestRoutes) > 1 {
 			keyFunc := func(mn MeshNode) int {
 				pubKey, _ := mn.GetPublicKey()
@@ -77,11 +75,11 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 			}
 
 			// Else there is more than one candidate so consistently hash
-			pickedRoute := lib.ConsistentHash(bestRoutes, node, bucketFunc, keyFunc)
+			pickedRoute = lib.ConsistentHash(bestRoutes, node, bucketFunc, keyFunc)
+		}
 
-			if pickedRoute.gateway == pubKey.String() {
-				allowedips = append(allowedips, *route.GetDestination())
-			}
+		if pickedRoute.gateway == pubKey.String() {
+			allowedips = append(allowedips, *pickedRoute.route.GetDestination())
 		}
 	}
 
@@ -101,6 +99,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 		Endpoint:                    endpoint,
 		AllowedIPs:                  allowedips,
 		PersistentKeepaliveInterval: &keepAlive,
+		ReplaceAllowedIPs:           true,
 	}
 
 	return &peerConfig, nil
@@ -122,14 +121,9 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 
 	for _, node := range mesh.GetNodes() {
 		pubKey, _ := node.GetPublicKey()
-		meshRoutes, _ := meshProvider.GetRoutes(pubKey.String())
 
-		for _, route := range meshRoutes {
+		for _, route := range node.GetRoutes() {
 			if lib.Contains(meshPrefixes, func(prefix *net.IPNet) bool {
-				if prefix == nil || route == nil || route.GetDestination() == nil {
-					return false
-				}
-
 				return prefix.Contains(route.GetDestination().IP)
 			}) {
 				continue
@@ -150,6 +144,8 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 			} else if route.GetHopCount() < otherRoute[0].route.GetHopCount() {
 				otherRoute[0] = rn
 			} else if otherRoute[0].route.GetHopCount() == route.GetHopCount() {
+				logging.Log.WriteInfof("Other Route Hop: %d", otherRoute[0].route.GetHopCount())
+				logging.Log.WriteInfof("Route gateway %s, route hop %d", rn.gateway, route.GetHopCount())
 				routes[destination] = append(otherRoute, rn)
 			}
 		}
@@ -218,7 +214,6 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 			ipNet, _ := ula.GetIPNet(mesh.GetMeshId())
 
 			if !ipNet.Contains(route.IP) {
-
 				installedRoutes = append(installedRoutes, lib.Route{
 					Gateway:     n.GetWgHost().IP,
 					Destination: route,
@@ -240,13 +235,13 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 		return err
 	}
 
-	err = m.routeInstaller.InstallRoutes(dev.Name, installedRoutes...)
+	err = m.meshManager.GetClient().ConfigureDevice(dev.Name, cfg)
 
 	if err != nil {
 		return err
 	}
 
-	return m.meshManager.GetClient().ConfigureDevice(dev.Name, cfg)
+	return m.routeInstaller.InstallRoutes(dev.Name, installedRoutes...)
 }
 
 func (m *WgMeshConfigApplyer) ApplyConfig() error {
@@ -275,8 +270,7 @@ func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
 	}
 
 	m.meshManager.GetClient().ConfigureDevice(dev.Name, wgtypes.Config{
-		ReplacePeers: true,
-		Peers:        make([]wgtypes.PeerConfig, 0),
+		Peers: make([]wgtypes.PeerConfig, 0),
 	})
 
 	return nil

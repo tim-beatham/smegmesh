@@ -3,6 +3,7 @@ package mesh
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
@@ -18,7 +19,7 @@ type MeshManager interface {
 	AddMesh(params *AddMeshParams) error
 	HasChanges(meshid string) bool
 	GetMesh(meshId string) MeshProvider
-	GetPublicKey(meshId string) (*wgtypes.Key, error)
+	GetPublicKey() *wgtypes.Key
 	AddSelf(params *AddSelfParams) error
 	LeaveMesh(meshId string) error
 	GetSelf(meshId string) (MeshNode, error)
@@ -38,6 +39,7 @@ type MeshManager interface {
 }
 
 type MeshManagerImpl struct {
+	lock         sync.RWMutex
 	Meshes       map[string]MeshProvider
 	RouteManager RouteManager
 	Client       *wgctrl.Client
@@ -52,6 +54,7 @@ type MeshManagerImpl struct {
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
 	Monitor              MeshMonitor
+	OnDelete             func(MeshProvider)
 }
 
 // GetRouteManager implements MeshManager.
@@ -149,7 +152,9 @@ func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 		return "", fmt.Errorf("error creating mesh: %w", err)
 	}
 
+	m.lock.Lock()
 	m.Meshes[meshId] = nodeManager
+	m.lock.Unlock()
 	return meshId, nil
 }
 
@@ -190,7 +195,9 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 		return err
 	}
 
+	m.lock.Lock()
 	m.Meshes[params.MeshId] = meshProvider
+	m.lock.Unlock()
 	return nil
 }
 
@@ -206,25 +213,14 @@ func (m *MeshManagerImpl) GetMesh(meshId string) MeshProvider {
 }
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
-func (s *MeshManagerImpl) GetPublicKey(meshId string) (*wgtypes.Key, error) {
+func (s *MeshManagerImpl) GetPublicKey() *wgtypes.Key {
 	if s.conf.StubWg {
 		zeroedKey := make([]byte, wgtypes.KeyLen)
-		return (*wgtypes.Key)(zeroedKey), nil
+		return (*wgtypes.Key)(zeroedKey)
 	}
 
-	mesh, ok := s.Meshes[meshId]
-
-	if !ok {
-		return nil, errors.New("mesh does not exist")
-	}
-
-	dev, err := mesh.GetDevice()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &dev.PublicKey, nil
+	key := s.HostParameters.PrivateKey.PublicKey()
+	return &key
 }
 
 type AddSelfParams struct {
@@ -289,13 +285,28 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 
 // LeaveMesh leaves the mesh network
 func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
-	mesh, exists := s.Meshes[meshId]
+	mesh := s.GetMesh(meshId)
 
-	if !exists {
+	if mesh == nil {
 		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
 	var err error
+
+	s.RouteManager.RemoveRoutes(meshId)
+	err = mesh.RemoveNode(s.HostParameters.GetPublicKey())
+
+	if err != nil {
+		return err
+	}
+
+	if s.OnDelete != nil {
+		s.OnDelete(mesh)
+	}
+
+	s.lock.Lock()
+	delete(s.Meshes, meshId)
+	s.lock.Unlock()
 
 	if !s.conf.StubWg {
 		device, err := mesh.GetDevice()
@@ -311,8 +322,6 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 		}
 	}
 
-	err = s.RouteManager.RemoveRoutes(meshId)
-	delete(s.Meshes, meshId)
 	return err
 }
 
@@ -348,7 +357,8 @@ func (s *MeshManagerImpl) ApplyConfig() error {
 }
 
 func (s *MeshManagerImpl) SetDescription(description string) error {
-	for _, mesh := range s.Meshes {
+	meshes := s.GetMeshes()
+	for _, mesh := range meshes {
 		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
 			err := mesh.SetDescription(s.HostParameters.GetPublicKey(), description)
 
@@ -363,7 +373,8 @@ func (s *MeshManagerImpl) SetDescription(description string) error {
 
 // SetAlias implements MeshManager.
 func (s *MeshManagerImpl) SetAlias(alias string) error {
-	for _, mesh := range s.Meshes {
+	meshes := s.GetMeshes()
+	for _, mesh := range meshes {
 		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
 			err := mesh.SetAlias(s.HostParameters.GetPublicKey(), alias)
 
@@ -377,7 +388,8 @@ func (s *MeshManagerImpl) SetAlias(alias string) error {
 
 // UpdateTimeStamp updates the timestamp of this node in all meshes
 func (s *MeshManagerImpl) UpdateTimeStamp() error {
-	for _, mesh := range s.Meshes {
+	meshes := s.GetMeshes()
+	for _, mesh := range meshes {
 		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
 			err := mesh.UpdateTimeStamp(s.HostParameters.GetPublicKey())
 
@@ -395,7 +407,16 @@ func (s *MeshManagerImpl) GetClient() *wgctrl.Client {
 }
 
 func (s *MeshManagerImpl) GetMeshes() map[string]MeshProvider {
-	return s.Meshes
+	meshes := make(map[string]MeshProvider)
+
+	s.lock.RLock()
+
+	for id, mesh := range s.Meshes {
+		meshes[id] = mesh
+	}
+
+	s.lock.RUnlock()
+	return meshes
 }
 
 // Close the mesh manager
@@ -432,6 +453,7 @@ type NewMeshManagerParams struct {
 	InterfaceManipulator wg.WgInterfaceManipulator
 	ConfigApplyer        MeshConfigApplyer
 	RouteManager         RouteManager
+	OnDelete             func(MeshProvider)
 }
 
 // Creates a new instance of a mesh manager with the given parameters
@@ -466,5 +488,6 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	aliasManager := NewAliasManager()
 	m.Monitor.AddUpdateCallback(aliasManager.AddAliases)
 	m.Monitor.AddRemoveCallback(aliasManager.RemoveAliases)
+	m.OnDelete = params.OnDelete
 	return m
 }

@@ -36,28 +36,17 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	logging.Log.WriteInfof("UPDATING WG CONF")
 
-	if s.manager.HasChanges(meshId) {
-		err := s.manager.ApplyConfig()
+	s.manager.GetRouteManager().UpdateRoutes()
+	err := s.manager.ApplyConfig()
 
-		if err != nil {
-			logging.Log.WriteInfof("Failed to update config %w", err)
-		}
+	if err != nil {
+		logging.Log.WriteInfof("Failed to update config %w", err)
 	}
+
+	publicKey := s.manager.GetPublicKey()
 
 	nodeNames := s.manager.GetMesh(meshId).GetPeers()
-	self, err := s.manager.GetSelf(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	selfPublickey, err := self.GetPublicKey()
-
-	if err != nil {
-		return err
-	}
-
-	neighbours := s.cluster.GetNeighbours(nodeNames, selfPublickey.String())
+	neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
 	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
 
 	for _, node := range randomSubset {
@@ -68,7 +57,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	if len(nodeNames) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
 		logging.Log.WriteInfof("Sending to random cluster")
-		interCluster := s.cluster.GetInterCluster(nodeNames, selfPublickey.String())
+		interCluster := s.cluster.GetInterCluster(nodeNames, publicKey.String())
 		randomSubset = append(randomSubset, interCluster)
 	}
 
@@ -102,6 +91,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	// Check if any changes have occurred and trigger callbacks
 	// if changes have occurred.
 	// return s.manager.GetMonitor().Trigger()
+	s.manager.GetMesh(meshId).SaveChanges()
 	return nil
 }
 

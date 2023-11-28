@@ -32,7 +32,6 @@ func (a *AutomergeSync) RecvMessage(msg []byte) error {
 
 func (a *AutomergeSync) Complete() {
 	logging.Log.WriteInfof("Sync Completed")
-	a.manager.SaveChanges()
 }
 
 func NewAutomergeSync(manager *CrdtMeshManager) *AutomergeSync {

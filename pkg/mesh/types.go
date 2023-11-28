@@ -138,6 +138,8 @@ type MeshProvider interface {
 	GetPeers() []string
 	// GetRoutes(): Get all unique routes. Where the route with the least hop count is chosen
 	GetRoutes(targetNode string) (map[string]Route, error)
+	// RemoveNode(): remove the node from the mesh
+	RemoveNode(nodeId string) error
 }
 
 // HostParameters contains the IDs of a node

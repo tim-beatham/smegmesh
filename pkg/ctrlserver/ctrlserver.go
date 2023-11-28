@@ -21,6 +21,7 @@ type NewCtrlServerParams struct {
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
 	Querier      query.Querier
+	OnDelete     func(mesh.MeshProvider)
 }
 
 // Create a new instance of the MeshCtrlServer or error if the
@@ -46,6 +47,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		IPAllocator:          ipAllocator,
 		InterfaceManipulator: interfaceManipulator,
 		ConfigApplyer:        configApplyer,
+		OnDelete:             params.OnDelete,
 	}
 
 	ctrlServer.MeshManager = mesh.NewMeshManager(meshManagerParams)

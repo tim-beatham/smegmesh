@@ -45,21 +45,26 @@ func main() {
 	var robinRpc robin.WgRpc
 	var robinIpc robin.IpcHandler
 	var syncProvider sync.SyncServiceImpl
+	var syncRequester sync.SyncRequester
+	var syncer sync.Syncer
 
 	ctrlServerParams := ctrlserver.NewCtrlServerParams{
 		Conf:         conf,
 		CtrlProvider: &robinRpc,
 		SyncProvider: &syncProvider,
 		Client:       client,
+		OnDelete: func(mp mesh.MeshProvider) {
+			syncer.SyncMeshes()
+		},
 	}
 
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
 	syncProvider.Server = ctrlServer
-	syncRequester := sync.NewSyncRequester(ctrlServer)
-	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester)
+	syncRequester = sync.NewSyncRequester(ctrlServer)
+	syncer = sync.NewSyncer(ctrlServer.MeshManager, conf, syncRequester)
+	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester, syncer)
 	timestampScheduler := timer.NewTimestampScheduler(ctrlServer)
 	pruneScheduler := mesh.NewPruner(ctrlServer.MeshManager, *conf)
-	routeScheduler := timer.NewRouteScheduler(ctrlServer)
 
 	robinIpcParams := robin.RobinIpcParams{
 		CtrlServer: ctrlServer,
@@ -79,7 +84,6 @@ func main() {
 	go syncScheduler.Run()
 	go timestampScheduler.Run()
 	go pruneScheduler.Run()
-	go routeScheduler.Run()
 
 	closeResources := func() {
 		logging.Log.WriteInfof("Closing resources")

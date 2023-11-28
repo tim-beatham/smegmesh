@@ -81,6 +81,11 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
+// RemoveNode implements MeshProvider.
+func (*MeshProviderStub) RemoveNode(nodeId string) error {
+	panic("unimplemented")
+}
+
 func (*MeshProviderStub) GetRoutes(targetId string) (map[string]Route, error) {
 	return nil, nil
 }
@@ -287,9 +292,9 @@ func (m *MeshManagerStub) GetMesh(meshId string) MeshProvider {
 		snapshot: &MeshSnapshotStub{nodes: make(map[string]MeshNode)}}
 }
 
-func (m *MeshManagerStub) GetPublicKey(meshId string) (*wgtypes.Key, error) {
+func (m *MeshManagerStub) GetPublicKey() *wgtypes.Key {
 	key, _ := wgtypes.GenerateKey()
-	return &key, nil
+	return &key
 }
 
 func (m *MeshManagerStub) AddSelf(params *AddSelfParams) error {
