@@ -146,6 +146,7 @@ func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 		Conf:    m.conf,
 		Client:  m.Client,
 		MeshId:  meshId,
+		NodeID:  m.HostParameters.GetPublicKey(),
 	})
 
 	if err != nil {
@@ -183,6 +184,7 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 		Conf:    m.conf,
 		Client:  m.Client,
 		MeshId:  params.MeshId,
+		NodeID:  m.HostParameters.GetPublicKey(),
 	})
 
 	if err != nil {
@@ -214,11 +216,6 @@ func (m *MeshManagerImpl) GetMesh(meshId string) MeshProvider {
 
 // GetPublicKey: Gets the public key of the WireGuard mesh
 func (s *MeshManagerImpl) GetPublicKey() *wgtypes.Key {
-	if s.conf.StubWg {
-		zeroedKey := make([]byte, wgtypes.KeyLen)
-		return (*wgtypes.Key)(zeroedKey)
-	}
-
 	key := s.HostParameters.PrivateKey.PublicKey()
 	return &key
 }

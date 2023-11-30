@@ -1,4 +1,4 @@
-package crdt
+package automerge
 
 // Route: Represents a CRDT of the given route
 type Route struct {
