@@ -222,13 +222,13 @@ func (m *TwoPhaseStoreMeshManager) GetDevice() (*wgtypes.Device, error) {
 
 // HasChanges returns true if we have changes since last time we synced
 func (m *TwoPhaseStoreMeshManager) HasChanges() bool {
-	clockValue := m.store.GetClock()
+	clockValue := m.store.GetHash()
 	return clockValue != m.LastClock
 }
 
 // Record that we have changes and save the corresponding changes
 func (m *TwoPhaseStoreMeshManager) SaveChanges() {
-	clockValue := m.store.GetClock()
+	clockValue := m.store.GetHash()
 	m.LastClock = clockValue
 }
 

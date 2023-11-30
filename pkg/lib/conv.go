@@ -76,3 +76,13 @@ func Contains[V any](list []V, proposition func(V) bool) bool {
 
 	return false
 }
+
+func Reduce[A any, V any](start A, values []V, reduce func(A, V) A) A {
+	accum := start
+
+	for _, elem := range values {
+		accum = reduce(accum, elem)
+	}
+
+	return accum
+}

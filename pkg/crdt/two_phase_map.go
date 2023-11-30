@@ -128,16 +128,19 @@ func (m *TwoPhaseMap[K, D]) incrementClock() uint64 {
 	return maxClock
 }
 
-func (m *TwoPhaseMap[K, D]) GetClock() uint64 {
-	maxClock := uint64(0)
+// GetHash: Get the hash of the current state of the map
+// Sums the current values of the vectors. Provides good approximation
+// of increasing numbers
+func (m *TwoPhaseMap[K, D]) GetHash() uint64 {
 	m.lock.RLock()
 
-	for _, value := range m.vectors {
-		maxClock = max(maxClock, value)
-	}
+	sum := lib.Reduce(uint64(0), lib.MapValues(m.vectors), func(sum uint64, current uint64) uint64 {
+		return current + sum
+	})
 
 	m.lock.RUnlock()
-	return maxClock
+
+	return sum
 }
 
 // GetState: get the current vector clock of the add and remove

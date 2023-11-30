@@ -125,7 +125,6 @@ func (t *TwoPhaseSyncer) RecvMessage(msg []byte) error {
 
 func (t *TwoPhaseSyncer) Complete() {
 	logging.Log.WriteInfof("SYNC COMPLETED")
-	t.manager.SaveChanges()
 }
 
 func NewTwoPhaseSyncer(manager *TwoPhaseStoreMeshManager) *TwoPhaseSyncer {
