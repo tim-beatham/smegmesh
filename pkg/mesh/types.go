@@ -159,6 +159,7 @@ type MeshProviderFactoryParams struct {
 	Port    int
 	Conf    *conf.WgMeshConfiguration
 	Client  *wgctrl.Client
+	NodeID  string
 }
 
 // MeshProviderFactory creates an instance of a mesh provider

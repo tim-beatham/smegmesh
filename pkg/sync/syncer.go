@@ -45,6 +45,8 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	publicKey := s.manager.GetPublicKey()
 
+	logging.Log.WriteInfof(publicKey.String())
+
 	nodeNames := s.manager.GetMesh(meshId).GetPeers()
 	neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
 	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
@@ -87,11 +89,6 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	logging.Log.WriteInfof("SYNC COUNT: %d", s.syncCount)
 
 	s.infectionCount = ((s.conf.InfectionCount + s.infectionCount - 1) % s.conf.InfectionCount)
-
-	// Check if any changes have occurred and trigger callbacks
-	// if changes have occurred.
-	// return s.manager.GetMonitor().Trigger()
-	s.manager.GetMesh(meshId).SaveChanges()
 	return nil
 }
 

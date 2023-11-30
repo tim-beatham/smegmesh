@@ -226,8 +226,7 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	cfg := wgtypes.Config{
-		Peers:        peerConfigs,
-		ReplacePeers: true,
+		Peers: peerConfigs,
 	}
 
 	dev, err := mesh.GetDevice()

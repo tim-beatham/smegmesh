@@ -1,9 +1,9 @@
 package ctrlserver
 
 import (
-	crdt "github.com/tim-beatham/wgmesh/pkg/automerge"
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/conn"
+	"github.com/tim-beatham/wgmesh/pkg/crdt"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
@@ -28,8 +28,8 @@ type NewCtrlServerParams struct {
 // operation failed
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
-	meshFactory := crdt.CrdtProviderFactory{}
-	nodeFactory := crdt.MeshNodeFactory{
+	meshFactory := &crdt.TwoPhaseMapFactory{}
+	nodeFactory := &crdt.MeshNodeFactory{
 		Config: *params.Conf,
 	}
 	idGenerator := &lib.IDNameGenerator{}
@@ -41,8 +41,8 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	meshManagerParams := &mesh.NewMeshManagerParams{
 		Conf:                 *params.Conf,
 		Client:               params.Client,
-		MeshProvider:         &meshFactory,
-		NodeFactory:          &nodeFactory,
+		MeshProvider:         meshFactory,
+		NodeFactory:          nodeFactory,
 		IdGenerator:          idGenerator,
 		IPAllocator:          ipAllocator,
 		InterfaceManipulator: interfaceManipulator,

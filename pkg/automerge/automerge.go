@@ -1,4 +1,4 @@
-package crdt
+package automerge
 
 import (
 	"errors"
@@ -6,7 +6,6 @@ import (
 	"net"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/automerge/automerge-go"
@@ -20,7 +19,6 @@ import (
 
 // CrdtMeshManager manages nodes in the crdt mesh
 type CrdtMeshManager struct {
-	lock          sync.RWMutex
 	MeshId        string
 	IfName        string
 	Client        *wgctrl.Client
@@ -42,13 +40,10 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	crdt.Services = make(map[string]string)
 	crdt.Timestamp = time.Now().Unix()
 
-	c.lock.Lock()
 	c.doc.Path("nodes").Map().Set(crdt.PublicKey, crdt)
-	c.lock.Unlock()
 }
 
 func (c *CrdtMeshManager) isPeer(nodeId string) bool {
-	c.lock.RLock()
 	node, err := c.doc.Path("nodes").Map().Get(nodeId)
 
 	if err != nil || node.Kind() != automerge.KindMap {
@@ -56,7 +51,6 @@ func (c *CrdtMeshManager) isPeer(nodeId string) bool {
 	}
 
 	nodeType, err := node.Map().Get("type")
-	c.lock.RUnlock()
 
 	if err != nil || nodeType.Kind() != automerge.KindStr {
 		return false
@@ -68,7 +62,6 @@ func (c *CrdtMeshManager) isPeer(nodeId string) bool {
 // isAlive: checks that the node's configuration has been updated
 // since the rquired keep alive time
 func (c *CrdtMeshManager) isAlive(nodeId string) bool {
-	c.lock.RLock()
 	node, err := c.doc.Path("nodes").Map().Get(nodeId)
 
 	if err != nil || node.Kind() != automerge.KindMap {
@@ -76,7 +69,6 @@ func (c *CrdtMeshManager) isAlive(nodeId string) bool {
 	}
 
 	timestamp, err := node.Map().Get("timestamp")
-	c.lock.RUnlock()
 
 	if err != nil || timestamp.Kind() != automerge.KindInt64 {
 		return false
@@ -87,9 +79,7 @@ func (c *CrdtMeshManager) isAlive(nodeId string) bool {
 }
 
 func (c *CrdtMeshManager) GetPeers() []string {
-	c.lock.RLock()
 	keys, _ := c.doc.Path("nodes").Map().Keys()
-	c.lock.RUnlock()
 
 	keys = lib.Filter(keys, func(publicKey string) bool {
 		return c.isPeer(publicKey) && c.isAlive(publicKey)
@@ -108,9 +98,7 @@ func (c *CrdtMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
 
 	if c.cache == nil || len(changes) > 0 {
 		c.lastCacheHash = c.LastHash
-		c.lock.RLock()
 		cache, err := automerge.As[*MeshCrdt](c.doc.Root())
-		c.lock.RUnlock()
 
 		if err != nil {
 			return nil, err
@@ -170,7 +158,6 @@ func (m *CrdtMeshManager) NodeExists(key string) bool {
 }
 
 func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {
-	m.lock.RLock()
 	node, err := m.doc.Path("nodes").Map().Get(endpoint)
 
 	if node.Kind() != automerge.KindMap {
@@ -182,7 +169,6 @@ func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {
 	}
 
 	meshNode, err := automerge.As[*MeshNodeCrdt](node)
-	m.lock.RUnlock()
 
 	if err != nil {
 		return nil, err
@@ -228,9 +214,7 @@ func (m *CrdtMeshManager) SaveChanges() {
 }
 
 func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
-	m.lock.RLock()
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
@@ -240,9 +224,7 @@ func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
 		return errors.New("node is not a map")
 	}
 
-	m.lock.Lock()
 	err = node.Map().Set("timestamp", time.Now().Unix())
-	m.lock.Unlock()
 
 	if err == nil {
 		logging.Log.WriteInfof("Timestamp Updated for %s", nodeId)
@@ -252,9 +234,7 @@ func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
 }
 
 func (m *CrdtMeshManager) SetDescription(nodeId string, description string) error {
-	m.lock.RLock()
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
@@ -264,9 +244,7 @@ func (m *CrdtMeshManager) SetDescription(nodeId string, description string) erro
 		return fmt.Errorf("%s does not exist", nodeId)
 	}
 
-	m.lock.Lock()
 	err = node.Map().Set("description", description)
-	m.lock.Unlock()
 
 	if err == nil {
 		logging.Log.WriteInfof("Description Updated for %s", nodeId)
@@ -276,9 +254,7 @@ func (m *CrdtMeshManager) SetDescription(nodeId string, description string) erro
 }
 
 func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
-	m.lock.RLock()
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
@@ -288,9 +264,7 @@ func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
 		return fmt.Errorf("%s does not exist", nodeId)
 	}
 
-	m.lock.Lock()
 	err = node.Map().Set("alias", alias)
-	m.lock.Unlock()
 
 	if err == nil {
 		logging.Log.WriteInfof("Updated Alias for %s to %s", nodeId, alias)
@@ -300,17 +274,13 @@ func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
 }
 
 func (m *CrdtMeshManager) AddService(nodeId, key, value string) error {
-	m.lock.RLock()
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
-	m.lock.RUnlock()
 
 	if err != nil || node.Kind() != automerge.KindMap {
 		return fmt.Errorf("AddService: node %s does not exist", nodeId)
 	}
 
-	m.lock.RLock()
 	service, err := node.Map().Get("services")
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
@@ -320,14 +290,11 @@ func (m *CrdtMeshManager) AddService(nodeId, key, value string) error {
 		return fmt.Errorf("AddService: services property does not exist in node")
 	}
 
-	m.lock.Lock()
 	err = service.Map().Set(key, value)
-	m.lock.Unlock()
 	return err
 }
 
 func (m *CrdtMeshManager) RemoveService(nodeId, key string) error {
-	m.lock.RLock()
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
 
 	if err != nil || node.Kind() != automerge.KindMap {
@@ -343,11 +310,8 @@ func (m *CrdtMeshManager) RemoveService(nodeId, key string) error {
 	if service.Kind() != automerge.KindMap {
 		return fmt.Errorf("services property does not exist")
 	}
-	m.lock.RUnlock()
 
-	m.lock.Lock()
 	err = service.Map().Delete(key)
-	m.lock.Unlock()
 
 	if err != nil {
 		return fmt.Errorf("service %s does not exist", key)
@@ -358,7 +322,6 @@ func (m *CrdtMeshManager) RemoveService(nodeId, key string) error {
 
 // AddRoutes: adds routes to the specific nodeId
 func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
-	m.lock.RLock()
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 	logging.Log.WriteInfof("Adding route to %s", nodeId)
 
@@ -371,7 +334,6 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
 	}
 
 	routeMap, err := nodeVal.Map().Get("routes")
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
@@ -400,12 +362,10 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
 			slices.Equal(route.GetPath(), pathStr)
 		}
 
-		m.lock.Lock()
 		err = routeMap.Map().Set(route.GetDestination().String(), Route{
 			Destination: route.GetDestination().String(),
 			Path:        route.GetPath(),
 		})
-		m.lock.Unlock()
 
 		if err != nil {
 			return err
@@ -415,7 +375,6 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
 }
 
 func (m *CrdtMeshManager) getRoutes(nodeId string) ([]Route, error) {
-	m.lock.RLock()
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 
 	if err != nil {
@@ -437,7 +396,6 @@ func (m *CrdtMeshManager) getRoutes(nodeId string) ([]Route, error) {
 	}
 
 	routes, err := automerge.As[map[string]Route](routeMap)
-	m.lock.RUnlock()
 
 	return lib.MapValues(routes), err
 }
@@ -486,15 +444,12 @@ func (m *CrdtMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, e
 }
 
 func (m *CrdtMeshManager) RemoveNode(nodeId string) error {
-	m.lock.Lock()
 	err := m.doc.Path("nodes").Map().Delete(nodeId)
-	m.lock.Unlock()
 	return err
 }
 
 // DeleteRoutes deletes the specified routes
 func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...string) error {
-	m.lock.RLock()
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 
 	if err != nil {
@@ -506,17 +461,14 @@ func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...string) error {
 	}
 
 	routeMap, err := nodeVal.Map().Get("routes")
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
 	}
 
-	m.lock.Lock()
 	for _, route := range routes {
 		err = routeMap.Map().Delete(route)
 	}
-	m.lock.Unlock()
 
 	return err
 }
@@ -526,7 +478,6 @@ func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 }
 
 func (m *CrdtMeshManager) Prune(pruneTime int) error {
-	m.lock.RLock()
 	nodes, err := m.doc.Path("nodes").Get()
 
 	if err != nil {
@@ -538,7 +489,6 @@ func (m *CrdtMeshManager) Prune(pruneTime int) error {
 	}
 
 	values, err := nodes.Map().Values()
-	m.lock.RUnlock()
 
 	if err != nil {
 		return err
@@ -553,9 +503,7 @@ func (m *CrdtMeshManager) Prune(pruneTime int) error {
 
 		nodeMap := node.Map()
 
-		m.lock.RLock()
 		timeStamp, err := nodeMap.Get("timestamp")
-		m.lock.RUnlock()
 
 		if err != nil {
 			return err
@@ -601,7 +549,6 @@ func (m *MeshNodeCrdt) GetWgHost() *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(m.WgHost)
 
 	if err != nil {
-		logging.Log.WriteErrorf("Cannot parse WgHost %s", err.Error())
 		return nil
 	}
 
@@ -629,7 +576,6 @@ func (m *MeshNodeCrdt) GetIdentifier() string {
 	ipv6 := m.WgHost[:len(m.WgHost)-4]
 
 	constituents := strings.Split(ipv6, ":")
-	logging.Log.WriteInfof(ipv6)
 	constituents = constituents[4:]
 	return strings.Join(constituents, ":")
 }
