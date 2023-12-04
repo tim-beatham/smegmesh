@@ -99,6 +99,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 		Endpoint:                    endpoint,
 		AllowedIPs:                  allowedips,
 		PersistentKeepaliveInterval: &keepAlive,
+		ReplaceAllowedIPs:           true,
 	}
 
 	return &peerConfig, nil
@@ -188,8 +189,10 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 
 		if n.GetType() == conf.CLIENT_ROLE && len(peers) > 0 && self.GetType() == conf.CLIENT_ROLE {
 			hashFunc := func(mn MeshNode) int {
-				return lib.HashString(mn.GetWgHost().String())
+				pubKey, _ := mn.GetPublicKey()
+				return lib.HashString(pubKey.String())
 			}
+
 			peer := lib.ConsistentHash(peers, n, hashFunc, hashFunc)
 
 			clients, ok := peerToClients[peer.GetWgHost().String()]
