@@ -197,7 +197,17 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 			continue
 		}
 
-		if len(peers) > 0 && self.GetType() == conf.CLIENT_ROLE {
+		if self.GetType() == conf.PEER_ROLE {
+			client, err := m.convertMeshNode(n, dev, peerToClients, routes)
+
+			if err != nil {
+				return err
+			}
+
+			peerConfigs[count] = *client
+			count++
+
+		} else if len(peers) > 0 && self.GetType() == conf.CLIENT_ROLE {
 			hashFunc := func(mn MeshNode) int {
 				pubKey, _ := mn.GetPublicKey()
 				return lib.HashString(pubKey.String())
@@ -219,6 +229,10 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	for _, n := range peers {
+		if NodeEquals(n, self) {
+			continue
+		}
+
 		peer, err := m.convertMeshNode(n, dev, peerToClients, routes)
 
 		if err != nil {
