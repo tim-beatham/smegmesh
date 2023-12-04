@@ -99,7 +99,6 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 		Endpoint:                    endpoint,
 		AllowedIPs:                  allowedips,
 		PersistentKeepaliveInterval: &keepAlive,
-		ReplaceAllowedIPs:           true,
 	}
 
 	return &peerConfig, nil
