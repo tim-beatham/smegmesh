@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
@@ -52,7 +53,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 	allowedips := make([]net.IPNet, 1)
 	allowedips[0] = *node.GetWgHost()
 
-	clients, ok := peerToClients[node.GetWgHost().String()]
+	clients, ok := peerToClients[pubKey.String()]
 
 	if ok {
 		allowedips = append(allowedips, clients...)
@@ -162,10 +163,19 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	}
 
 	nodes := lib.MapValues(snap.GetNodes())
+
+	slices.SortFunc(nodes, func(a, b MeshNode) int {
+		return strings.Compare(string(a.GetType()), string(b.GetType()))
+	})
+
 	peerConfigs := make([]wgtypes.PeerConfig, len(nodes))
 
 	peers := lib.Filter(nodes, func(mn MeshNode) bool {
 		return mn.GetType() == conf.PEER_ROLE
+	})
+
+	clients := lib.Filter(nodes, func(mn MeshNode) bool {
+		return mn.GetType() == conf.CLIENT_ROLE
 	})
 
 	var count int = 0
@@ -182,12 +192,12 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 
 	dev, _ := mesh.GetDevice()
 
-	for _, n := range nodes {
+	for _, n := range clients {
 		if NodeEquals(n, self) {
 			continue
 		}
 
-		if n.GetType() == conf.CLIENT_ROLE && len(peers) > 0 && self.GetType() == conf.CLIENT_ROLE {
+		if len(peers) > 0 && self.GetType() == conf.CLIENT_ROLE {
 			hashFunc := func(mn MeshNode) int {
 				pubKey, _ := mn.GetPublicKey()
 				return lib.HashString(pubKey.String())
@@ -195,17 +205,20 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 
 			peer := lib.ConsistentHash(peers, n, hashFunc, hashFunc)
 
-			clients, ok := peerToClients[peer.GetWgHost().String()]
+			pubKey, _ := peer.GetPublicKey()
+
+			clients, ok := peerToClients[pubKey.String()]
 
 			if !ok {
 				clients = make([]net.IPNet, 0)
-				peerToClients[peer.GetWgHost().String()] = clients
+				peerToClients[pubKey.String()] = clients
 			}
 
-			peerToClients[peer.GetWgHost().String()] = append(clients, *n.GetWgHost())
-			continue
+			peerToClients[pubKey.String()] = append(clients, *n.GetWgHost())
 		}
+	}
 
+	for _, n := range peers {
 		peer, err := m.convertMeshNode(n, dev, peerToClients, routes)
 
 		if err != nil {
