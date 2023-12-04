@@ -180,6 +180,8 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 	routes := m.getRoutes(mesh)
 	installedRoutes := make([]lib.Route, 0)
 
+	dev, _ := mesh.GetDevice()
+
 	for _, n := range nodes {
 		if NodeEquals(n, self) {
 			continue
@@ -202,7 +204,6 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 			continue
 		}
 
-		dev, _ := mesh.GetDevice()
 		peer, err := m.convertMeshNode(n, dev, peerToClients, routes)
 
 		if err != nil {
@@ -227,12 +228,6 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 
 	cfg := wgtypes.Config{
 		Peers: peerConfigs,
-	}
-
-	dev, err := mesh.GetDevice()
-
-	if err != nil {
-		return err
 	}
 
 	err = m.meshManager.GetClient().ConfigureDevice(dev.Name, cfg)
