@@ -140,6 +140,9 @@ type MeshProvider interface {
 	GetRoutes(targetNode string) (map[string]Route, error)
 	// RemoveNode(): remove the node from the mesh
 	RemoveNode(nodeId string) error
+	// Mark: marks the node as unreachable. This is not broadcast to the entire
+	// this is not considered when syncing node state
+	Mark(nodeId string)
 }
 
 // HostParameters contains the IDs of a node

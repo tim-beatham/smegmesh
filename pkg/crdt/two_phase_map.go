@@ -60,6 +60,10 @@ func (m *TwoPhaseMap[K, D]) Put(key K, data D) {
 	m.addMap.Put(key, data)
 }
 
+func (m *TwoPhaseMap[K, D]) Mark(key K) {
+	m.addMap.Mark(key)
+}
+
 // Remove removes the value from the map
 func (m *TwoPhaseMap[K, D]) Remove(key K) {
 	m.removeMap.Put(key, true)
@@ -113,6 +117,10 @@ func (m *TwoPhaseMap[K, D]) SnapShotFromState(state *TwoPhaseMapState[K]) *TwoPh
 type TwoPhaseMapState[K comparable] struct {
 	AddContents    map[K]uint64
 	RemoveContents map[K]uint64
+}
+
+func (m *TwoPhaseMap[K, D]) IsMarked(key K) bool {
+	return m.addMap.IsMarked(key)
 }
 
 func (m *TwoPhaseMap[K, D]) incrementClock() uint64 {
@@ -184,11 +192,15 @@ func (m *TwoPhaseMap[K, D]) Merge(snapshot TwoPhaseMapSnapshot[K, D]) {
 	m.lock.Lock()
 
 	for key, value := range snapshot.Add {
+		// Gravestone is local only to that node.
+		// Discover ourselves if the node is alive
+		value.Gravestone = false
 		m.addMap.put(key, value)
 		m.vectors[key] = max(value.Vector, m.vectors[key])
 	}
 
 	for key, value := range snapshot.Remove {
+		value.Gravestone = false
 		m.removeMap.put(key, value)
 		m.vectors[key] = max(value.Vector, m.vectors[key])
 	}

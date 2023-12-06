@@ -48,6 +48,13 @@ type MeshNode struct {
 	Description  string
 	Services     map[string]string
 	Type         string
+	Tombstone    bool
+}
+
+// Mark: marks the node is unreachable. This is not broadcast on
+// syncrhonisation
+func (m *TwoPhaseStoreMeshManager) Mark(nodeId string) {
+	m.store.Mark(nodeId)
 }
 
 // GetHostEndpoint: gets the gRPC endpoint of the node
@@ -200,11 +207,11 @@ func (m *TwoPhaseStoreMeshManager) Save() []byte {
 // Load() loads a mesh network
 func (m *TwoPhaseStoreMeshManager) Load(bs []byte) error {
 	buf := bytes.NewBuffer(bs)
-
 	dec := gob.NewDecoder(buf)
 
 	var snapshot TwoPhaseMapSnapshot[string, MeshNode]
 	err := dec.Decode(&snapshot)
+
 	m.store.Merge(snapshot)
 	return err
 }
@@ -256,14 +263,25 @@ func (m *TwoPhaseStoreMeshManager) AddRoutes(nodeId string, routes ...mesh.Route
 
 	node := m.store.Get(nodeId)
 
+	changes := false
+
 	for _, route := range routes {
-		node.Routes[route.GetDestination().String()] = Route{
-			Destination: route.GetDestination().String(),
-			Path:        route.GetPath(),
+		prevRoute, ok := node.Routes[route.GetDestination().String()]
+
+		if !ok || route.GetHopCount() < prevRoute.GetHopCount() {
+			changes = true
+
+			node.Routes[route.GetDestination().String()] = Route{
+				Destination: route.GetDestination().String(),
+				Path:        route.GetPath(),
+			}
 		}
 	}
 
-	m.store.Put(nodeId, node)
+	if changes {
+		m.store.Put(nodeId, node)
+	}
+
 	return nil
 }
 
@@ -357,8 +375,18 @@ func (m *TwoPhaseStoreMeshManager) RemoveService(nodeId string, key string) erro
 }
 
 // Prune: prunes all nodes that have not updated their timestamp in
-// pruneAmount seconds
+// pruneAmount of seconds
 func (m *TwoPhaseStoreMeshManager) Prune(pruneAmount int) error {
+	nodes := lib.MapValues(m.store.AsMap())
+	nodes = lib.Filter(nodes, func(mn MeshNode) bool {
+		return time.Now().Unix()-mn.Timestamp > int64(pruneAmount)
+	})
+
+	for _, node := range nodes {
+		key, _ := node.GetPublicKey()
+		m.store.Remove(key.String())
+	}
+
 	return nil
 }
 
@@ -367,6 +395,13 @@ func (m *TwoPhaseStoreMeshManager) GetPeers() []string {
 	nodes := lib.MapValues(m.store.AsMap())
 	nodes = lib.Filter(nodes, func(mn MeshNode) bool {
 		if mn.Type != string(conf.PEER_ROLE) {
+			return false
+		}
+
+		// If the node is marked as unreachable don't consider it a peer.
+		// this help to optimize convergence time for unreachable nodes.
+		// However advertising it to other nodes could result in flapping.
+		if m.store.IsMarked(mn.PublicKey) {
 			return false
 		}
 

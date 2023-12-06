@@ -81,6 +81,11 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
+// Mark implements MeshProvider.
+func (*MeshProviderStub) Mark(nodeId string) {
+	panic("unimplemented")
+}
+
 // RemoveNode implements MeshProvider.
 func (*MeshProviderStub) RemoveNode(nodeId string) error {
 	panic("unimplemented")
@@ -117,7 +122,7 @@ func (*MeshProviderStub) RemoveService(nodeId string, key string) error {
 
 // SetAlias implements MeshProvider.
 func (*MeshProviderStub) SetAlias(nodeId string, alias string) error {
-	panic("unimplemented")
+	return nil
 }
 
 // RemoveRoutes implements MeshProvider.
