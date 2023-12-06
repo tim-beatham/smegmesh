@@ -6,8 +6,9 @@ import (
 )
 
 type Bucket[D any] struct {
-	Vector   uint64
-	Contents D
+	Vector     uint64
+	Contents   D
+	Gravestone bool
 }
 
 // GMap is a set that can only grow in size
@@ -60,6 +61,30 @@ func (g *GMap[K, D]) get(key K) Bucket[D] {
 
 func (g *GMap[K, D]) Get(key K) D {
 	return g.get(key).Contents
+}
+
+func (g *GMap[K, D]) Mark(key K) {
+	g.lock.Lock()
+	bucket := g.contents[key]
+	bucket.Gravestone = true
+	g.lock.Unlock()
+}
+
+// IsMarked: returns true if the node is marked
+func (g *GMap[K, D]) IsMarked(key K) bool {
+	marked := false
+
+	g.lock.RLock()
+
+	bucket, ok := g.contents[key]
+
+	if ok {
+		marked = bucket.Gravestone
+	}
+
+	g.lock.RUnlock()
+
+	return marked
 }
 
 func (g *GMap[K, D]) Keys() []K {
