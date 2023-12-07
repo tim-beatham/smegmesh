@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"fmt"
+	"hash/fnv"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
@@ -16,7 +17,11 @@ func (f *TwoPhaseMapFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) 
 		IfName: params.DevName,
 		Client: params.Client,
 		conf:   params.Conf,
-		store:  NewTwoPhaseMap[string, MeshNode](params.NodeID),
+		store: NewTwoPhaseMap[string, MeshNode](params.NodeID, func(s string) uint64 {
+			h := fnv.New32a()
+			h.Write([]byte(s))
+			return uint64(h.Sum32())
+		}, uint64(3*params.Conf.KeepAliveTime)),
 	}, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"time"
 
@@ -245,6 +246,31 @@ func (m *TwoPhaseStoreMeshManager) UpdateTimeStamp(nodeId string) error {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
 	}
 
+	// Sort nodes by their public key
+	peers := m.GetPeers()
+	slices.Sort(peers)
+
+	if len(peers) == 0 {
+		return nil
+	}
+
+	peerToUpdate := peers[0]
+
+	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.conf.KeepAliveTime) {
+		m.store.Mark(peerToUpdate)
+
+		if len(peers) < 2 {
+			return nil
+		}
+
+		peerToUpdate = peers[1]
+	}
+
+	if peerToUpdate != nodeId {
+		return nil
+	}
+
+	// Refresh causing node to update it's time stamp
 	node := m.store.Get(nodeId)
 	node.Timestamp = time.Now().Unix()
 	m.store.Put(nodeId, node)

@@ -173,7 +173,7 @@ type MeshProviderFactory interface {
 // MeshNodeFactoryParams are the parameters required to construct
 // a mesh node
 type MeshNodeFactoryParams struct {
-	PublicKey *wgtypes.Key
+PublicKey *wgtypes.Key
 	NodeIP    net.IP
 	WgPort    int
 	Endpoint  string

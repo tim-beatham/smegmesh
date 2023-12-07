@@ -1,11 +1,13 @@
 package lib
 
+import "cmp"
+
 // MapToSlice converts a map to a slice in go
-func MapValues[K comparable, V any](m map[K]V) []V {
+func MapValues[K cmp.Ordered, V any](m map[K]V) []V {
 	return MapValuesWithExclude(m, map[K]struct{}{})
 }
 
-func MapValuesWithExclude[K comparable, V any](m map[K]V, exclude map[K]struct{}) []V {
+func MapValuesWithExclude[K cmp.Ordered, V any](m map[K]V, exclude map[K]struct{}) []V {
 	values := make([]V, len(m)-len(exclude))
 
 	i := 0
@@ -26,7 +28,7 @@ func MapValuesWithExclude[K comparable, V any](m map[K]V, exclude map[K]struct{}
 	return values
 }
 
-func MapKeys[K comparable, V any](m map[K]V) []K {
+func MapKeys[K cmp.Ordered, V any](m map[K]V) []K {
 	values := make([]K, len(m))
 
 	i := 0

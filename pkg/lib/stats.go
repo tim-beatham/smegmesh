@@ -2,6 +2,7 @@
 package lib
 
 import (
+	"cmp"
 	"math"
 
 	"gonum.org/v1/gonum/stat"
@@ -10,7 +11,7 @@ import (
 
 // Modelling the distribution using a normal distribution get the count
 // of the outliers
-func GetOutliers[K comparable](counts map[K]uint64, alpha float64) []K {
+func GetOutliers[K cmp.Ordered](counts map[K]uint64, alpha float64) []K {
 	n := float64(len(counts))
 
 	keys := MapKeys(counts)

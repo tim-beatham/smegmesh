@@ -10,7 +10,8 @@ import (
 type SyncState int
 
 const (
-	PREPARE SyncState = iota
+	HASH SyncState = iota
+	PREPARE
 	PRESENT
 	EXCHANGE
 	MERGE
@@ -26,13 +27,51 @@ type TwoPhaseSyncer struct {
 	peerMsg            []byte
 }
 
+type TwoPhaseHash struct {
+	Hash uint64
+}
+
 type SyncFSM map[SyncState]func(*TwoPhaseSyncer) ([]byte, bool)
 
-func prepare(syncer *TwoPhaseSyncer) ([]byte, bool) {
+func hash(syncer *TwoPhaseSyncer) ([]byte, bool) {
+	hash := TwoPhaseHash{
+		Hash: syncer.manager.store.Clock.GetHash(),
+	}
+
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
 
-	err := enc.Encode(*syncer.mapState)
+	err := enc.Encode(hash)
+
+	if err != nil {
+		logging.Log.WriteInfof(err.Error())
+	}
+
+	syncer.IncrementState()
+	return buffer.Bytes(), true
+}
+
+func prepare(syncer *TwoPhaseSyncer) ([]byte, bool) {
+	var recvBuffer = bytes.NewBuffer(syncer.peerMsg)
+	dec := gob.NewDecoder(recvBuffer)
+
+	var hash TwoPhaseHash
+	err := dec.Decode(&hash)
+
+	if err != nil {
+		logging.Log.WriteInfof(err.Error())
+	}
+
+	// If vector clocks are equal then no need to merge state
+	// Helps to reduce bandwidth by detecting early
+	if hash.Hash == syncer.manager.store.Clock.GetHash() {
+		return nil, false
+	}
+
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+
+	err = enc.Encode(*syncer.mapState)
 
 	if err != nil {
 		logging.Log.WriteInfof(err.Error())
@@ -124,11 +163,14 @@ func (t *TwoPhaseSyncer) RecvMessage(msg []byte) error {
 
 func (t *TwoPhaseSyncer) Complete() {
 	logging.Log.WriteInfof("SYNC COMPLETED")
-	t.manager.store.Clock.IncrementClock()
+	if t.state == FINISHED || t.state == MERGE {
+		t.manager.store.Clock.IncrementClock()
+	}
 }
 
 func NewTwoPhaseSyncer(manager *TwoPhaseStoreMeshManager) *TwoPhaseSyncer {
 	var generateMessageFsm SyncFSM = SyncFSM{
+		HASH:     hash,
 		PREPARE:  prepare,
 		PRESENT:  present,
 		EXCHANGE: exchange,
@@ -137,7 +179,7 @@ func NewTwoPhaseSyncer(manager *TwoPhaseStoreMeshManager) *TwoPhaseSyncer {
 
 	return &TwoPhaseSyncer{
 		manager:            manager,
-		state:              PREPARE,
+		state:              HASH,
 		mapState:           manager.store.GenerateMessage(),
 		generateMessageFSM: generateMessageFsm,
 	}

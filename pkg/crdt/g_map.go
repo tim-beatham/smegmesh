@@ -2,9 +2,8 @@
 package crdt
 
 import (
+	"cmp"
 	"sync"
-
-	"github.com/tim-beatham/wgmesh/pkg/lib"
 )
 
 type Bucket[D any] struct {
@@ -14,7 +13,7 @@ type Bucket[D any] struct {
 }
 
 // GMap is a set that can only grow in size
-type GMap[K comparable, D any] struct {
+type GMap[K cmp.Ordered, D any] struct {
 	lock     sync.RWMutex
 	contents map[K]Bucket[D]
 	clock    *VectorClock[K]
@@ -155,18 +154,17 @@ func (g *GMap[K, D]) GetHash() uint64 {
 }
 
 func (g *GMap[K, D]) Prune() {
-	outliers := lib.GetOutliers(g.clock.GetClock(), 0.05)
-
+	stale := g.clock.getStale()
 	g.lock.Lock()
 
-	for _, outlier := range outliers {
+	for _, outlier := range stale {
 		delete(g.contents, outlier)
 	}
 
 	g.lock.Unlock()
 }
 
-func NewGMap[K comparable, D any](clock *VectorClock[K]) *GMap[K, D] {
+func NewGMap[K cmp.Ordered, D any](clock *VectorClock[K]) *GMap[K, D] {
 	return &GMap[K, D]{
 		contents: make(map[K]Bucket[D]),
 		clock:    clock,

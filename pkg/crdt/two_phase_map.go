@@ -1,17 +1,19 @@
 package crdt
 
 import (
+	"cmp"
+
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 )
 
-type TwoPhaseMap[K comparable, D any] struct {
+type TwoPhaseMap[K cmp.Ordered, D any] struct {
 	addMap    *GMap[K, D]
 	removeMap *GMap[K, bool]
 	Clock     *VectorClock[K]
 	processId K
 }
 
-type TwoPhaseMapSnapshot[K comparable, D any] struct {
+type TwoPhaseMapSnapshot[K cmp.Ordered, D any] struct {
 	Add    map[K]Bucket[D]
 	Remove map[K]Bucket[bool]
 }
@@ -104,7 +106,7 @@ func (m *TwoPhaseMap[K, D]) SnapShotFromState(state *TwoPhaseMapState[K]) *TwoPh
 	}
 }
 
-type TwoPhaseMapState[K comparable] struct {
+type TwoPhaseMapState[K cmp.Ordered] struct {
 	Vectors        map[K]uint64
 	AddContents    map[K]uint64
 	RemoveContents map[K]uint64
@@ -154,7 +156,7 @@ func (m *TwoPhaseMapState[K]) Difference(state *TwoPhaseMapState[K]) *TwoPhaseMa
 		}
 	}
 
-	for key, value := range state.AddContents {
+	for key, value := range state.RemoveContents {
 		otherValue, ok := m.RemoveContents[key]
 
 		if !ok || otherValue < value {
@@ -188,10 +190,10 @@ func (m *TwoPhaseMap[K, D]) Prune() {
 // NewTwoPhaseMap: create a new two phase map. Consists of two maps
 // a grow map and a remove map. If both timestamps equal then favour keeping
 // it in the map
-func NewTwoPhaseMap[K comparable, D any](processId K) *TwoPhaseMap[K, D] {
+func NewTwoPhaseMap[K cmp.Ordered, D any](processId K, hashKey func(K) uint64, staleTime uint64) *TwoPhaseMap[K, D] {
 	m := TwoPhaseMap[K, D]{
 		processId: processId,
-		Clock:     NewVectorClock(processId),
+		Clock:     NewVectorClock(processId, hashKey, staleTime),
 	}
 
 	m.addMap = NewGMap[K, D](m.Clock)

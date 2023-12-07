@@ -12,7 +12,7 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 )
 
-// Syncer: picks random nodes from the mesh
+// Syncer: picks random nodes from the meshs
 type Syncer interface {
 	Sync(meshId string) error
 	SyncMeshes() error
@@ -25,54 +25,63 @@ type SyncerImpl struct {
 	syncCount      int
 	cluster        conn.ConnCluster
 	conf           *conf.WgMeshConfiguration
+	lastSync       uint64
 }
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
-	if !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
+	self, err := s.manager.GetSelf(meshId)
+
+	if err != nil {
+		return err
+	}
+
+	s.manager.GetMesh(meshId).Prune()
+
+	if self.GetType() == conf.PEER_ROLE && !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
 		logging.Log.WriteInfof("No changes for %s", meshId)
 		return nil
 	}
 
-	logging.Log.WriteInfof("UPDATING WG CONF")
-
+	before := time.Now()
 	s.manager.GetRouteManager().UpdateRoutes()
-	err := s.manager.ApplyConfig()
-
-	if err != nil {
-		logging.Log.WriteInfof("Failed to update config %w", err)
-	}
 
 	publicKey := s.manager.GetPublicKey()
 
 	logging.Log.WriteInfof(publicKey.String())
 
 	nodeNames := s.manager.GetMesh(meshId).GetPeers()
-	neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
-	randomSubset := lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
 
-	for _, node := range randomSubset {
-		logging.Log.WriteInfof("Random node: %s", node)
-	}
+	var gossipNodes []string
 
-	before := time.Now()
+	// Clients always pings its peer for configuration
+	if self.GetType() == conf.CLIENT_ROLE {
+		keyFunc := lib.HashString
+		bucketFunc := lib.HashString
 
-	if len(nodeNames) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
-		logging.Log.WriteInfof("Sending to random cluster")
-		randomSubset[len(randomSubset)-1] = s.cluster.GetInterCluster(nodeNames, publicKey.String())
+		neighbour := lib.ConsistentHash(nodeNames, publicKey.String(), keyFunc, bucketFunc)
+		gossipNodes = make([]string, 1)
+		gossipNodes[0] = neighbour
+	} else {
+		neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
+		gossipNodes = lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
+
+		if len(nodeNames) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
+			gossipNodes[len(gossipNodes)-1] = s.cluster.GetInterCluster(nodeNames, publicKey.String())
+		}
 	}
 
 	var succeeded bool = false
 
 	// Do this synchronously to conserve bandwidth
-	for _, node := range randomSubset {
+	for _, node := range gossipNodes {
 		correspondingPeer := s.manager.GetNode(meshId, node)
 
 		if correspondingPeer == nil {
 			logging.Log.WriteErrorf("node %s does not exist", node)
 		}
 
-		err = s.requester.SyncMesh(meshId, correspondingPeer)
+		err := s.requester.SyncMesh(meshId, correspondingPeer)
 
 		if err == nil || err == io.EOF {
 			succeeded = true
@@ -96,7 +105,15 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	}
 
 	s.manager.GetMesh(meshId).SaveChanges()
-	s.manager.Prune()
+	s.lastSync = uint64(time.Now().Unix())
+
+	logging.Log.WriteInfof("UPDATING WG CONF")
+	err = s.manager.ApplyConfig()
+
+	if err != nil {
+		logging.Log.WriteInfof("Failed to update config %w", err)
+	}
+
 	return nil
 }
 
