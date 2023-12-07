@@ -17,31 +17,20 @@ type SyncErrorHandlerImpl struct {
 	meshManager mesh.MeshManager
 }
 
-func (s *SyncErrorHandlerImpl) incrementFailedCount(meshId string, endpoint string) bool {
+func (s *SyncErrorHandlerImpl) handleFailed(meshId string, nodeId string) bool {
 	mesh := s.meshManager.GetMesh(meshId)
-
-	if mesh == nil {
-		return false
-	}
-
-	// self, err := s.meshManager.GetSelf(meshId)
-
-	// if err != nil {
-	// return false
-	// }
-
-	// mesh.DecrementHealth(endpoint, self.GetHostEndpoint())
+	mesh.Mark(nodeId)
 	return true
 }
 
-func (s *SyncErrorHandlerImpl) Handle(meshId string, endpoint string, err error) bool {
+func (s *SyncErrorHandlerImpl) Handle(meshId string, nodeId string, err error) bool {
 	errStatus, _ := status.FromError(err)
 
 	logging.Log.WriteInfof("Handled gRPC error: %s", errStatus.Message())
 
 	switch errStatus.Code() {
 	case codes.Unavailable, codes.Unknown, codes.DeadlineExceeded, codes.Internal, codes.NotFound:
-		return s.incrementFailedCount(meshId, endpoint)
+		return s.handleFailed(meshId, nodeId)
 	}
 
 	return false

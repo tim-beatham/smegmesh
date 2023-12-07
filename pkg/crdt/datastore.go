@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"time"
 
@@ -245,6 +246,31 @@ func (m *TwoPhaseStoreMeshManager) UpdateTimeStamp(nodeId string) error {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
 	}
 
+	// Sort nodes by their public key
+	peers := m.GetPeers()
+	slices.Sort(peers)
+
+	if len(peers) == 0 {
+		return nil
+	}
+
+	peerToUpdate := peers[0]
+
+	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.conf.KeepAliveTime) {
+		m.store.Mark(peerToUpdate)
+
+		if len(peers) < 2 {
+			return nil
+		}
+
+		peerToUpdate = peers[1]
+	}
+
+	if peerToUpdate != nodeId {
+		return nil
+	}
+
+	// Refresh causing node to update it's time stamp
 	node := m.store.Get(nodeId)
 	node.Timestamp = time.Now().Unix()
 	m.store.Put(nodeId, node)
@@ -375,18 +401,8 @@ func (m *TwoPhaseStoreMeshManager) RemoveService(nodeId string, key string) erro
 }
 
 // Prune: prunes all nodes that have not updated their timestamp in
-// pruneAmount of seconds
-func (m *TwoPhaseStoreMeshManager) Prune(pruneAmount int) error {
-	nodes := lib.MapValues(m.store.AsMap())
-	nodes = lib.Filter(nodes, func(mn MeshNode) bool {
-		return time.Now().Unix()-mn.Timestamp > int64(pruneAmount)
-	})
-
-	for _, node := range nodes {
-		key, _ := node.GetPublicKey()
-		m.store.Remove(key.String())
-	}
-
+func (m *TwoPhaseStoreMeshManager) Prune() error {
+	m.store.Prune()
 	return nil
 }
 
@@ -405,7 +421,7 @@ func (m *TwoPhaseStoreMeshManager) GetPeers() []string {
 			return false
 		}
 
-		return time.Now().Unix()-mn.Timestamp < int64(m.conf.DeadTime)
+		return true
 	})
 
 	return lib.Map(nodes, func(mn MeshNode) string {

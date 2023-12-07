@@ -477,54 +477,54 @@ func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }
 
-func (m *CrdtMeshManager) Prune(pruneTime int) error {
-	nodes, err := m.doc.Path("nodes").Get()
+func (m *CrdtMeshManager) Prune() error {
+	// nodes, err := m.doc.Path("nodes").Get()
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	if nodes.Kind() != automerge.KindMap {
-		return errors.New("node must be a map")
-	}
+	// if nodes.Kind() != automerge.KindMap {
+	// 	return errors.New("node must be a map")
+	// }
 
-	values, err := nodes.Map().Values()
+	// values, err := nodes.Map().Values()
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	deletionNodes := make([]string, 0)
+	// deletionNodes := make([]string, 0)
 
-	for nodeId, node := range values {
-		if node.Kind() != automerge.KindMap {
-			return errors.New("node must be a map")
-		}
+	// for nodeId, node := range values {
+	// 	if node.Kind() != automerge.KindMap {
+	// 		return errors.New("node must be a map")
+	// 	}
 
-		nodeMap := node.Map()
+	// 	nodeMap := node.Map()
 
-		timeStamp, err := nodeMap.Get("timestamp")
+	// 	timeStamp, err := nodeMap.Get("timestamp")
 
-		if err != nil {
-			return err
-		}
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		if timeStamp.Kind() != automerge.KindInt64 {
-			return errors.New("timestamp is not int64")
-		}
+	// 	if timeStamp.Kind() != automerge.KindInt64 {
+	// 		return errors.New("timestamp is not int64")
+	// 	}
 
-		timeValue := timeStamp.Int64()
-		nowValue := time.Now().Unix()
+	// 	timeValue := timeStamp.Int64()
+	// 	nowValue := time.Now().Unix()
 
-		if nowValue-timeValue >= int64(pruneTime) {
-			deletionNodes = append(deletionNodes, nodeId)
-		}
-	}
+	// 	if nowValue-timeValue >= int64(pruneTime) {
+	// 		deletionNodes = append(deletionNodes, nodeId)
+	// 	}
+	// }
 
-	for _, node := range deletionNodes {
-		logging.Log.WriteInfof("Pruning %s", node)
-		nodes.Map().Delete(node)
-	}
+	// for _, node := range deletionNodes {
+	// 	logging.Log.WriteInfof("Pruning %s", node)
+	// 	nodes.Map().Delete(node)
+	// }
 
 	return nil
 }

@@ -63,8 +63,7 @@ func main() {
 	syncRequester = sync.NewSyncRequester(ctrlServer)
 	syncer = sync.NewSyncer(ctrlServer.MeshManager, conf, syncRequester)
 	syncScheduler := sync.NewSyncScheduler(ctrlServer, syncRequester, syncer)
-	timestampScheduler := timer.NewTimestampScheduler(ctrlServer)
-	pruneScheduler := mesh.NewPruner(ctrlServer.MeshManager, *conf)
+	keepAlive := timer.NewTimestampScheduler(ctrlServer)
 
 	robinIpcParams := robin.RobinIpcParams{
 		CtrlServer: ctrlServer,
@@ -82,13 +81,12 @@ func main() {
 
 	go ipc.RunIpcHandler(&robinIpc)
 	go syncScheduler.Run()
-	go timestampScheduler.Run()
-	go pruneScheduler.Run()
+	go keepAlive.Run()
 
 	closeResources := func() {
 		logging.Log.WriteInfof("Closing resources")
 		syncScheduler.Stop()
-		timestampScheduler.Stop()
+		keepAlive.Stop()
 		ctrlServer.Close()
 		client.Close()
 	}

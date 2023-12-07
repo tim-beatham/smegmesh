@@ -8,7 +8,6 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -112,7 +111,7 @@ func (m *MeshManagerImpl) GetMonitor() MeshMonitor {
 // Prune implements MeshManager.
 func (m *MeshManagerImpl) Prune() error {
 	for _, mesh := range m.Meshes {
-		err := mesh.Prune(m.conf.PruneTime)
+		err := mesh.Prune()
 
 		if err != nil {
 			return err
@@ -329,7 +328,6 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 		return nil, fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	logging.Log.WriteInfof(s.HostParameters.GetPublicKey())
 	node, err := meshInstance.GetNode(s.HostParameters.GetPublicKey())
 
 	if err != nil {

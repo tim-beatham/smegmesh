@@ -3,7 +3,6 @@ package wg
 import (
 	"crypto"
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 
 	"github.com/tim-beatham/wgmesh/pkg/lib"
@@ -35,8 +34,7 @@ func (m *WgInterfaceManipulatorImpl) CreateInterface(port int, privKey *wgtypes.
 	}
 
 	md5 := crypto.MD5.New().Sum(randomBuf)
-
-	md5Str := fmt.Sprintf("wg%s", base64.StdEncoding.EncodeToString(md5)[:hashLength])
+	md5Str := fmt.Sprintf("wg%x", md5)[:hashLength]
 
 	err = rtnl.CreateLink(md5Str)
 
