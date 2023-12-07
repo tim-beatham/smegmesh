@@ -131,9 +131,9 @@ type MeshProvider interface {
 	AddService(nodeId, key, value string) error
 	// RemoveService: removes the service form the node. throws an error if the service does not exist
 	RemoveService(nodeId, key string) error
-	// Prune: prunes all nodes that have not updated their timestamp in
-	// pruneAmount seconds
-	Prune(pruneAmount int) error
+	// Prune: prunes all nodes that have not updated their
+	// vector clock
+	Prune() error
 	// GetPeers: get a list of contactable peers
 	GetPeers() []string
 	// GetRoutes(): Get all unique routes. Where the route with the least hop count is chosen

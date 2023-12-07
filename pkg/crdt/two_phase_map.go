@@ -1,17 +1,14 @@
 package crdt
 
 import (
-	"sync"
-
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 )
 
 type TwoPhaseMap[K comparable, D any] struct {
 	addMap    *GMap[K, D]
 	removeMap *GMap[K, bool]
-	vectors   map[K]uint64
+	Clock     *VectorClock[K]
 	processId K
-	lock      sync.RWMutex
 }
 
 type TwoPhaseMapSnapshot[K comparable, D any] struct {
@@ -48,15 +45,8 @@ func (m *TwoPhaseMap[K, D]) Get(key K) D {
 
 // Put places the key K in the map
 func (m *TwoPhaseMap[K, D]) Put(key K, data D) {
-	msgSequence := m.incrementClock()
-
-	m.lock.Lock()
-
-	if _, ok := m.vectors[key]; !ok {
-		m.vectors[key] = msgSequence
-	}
-
-	m.lock.Unlock()
+	msgSequence := m.Clock.IncrementClock()
+	m.Clock.Put(key, msgSequence)
 	m.addMap.Put(key, data)
 }
 
@@ -115,6 +105,7 @@ func (m *TwoPhaseMap[K, D]) SnapShotFromState(state *TwoPhaseMapState[K]) *TwoPh
 }
 
 type TwoPhaseMapState[K comparable] struct {
+	Vectors        map[K]uint64
 	AddContents    map[K]uint64
 	RemoveContents map[K]uint64
 }
@@ -123,32 +114,11 @@ func (m *TwoPhaseMap[K, D]) IsMarked(key K) bool {
 	return m.addMap.IsMarked(key)
 }
 
-func (m *TwoPhaseMap[K, D]) incrementClock() uint64 {
-	maxClock := uint64(0)
-	m.lock.Lock()
-
-	for _, value := range m.vectors {
-		maxClock = max(maxClock, value)
-	}
-
-	m.vectors[m.processId] = maxClock + 1
-	m.lock.Unlock()
-	return maxClock
-}
-
 // GetHash: Get the hash of the current state of the map
 // Sums the current values of the vectors. Provides good approximation
 // of increasing numbers
 func (m *TwoPhaseMap[K, D]) GetHash() uint64 {
-	m.lock.RLock()
-
-	sum := lib.Reduce(uint64(0), lib.MapValues(m.vectors), func(sum uint64, current uint64) uint64 {
-		return current + sum
-	})
-
-	m.lock.RUnlock()
-
-	return sum
+	return m.addMap.GetHash() + m.removeMap.GetHash()
 }
 
 // GetState: get the current vector clock of the add and remove
@@ -158,8 +128,15 @@ func (m *TwoPhaseMap[K, D]) GenerateMessage() *TwoPhaseMapState[K] {
 	removeContents := m.removeMap.GetClock()
 
 	return &TwoPhaseMapState[K]{
+		Vectors:        m.Clock.GetClock(),
 		AddContents:    addContents,
 		RemoveContents: removeContents,
+	}
+}
+
+func (m *TwoPhaseMap[K, D]) UpdateVector(state *TwoPhaseMapState[K]) {
+	for key, value := range state.Vectors {
+		m.Clock.Put(key, value)
 	}
 }
 
@@ -189,23 +166,23 @@ func (m *TwoPhaseMapState[K]) Difference(state *TwoPhaseMapState[K]) *TwoPhaseMa
 }
 
 func (m *TwoPhaseMap[K, D]) Merge(snapshot TwoPhaseMapSnapshot[K, D]) {
-	m.lock.Lock()
-
 	for key, value := range snapshot.Add {
 		// Gravestone is local only to that node.
 		// Discover ourselves if the node is alive
-		value.Gravestone = false
 		m.addMap.put(key, value)
-		m.vectors[key] = max(value.Vector, m.vectors[key])
+		m.Clock.Put(key, value.Vector)
 	}
 
 	for key, value := range snapshot.Remove {
-		value.Gravestone = false
 		m.removeMap.put(key, value)
-		m.vectors[key] = max(value.Vector, m.vectors[key])
+		m.Clock.Put(key, value.Vector)
 	}
+}
 
-	m.lock.Unlock()
+func (m *TwoPhaseMap[K, D]) Prune() {
+	m.addMap.Prune()
+	m.removeMap.Prune()
+	m.Clock.Prune()
 }
 
 // NewTwoPhaseMap: create a new two phase map. Consists of two maps
@@ -213,11 +190,11 @@ func (m *TwoPhaseMap[K, D]) Merge(snapshot TwoPhaseMapSnapshot[K, D]) {
 // it in the map
 func NewTwoPhaseMap[K comparable, D any](processId K) *TwoPhaseMap[K, D] {
 	m := TwoPhaseMap[K, D]{
-		vectors:   make(map[K]uint64),
 		processId: processId,
+		Clock:     NewVectorClock(processId),
 	}
 
-	m.addMap = NewGMap[K, D](m.incrementClock)
-	m.removeMap = NewGMap[K, bool](m.incrementClock)
+	m.addMap = NewGMap[K, D](m.Clock)
+	m.removeMap = NewGMap[K, bool](m.Clock)
 	return &m
 }

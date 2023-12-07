@@ -375,18 +375,8 @@ func (m *TwoPhaseStoreMeshManager) RemoveService(nodeId string, key string) erro
 }
 
 // Prune: prunes all nodes that have not updated their timestamp in
-// pruneAmount of seconds
-func (m *TwoPhaseStoreMeshManager) Prune(pruneAmount int) error {
-	nodes := lib.MapValues(m.store.AsMap())
-	nodes = lib.Filter(nodes, func(mn MeshNode) bool {
-		return time.Now().Unix()-mn.Timestamp > int64(pruneAmount)
-	})
-
-	for _, node := range nodes {
-		key, _ := node.GetPublicKey()
-		m.store.Remove(key.String())
-	}
-
+func (m *TwoPhaseStoreMeshManager) Prune() error {
+	m.store.Prune()
 	return nil
 }
 
@@ -405,7 +395,7 @@ func (m *TwoPhaseStoreMeshManager) GetPeers() []string {
 			return false
 		}
 
-		return time.Now().Unix()-mn.Timestamp < int64(m.conf.DeadTime)
+		return true
 	})
 
 	return lib.Map(nodes, func(mn MeshNode) string {

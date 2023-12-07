@@ -112,7 +112,7 @@ func (m *MeshManagerImpl) GetMonitor() MeshMonitor {
 // Prune implements MeshManager.
 func (m *MeshManagerImpl) Prune() error {
 	for _, mesh := range m.Meshes {
-		err := mesh.Prune(m.conf.PruneTime)
+		err := mesh.Prune()
 
 		if err != nil {
 			return err

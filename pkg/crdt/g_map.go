@@ -3,6 +3,8 @@ package crdt
 
 import (
 	"sync"
+
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 )
 
 type Bucket[D any] struct {
@@ -15,13 +17,13 @@ type Bucket[D any] struct {
 type GMap[K comparable, D any] struct {
 	lock     sync.RWMutex
 	contents map[K]Bucket[D]
-	getClock func() uint64
+	clock    *VectorClock[K]
 }
 
 func (g *GMap[K, D]) Put(key K, value D) {
 	g.lock.Lock()
 
-	clock := g.getClock() + 1
+	clock := g.clock.IncrementClock()
 
 	g.contents[key] = Bucket[D]{
 		Vector:   clock,
@@ -67,6 +69,7 @@ func (g *GMap[K, D]) Mark(key K) {
 	g.lock.Lock()
 	bucket := g.contents[key]
 	bucket.Gravestone = true
+	g.contents[key] = bucket
 	g.lock.Unlock()
 }
 
@@ -138,9 +141,34 @@ func (g *GMap[K, D]) GetClock() map[K]uint64 {
 	return clock
 }
 
-func NewGMap[K comparable, D any](getClock func() uint64) *GMap[K, D] {
+func (g *GMap[K, D]) GetHash() uint64 {
+	hash := uint64(0)
+
+	g.lock.RLock()
+
+	for _, value := range g.contents {
+		hash += value.Vector
+	}
+
+	g.lock.RUnlock()
+	return hash
+}
+
+func (g *GMap[K, D]) Prune() {
+	outliers := lib.GetOutliers(g.clock.GetClock(), 0.05)
+
+	g.lock.Lock()
+
+	for _, outlier := range outliers {
+		delete(g.contents, outlier)
+	}
+
+	g.lock.Unlock()
+}
+
+func NewGMap[K comparable, D any](clock *VectorClock[K]) *GMap[K, D] {
 	return &GMap[K, D]{
 		contents: make(map[K]Bucket[D]),
-		getClock: getClock,
+		clock:    clock,
 	}
 }

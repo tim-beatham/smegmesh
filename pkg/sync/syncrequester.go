@@ -15,7 +15,7 @@ import (
 // SyncRequester: coordinates the syncing of meshes
 type SyncRequester interface {
 	GetMesh(meshId string, ifName string, port int, endPoint string) error
-	SyncMesh(meshid string, endPoint string) error
+	SyncMesh(meshid string, meshNode mesh.MeshNode) error
 }
 
 type SyncRequesterImpl struct {
@@ -56,8 +56,8 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endP
 	return err
 }
 
-func (s *SyncRequesterImpl) handleErr(meshId, endpoint string, err error) error {
-	ok := s.errorHdlr.Handle(meshId, endpoint, err)
+func (s *SyncRequesterImpl) handleErr(meshId, pubKey string, err error) error {
+	ok := s.errorHdlr.Handle(meshId, pubKey, err)
 
 	if ok {
 		return nil
@@ -67,7 +67,10 @@ func (s *SyncRequesterImpl) handleErr(meshId, endpoint string, err error) error 
 }
 
 // SyncMesh: Proactively send a sync request to the other mesh
-func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
+func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) error {
+	endpoint := meshNode.GetHostEndpoint()
+	pubKey, _ := meshNode.GetPublicKey()
+
 	peerConnection, err := s.server.ConnectionManager.GetConnection(endpoint)
 
 	if err != nil {
@@ -96,7 +99,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId, endpoint string) error {
 	err = s.syncMesh(mesh, ctx, c)
 
 	if err != nil {
-		return s.handleErr(meshId, endpoint, err)
+		return s.handleErr(meshId, pubKey.String(), err)
 	}
 
 	logging.Log.WriteInfof("Synced with node: %s meshId: %s\n", endpoint, meshId)

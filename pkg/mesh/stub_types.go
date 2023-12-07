@@ -131,7 +131,7 @@ func (*MeshProviderStub) RemoveRoutes(nodeId string, route ...string) error {
 }
 
 // Prune implements MeshProvider.
-func (*MeshProviderStub) Prune(pruneAmount int) error {
+func (*MeshProviderStub) Prune() error {
 	return nil
 }
 

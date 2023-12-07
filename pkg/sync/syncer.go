@@ -72,7 +72,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 			logging.Log.WriteErrorf("node %s does not exist", node)
 		}
 
-		err = s.requester.SyncMesh(meshId, correspondingPeer.GetHostEndpoint())
+		err = s.requester.SyncMesh(meshId, correspondingPeer)
 
 		if err == nil || err == io.EOF {
 			succeeded = true
@@ -96,6 +96,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	}
 
 	s.manager.GetMesh(meshId).SaveChanges()
+	s.manager.Prune()
 	return nil
 }
 
