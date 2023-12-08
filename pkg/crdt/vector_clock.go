@@ -2,7 +2,6 @@ package crdt
 
 import (
 	"cmp"
-	"slices"
 	"sync"
 	"time"
 
@@ -19,7 +18,7 @@ type VectorBucket struct {
 // Vector clock defines an abstract data type
 // for a vector clock implementation
 type VectorClock[K cmp.Ordered] struct {
-	vectors   map[K]*VectorBucket
+	vectors   map[uint64]*VectorBucket
 	lock      sync.RWMutex
 	processID K
 	staleTime uint64
@@ -40,7 +39,7 @@ func (m *VectorClock[K]) IncrementClock() uint64 {
 		lastUpdate: uint64(time.Now().Unix()),
 	}
 
-	m.vectors[m.processID] = &newBucket
+	m.vectors[m.hashFunc(m.processID)] = &newBucket
 
 	m.lock.Unlock()
 	return maxClock
@@ -53,26 +52,28 @@ func (m *VectorClock[K]) GetHash() uint64 {
 
 	hash := uint64(0)
 
-	sortedKeys := lib.MapKeys(m.vectors)
-	slices.Sort(sortedKeys)
-
 	for key, bucket := range m.vectors {
-		hash += m.hashFunc(key)
-		hash += bucket.clock
+		hash += key * (bucket.clock + 1)
 	}
 
 	m.lock.RUnlock()
 	return hash
 }
 
+func (m *VectorClock[K]) Merge(vectors map[uint64]uint64) {
+	for key, value := range vectors {
+		m.put(key, value)
+	}
+}
+
 // getStale: get all entries that are stale within the mesh
-func (m *VectorClock[K]) getStale() []K {
+func (m *VectorClock[K]) getStale() []uint64 {
 	m.lock.RLock()
 	maxTimeStamp := lib.Reduce(0, lib.MapValues(m.vectors), func(i uint64, vb *VectorBucket) uint64 {
 		return max(i, vb.lastUpdate)
 	})
 
-	toRemove := make([]K, 0)
+	toRemove := make([]uint64, 0)
 
 	for key, bucket := range m.vectors {
 		if maxTimeStamp-bucket.lastUpdate > m.staleTime {
@@ -97,10 +98,14 @@ func (m *VectorClock[K]) Prune() {
 }
 
 func (m *VectorClock[K]) GetTimestamp(processId K) uint64 {
-	return m.vectors[processId].lastUpdate
+	return m.vectors[m.hashFunc(m.processID)].lastUpdate
 }
 
 func (m *VectorClock[K]) Put(key K, value uint64) {
+	m.put(m.hashFunc(key), value)
+}
+
+func (m *VectorClock[K]) put(key uint64, value uint64) {
 	clockValue := uint64(0)
 
 	m.lock.Lock()
@@ -121,16 +126,13 @@ func (m *VectorClock[K]) Put(key K, value uint64) {
 	m.lock.Unlock()
 }
 
-func (m *VectorClock[K]) GetClock() map[K]uint64 {
-	clock := make(map[K]uint64)
+func (m *VectorClock[K]) GetClock() map[uint64]uint64 {
+	clock := make(map[uint64]uint64)
 
 	m.lock.RLock()
 
-	keys := lib.MapKeys(m.vectors)
-	slices.Sort(keys)
-
-	for key, value := range clock {
-		clock[key] = value
+	for key, value := range m.vectors {
+		clock[key] = value.clock
 	}
 
 	m.lock.RUnlock()
@@ -139,7 +141,7 @@ func (m *VectorClock[K]) GetClock() map[K]uint64 {
 
 func NewVectorClock[K cmp.Ordered](processID K, hashFunc func(K) uint64, staleTime uint64) *VectorClock[K] {
 	return &VectorClock[K]{
-		vectors:   make(map[K]*VectorBucket),
+		vectors:   make(map[uint64]*VectorBucket),
 		processID: processID,
 		staleTime: staleTime,
 		hashFunc:  hashFunc,

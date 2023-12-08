@@ -44,7 +44,7 @@ func hash(syncer *TwoPhaseSyncer) ([]byte, bool) {
 	err := enc.Encode(hash)
 
 	if err != nil {
-		logging.Log.WriteInfof(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	syncer.IncrementState()
@@ -59,7 +59,7 @@ func prepare(syncer *TwoPhaseSyncer) ([]byte, bool) {
 	err := dec.Decode(&hash)
 
 	if err != nil {
-		logging.Log.WriteInfof(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	// If vector clocks are equal then no need to merge state
@@ -74,7 +74,7 @@ func prepare(syncer *TwoPhaseSyncer) ([]byte, bool) {
 	err = enc.Encode(*syncer.mapState)
 
 	if err != nil {
-		logging.Log.WriteInfof(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	syncer.IncrementState()
@@ -93,10 +93,11 @@ func present(syncer *TwoPhaseSyncer) ([]byte, bool) {
 	err := dec.Decode(&mapState)
 
 	if err != nil {
-		logging.Log.WriteInfof(err.Error())
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	difference := syncer.mapState.Difference(&mapState)
+	syncer.manager.store.Clock.Merge(mapState.Vectors)
 
 	var sendBuffer bytes.Buffer
 	enc := gob.NewEncoder(&sendBuffer)
@@ -163,7 +164,7 @@ func (t *TwoPhaseSyncer) RecvMessage(msg []byte) error {
 
 func (t *TwoPhaseSyncer) Complete() {
 	logging.Log.WriteInfof("SYNC COMPLETED")
-	if t.state == FINISHED || t.state == MERGE {
+	if t.state >= MERGE {
 		t.manager.store.Clock.IncrementClock()
 	}
 }

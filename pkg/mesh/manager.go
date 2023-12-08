@@ -471,7 +471,7 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	m.RouteManager = params.RouteManager
 
 	if m.RouteManager == nil {
-		m.RouteManager = NewRouteManager(m)
+		m.RouteManager = NewRouteManager(m, &params.Conf)
 	}
 
 	m.idGenerator = params.IdGenerator

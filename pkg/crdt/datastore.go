@@ -179,8 +179,16 @@ func (m *TwoPhaseStoreMeshManager) AddNode(node mesh.MeshNode) {
 
 // GetMesh() returns a snapshot of the mesh provided by the mesh provider.
 func (m *TwoPhaseStoreMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
+	nodes := m.store.AsList()
+
+	snapshot := make(map[string]MeshNode)
+
+	for _, node := range nodes {
+		snapshot[node.PublicKey] = node
+	}
+
 	return &MeshSnapshot{
-		Nodes: m.store.AsMap(),
+		Nodes: snapshot,
 	}, nil
 }
 
@@ -408,7 +416,7 @@ func (m *TwoPhaseStoreMeshManager) Prune() error {
 
 // GetPeers: get a list of contactable peers
 func (m *TwoPhaseStoreMeshManager) GetPeers() []string {
-	nodes := lib.MapValues(m.store.AsMap())
+	nodes := m.store.AsList()
 	nodes = lib.Filter(nodes, func(mn MeshNode) bool {
 		if mn.Type != string(conf.PEER_ROLE) {
 			return false

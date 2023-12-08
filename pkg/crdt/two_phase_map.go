@@ -14,19 +14,24 @@ type TwoPhaseMap[K cmp.Ordered, D any] struct {
 }
 
 type TwoPhaseMapSnapshot[K cmp.Ordered, D any] struct {
-	Add    map[K]Bucket[D]
-	Remove map[K]Bucket[bool]
+	Add    map[uint64]Bucket[D]
+	Remove map[uint64]Bucket[bool]
 }
 
 // Contains checks whether the value exists in the map
 func (m *TwoPhaseMap[K, D]) Contains(key K) bool {
-	if !m.addMap.Contains(key) {
+	return m.contains(m.Clock.hashFunc(key))
+}
+
+// Contains checks whether the value exists in the map
+func (m *TwoPhaseMap[K, D]) contains(key uint64) bool {
+	if !m.addMap.contains(key) {
 		return false
 	}
 
 	addValue := m.addMap.get(key)
 
-	if !m.removeMap.Contains(key) {
+	if !m.removeMap.contains(key) {
 		return true
 	}
 
@@ -45,6 +50,16 @@ func (m *TwoPhaseMap[K, D]) Get(key K) D {
 	return m.addMap.Get(key)
 }
 
+func (m *TwoPhaseMap[K, D]) get(key uint64) D {
+	var result D
+
+	if !m.contains(key) {
+		return result
+	}
+
+	return m.addMap.get(key).Contents
+}
+
 // Put places the key K in the map
 func (m *TwoPhaseMap[K, D]) Put(key K, data D) {
 	msgSequence := m.Clock.IncrementClock()
@@ -61,13 +76,13 @@ func (m *TwoPhaseMap[K, D]) Remove(key K) {
 	m.removeMap.Put(key, true)
 }
 
-func (m *TwoPhaseMap[K, D]) Keys() []K {
-	keys := make([]K, 0)
+func (m *TwoPhaseMap[K, D]) keys() []uint64 {
+	keys := make([]uint64, 0)
 
 	addKeys := m.addMap.Keys()
 
 	for _, key := range addKeys {
-		if !m.Contains(key) {
+		if !m.contains(key) {
 			continue
 		}
 
@@ -77,16 +92,16 @@ func (m *TwoPhaseMap[K, D]) Keys() []K {
 	return keys
 }
 
-func (m *TwoPhaseMap[K, D]) AsMap() map[K]D {
-	theMap := make(map[K]D)
+func (m *TwoPhaseMap[K, D]) AsList() []D {
+	theList := make([]D, 0)
 
-	keys := m.Keys()
+	keys := m.keys()
 
 	for _, key := range keys {
-		theMap[key] = m.Get(key)
+		theList = append(theList, m.get(key))
 	}
 
-	return theMap
+	return theList
 }
 
 func (m *TwoPhaseMap[K, D]) Snapshot() *TwoPhaseMapSnapshot[K, D] {
@@ -107,9 +122,9 @@ func (m *TwoPhaseMap[K, D]) SnapShotFromState(state *TwoPhaseMapState[K]) *TwoPh
 }
 
 type TwoPhaseMapState[K cmp.Ordered] struct {
-	Vectors        map[K]uint64
-	AddContents    map[K]uint64
-	RemoveContents map[K]uint64
+	Vectors        map[uint64]uint64
+	AddContents    map[uint64]uint64
+	RemoveContents map[uint64]uint64
 }
 
 func (m *TwoPhaseMap[K, D]) IsMarked(key K) bool {
@@ -120,7 +135,7 @@ func (m *TwoPhaseMap[K, D]) IsMarked(key K) bool {
 // Sums the current values of the vectors. Provides good approximation
 // of increasing numbers
 func (m *TwoPhaseMap[K, D]) GetHash() uint64 {
-	return m.addMap.GetHash() + m.removeMap.GetHash()
+	return (m.addMap.GetHash() + 1) * (m.removeMap.GetHash() + 1)
 }
 
 // GetState: get the current vector clock of the add and remove
@@ -136,16 +151,10 @@ func (m *TwoPhaseMap[K, D]) GenerateMessage() *TwoPhaseMapState[K] {
 	}
 }
 
-func (m *TwoPhaseMap[K, D]) UpdateVector(state *TwoPhaseMapState[K]) {
-	for key, value := range state.Vectors {
-		m.Clock.Put(key, value)
-	}
-}
-
 func (m *TwoPhaseMapState[K]) Difference(state *TwoPhaseMapState[K]) *TwoPhaseMapState[K] {
 	mapState := &TwoPhaseMapState[K]{
-		AddContents:    make(map[K]uint64),
-		RemoveContents: make(map[K]uint64),
+		AddContents:    make(map[uint64]uint64),
+		RemoveContents: make(map[uint64]uint64),
 	}
 
 	for key, value := range state.AddContents {
@@ -172,12 +181,12 @@ func (m *TwoPhaseMap[K, D]) Merge(snapshot TwoPhaseMapSnapshot[K, D]) {
 		// Gravestone is local only to that node.
 		// Discover ourselves if the node is alive
 		m.addMap.put(key, value)
-		m.Clock.Put(key, value.Vector)
+		m.Clock.put(key, value.Vector)
 	}
 
 	for key, value := range snapshot.Remove {
 		m.removeMap.put(key, value)
-		m.Clock.Put(key, value.Vector)
+		m.Clock.put(key, value.Vector)
 	}
 }
 

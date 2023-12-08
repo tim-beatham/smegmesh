@@ -19,7 +19,11 @@ func (r *RouteInstallerImpl) InstallRoutes(devName string, routes ...lib.Route) 
 		return err
 	}
 
-	err = rtnl.DeleteRoutes(devName, unix.AF_INET6, routes...)
+	ip6Routes := lib.Filter(routes, func(r lib.Route) bool {
+		return r.Destination.IP.To4() == nil
+	})
+
+	err = rtnl.DeleteRoutes(devName, unix.AF_INET6, ip6Routes...)
 
 	if err != nil {
 		return err
