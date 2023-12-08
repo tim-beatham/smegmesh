@@ -1,6 +1,9 @@
 package mesh
 
 import (
+	"net"
+
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
@@ -13,6 +16,7 @@ type RouteManager interface {
 
 type RouteManagerImpl struct {
 	meshManager MeshManager
+	conf        *conf.WgMeshConfiguration
 }
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
@@ -32,10 +36,20 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 			return err
 		}
 
-		routes, err := mesh1.GetRoutes(pubKey.String())
+		routeMap, err := mesh1.GetRoutes(pubKey.String())
 
 		if err != nil {
 			return err
+		}
+
+		if r.conf.AdvertiseDefaultRoute {
+			_, defaultRoute, _ := net.ParseCIDR("::/0")
+
+			mesh1.AddRoutes(NodeID(self), &RouteStub{
+				Destination: defaultRoute,
+				HopCount:    0,
+				Path:        make([]string, 0),
+			})
 		}
 
 		for _, mesh2 := range meshes {
@@ -50,7 +64,9 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 				return err
 			}
 
-			err = mesh2.AddRoutes(NodeID(self), append(lib.MapValues(routes), &RouteStub{
+			routes := lib.MapValues(routeMap)
+
+			err = mesh2.AddRoutes(NodeID(self), append(routes, &RouteStub{
 				Destination: ipNet,
 				HopCount:    0,
 				Path:        make([]string, 0),
@@ -88,6 +104,6 @@ func (r *RouteManagerImpl) RemoveRoutes(meshId string) error {
 	return nil
 }
 
-func NewRouteManager(m MeshManager) RouteManager {
-	return &RouteManagerImpl{meshManager: m}
+func NewRouteManager(m MeshManager, conf *conf.WgMeshConfiguration) RouteManager {
+	return &RouteManagerImpl{meshManager: m, conf: conf}
 }

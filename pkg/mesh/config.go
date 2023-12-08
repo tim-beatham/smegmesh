@@ -116,7 +116,6 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 	meshPrefixes := lib.Map(lib.MapValues(m.meshManager.GetMeshes()), func(mesh MeshProvider) *net.IPNet {
 		ula := &ip.ULABuilder{}
 		ipNet, _ := ula.GetIPNet(mesh.GetMeshId())
-
 		return ipNet
 	})
 
@@ -125,6 +124,12 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 
 		for _, route := range node.GetRoutes() {
 			if lib.Contains(meshPrefixes, func(prefix *net.IPNet) bool {
+				defaultRoute, _, _ := net.ParseCIDR("::/0")
+
+				if prefix.IP.Equal(defaultRoute) && m.config.AdvertiseDefaultRoute {
+					return true
+				}
+
 				return prefix.Contains(route.GetDestination().IP)
 			}) {
 				continue
@@ -168,6 +173,10 @@ func (m *WgMeshConfigApplyer) getCorrespondingPeer(peers []MeshNode, client Mesh
 
 func (m *WgMeshConfigApplyer) getClientConfig(mesh MeshProvider, peers []MeshNode, clients []MeshNode) (*wgtypes.Config, error) {
 	self, err := m.meshManager.GetSelf(mesh.GetMeshId())
+	routes := lib.Map(lib.MapKeys(m.getRoutes(mesh)), func(destination string) net.IPNet {
+		_, ipNet, _ := net.ParseCIDR(destination)
+		return *ipNet
+	})
 
 	if err != nil {
 		return nil, err
@@ -184,17 +193,13 @@ func (m *WgMeshConfigApplyer) getClientConfig(mesh MeshProvider, peers []MeshNod
 		return nil, err
 	}
 
-	allowedips := make([]net.IPNet, 1)
-	_, ipnet, _ := net.ParseCIDR("::/0")
-	allowedips[0] = *ipnet
-
 	peerCfgs := make([]wgtypes.PeerConfig, 1)
 
 	peerCfgs[0] = wgtypes.PeerConfig{
 		PublicKey:                   pubKey,
 		Endpoint:                    endpoint,
 		PersistentKeepaliveInterval: &keepAlive,
-		AllowedIPs:                  allowedips,
+		AllowedIPs:                  routes,
 	}
 
 	cfg := wgtypes.Config{

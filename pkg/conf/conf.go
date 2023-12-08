@@ -47,6 +47,8 @@ type WgMeshConfiguration struct {
 	IPDiscovery IPDiscovery `yaml:"ipDiscovery"`
 	// AdvertiseRoutes advertises other meshes if the node is in multiple meshes
 	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
+	// AdvertiseDefaultRoute advertises a default route out of the mesh.
+	AdvertiseDefaultRoute bool `yaml:"advertiseDefaults"`
 	// Endpoint is the IP in which this computer is publicly reachable.
 	// usecase is when the node has multiple IP addresses
 	Endpoint string `yaml:"publicEndpoint"`
