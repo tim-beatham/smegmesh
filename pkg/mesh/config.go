@@ -27,6 +27,7 @@ type WgMeshConfigApplyer struct {
 	meshManager    MeshManager
 	config         *conf.WgMeshConfiguration
 	routeInstaller route.RouteInstaller
+	hashFunc       func(MeshNode) int
 }
 
 type routeNode struct {
@@ -37,12 +38,6 @@ type routeNode struct {
 func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Device,
 	peerToClients map[string][]net.IPNet,
 	routes map[string][]routeNode) (*wgtypes.PeerConfig, error) {
-
-	endpoint, err := net.ResolveUDPAddr("udp", node.GetWgEndpoint())
-
-	if err != nil {
-		return nil, err
-	}
 
 	pubKey, err := node.GetPublicKey()
 
@@ -66,17 +61,12 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 		if len(bestRoutes) == 1 {
 			pickedRoute = bestRoutes[0]
 		} else if len(bestRoutes) > 1 {
-			keyFunc := func(mn MeshNode) int {
-				pubKey, _ := mn.GetPublicKey()
-				return lib.HashString(pubKey.String())
-			}
-
 			bucketFunc := func(rn routeNode) int {
 				return lib.HashString(rn.gateway)
 			}
 
 			// Else there is more than one candidate so consistently hash
-			pickedRoute = lib.ConsistentHash(bestRoutes, node, bucketFunc, keyFunc)
+			pickedRoute = lib.ConsistentHash(bestRoutes, node, bucketFunc, m.hashFunc)
 		}
 
 		if pickedRoute.gateway == pubKey.String() {
@@ -91,6 +81,13 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 		return p.PublicKey.String() == pubKey.String()
 	})
 
+	endpoint, err := net.ResolveUDPAddr("udp", node.GetWgEndpoint())
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Don't override the existing IP in case it already exists
 	if existing != -1 {
 		endpoint = device.Peers[existing].Endpoint
 	}
@@ -110,8 +107,11 @@ func (m *WgMeshConfigApplyer) convertMeshNode(node MeshNode, device *wgtypes.Dev
 // consistently hash to evenly spread the distribution of traffic
 func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]routeNode {
 	mesh, _ := meshProvider.GetMesh()
-
 	routes := make(map[string][]routeNode)
+
+	peers := lib.Filter(lib.MapValues(mesh.GetNodes()), func(p MeshNode) bool {
+		return p.GetType() == conf.PEER_ROLE
+	})
 
 	meshPrefixes := lib.Map(lib.MapValues(m.meshManager.GetMeshes()), func(mesh MeshProvider) *net.IPNet {
 		ula := &ip.ULABuilder{}
@@ -144,6 +144,24 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 				route:   route,
 			}
 
+			// Client's only acessible by another peer
+			if node.GetType() == conf.CLIENT_ROLE {
+				peer := m.getCorrespondingPeer(peers, node)
+				self, _ := m.meshManager.GetSelf(meshProvider.GetMeshId())
+
+				// If the node isn't the self use that peer as the gateway
+				if !NodeEquals(peer, self) {
+					peerPub, _ := peer.GetPublicKey()
+					rn.gateway = peerPub.String()
+					rn.route = &RouteStub{
+						Destination: rn.route.GetDestination(),
+						HopCount:    rn.route.GetHopCount() + 1,
+						// Append the path to this peer
+						Path: append(rn.route.GetPath(), peer.GetWgHost().IP.String()),
+					}
+				}
+			}
+
 			if !ok {
 				otherRoute = make([]routeNode, 1)
 				otherRoute[0] = rn
@@ -163,31 +181,35 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 
 // getCorrespondignPeer: gets the peer corresponding to the client
 func (m *WgMeshConfigApplyer) getCorrespondingPeer(peers []MeshNode, client MeshNode) MeshNode {
-	hashFunc := func(mn MeshNode) int {
-		pubKey, _ := mn.GetPublicKey()
-		return lib.HashString(pubKey.String())
-	}
-
-	peer := lib.ConsistentHash(peers, client, hashFunc, hashFunc)
+	peer := lib.ConsistentHash(peers, client, m.hashFunc, m.hashFunc)
 	return peer
 }
 
-func (m *WgMeshConfigApplyer) getClientConfig(mesh MeshProvider, peers []MeshNode, clients []MeshNode, dev *wgtypes.Device) (*wgtypes.Config, error) {
-	self, err := m.meshManager.GetSelf(mesh.GetMeshId())
-	ula := &ip.ULABuilder{}
-	meshNet, _ := ula.GetIPNet(mesh.GetMeshId())
+type GetConfigParams struct {
+	mesh    MeshProvider
+	peers   []MeshNode
+	clients []MeshNode
+	dev     *wgtypes.Device
+	routes  map[string][]routeNode
+}
 
-	routes := lib.Map(lib.MapKeys(m.getRoutes(mesh)), func(destination string) net.IPNet {
+func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes.Config, error) {
+	self, err := m.meshManager.GetSelf(params.mesh.GetMeshId())
+	ula := &ip.ULABuilder{}
+	meshNet, _ := ula.GetIPNet(params.mesh.GetMeshId())
+
+	routes := lib.Map(lib.MapKeys(params.routes), func(destination string) net.IPNet {
 		_, ipNet, _ := net.ParseCIDR(destination)
 		return *ipNet
 	})
+
 	routes = append(routes, *meshNet)
 
 	if err != nil {
 		return nil, err
 	}
 
-	peer := m.getCorrespondingPeer(peers, self)
+	peer := m.getCorrespondingPeer(params.peers, self)
 
 	pubKey, _ := peer.GetPublicKey()
 
@@ -205,6 +227,7 @@ func (m *WgMeshConfigApplyer) getClientConfig(mesh MeshProvider, peers []MeshNod
 		Endpoint:                    endpoint,
 		PersistentKeepaliveInterval: &keepAlive,
 		AllowedIPs:                  routes,
+		ReplaceAllowedIPs:           true,
 	}
 
 	installedRoutes := make([]lib.Route, 0)
@@ -220,24 +243,43 @@ func (m *WgMeshConfigApplyer) getClientConfig(mesh MeshProvider, peers []MeshNod
 		Peers: peerCfgs,
 	}
 
-	m.routeInstaller.InstallRoutes(dev.Name, installedRoutes...)
+	m.routeInstaller.InstallRoutes(params.dev.Name, installedRoutes...)
 	return &cfg, err
 }
 
-func (m *WgMeshConfigApplyer) getPeerConfig(mesh MeshProvider, peers []MeshNode, clients []MeshNode, dev *wgtypes.Device) (*wgtypes.Config, error) {
+func (m *WgMeshConfigApplyer) getRoutesToInstall(wgNode *wgtypes.PeerConfig, mesh MeshProvider, node MeshNode) []lib.Route {
+	routes := make([]lib.Route, 0)
+
+	for _, route := range wgNode.AllowedIPs {
+		ula := &ip.ULABuilder{}
+		ipNet, _ := ula.GetIPNet(mesh.GetMeshId())
+
+		_, defaultRoute, _ := net.ParseCIDR("::/0")
+
+		if !ipNet.Contains(route.IP) && !ipNet.IP.Equal(defaultRoute.IP) {
+			routes = append(routes, lib.Route{
+				Gateway:     node.GetWgHost().IP,
+				Destination: route,
+			})
+		}
+	}
+
+	return routes
+}
+
+func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.Config, error) {
 	peerToClients := make(map[string][]net.IPNet)
-	routes := m.getRoutes(mesh)
 	installedRoutes := make([]lib.Route, 0)
 	peerConfigs := make([]wgtypes.PeerConfig, 0)
-	self, err := m.meshManager.GetSelf(mesh.GetMeshId())
+	self, err := m.meshManager.GetSelf(params.mesh.GetMeshId())
 
 	if err != nil {
 		return nil, err
 	}
 
-	for _, n := range clients {
-		if len(peers) > 0 {
-			peer := m.getCorrespondingPeer(peers, n)
+	for _, n := range params.clients {
+		if len(params.peers) > 0 {
+			peer := m.getCorrespondingPeer(params.peers, n)
 			pubKey, _ := peer.GetPublicKey()
 			clients, ok := peerToClients[pubKey.String()]
 
@@ -249,42 +291,30 @@ func (m *WgMeshConfigApplyer) getPeerConfig(mesh MeshProvider, peers []MeshNode,
 			peerToClients[pubKey.String()] = append(clients, *n.GetWgHost())
 
 			if NodeEquals(self, peer) {
-				cfg, err := m.convertMeshNode(n, dev, peerToClients, routes)
+				cfg, err := m.convertMeshNode(n, params.dev, peerToClients, params.routes)
 
 				if err != nil {
 					return nil, err
 				}
 
+				installedRoutes = append(installedRoutes, m.getRoutesToInstall(cfg, params.mesh, n)...)
 				peerConfigs = append(peerConfigs, *cfg)
 			}
 		}
 	}
 
-	for _, n := range peers {
+	for _, n := range params.peers {
 		if NodeEquals(n, self) {
 			continue
 		}
 
-		peer, err := m.convertMeshNode(n, dev, peerToClients, routes)
+		peer, err := m.convertMeshNode(n, params.dev, peerToClients, params.routes)
 
 		if err != nil {
 			return nil, err
 		}
 
-		for _, route := range peer.AllowedIPs {
-			ula := &ip.ULABuilder{}
-			ipNet, _ := ula.GetIPNet(mesh.GetMeshId())
-
-			_, defaultRoute, _ := net.ParseCIDR("::/0")
-
-			if !ipNet.Contains(route.IP) && !ipNet.IP.Equal(defaultRoute.IP) {
-				installedRoutes = append(installedRoutes, lib.Route{
-					Gateway:     n.GetWgHost().IP,
-					Destination: route,
-				})
-			}
-		}
-
+		installedRoutes = append(installedRoutes, m.getRoutesToInstall(peer, params.mesh, n)...)
 		peerConfigs = append(peerConfigs, *peer)
 	}
 
@@ -293,7 +323,7 @@ func (m *WgMeshConfigApplyer) getPeerConfig(mesh MeshProvider, peers []MeshNode,
 		ReplacePeers: true,
 	}
 
-	err = m.routeInstaller.InstallRoutes(dev.Name, installedRoutes...)
+	err = m.routeInstaller.InstallRoutes(params.dev.Name, installedRoutes...)
 	return &cfg, err
 }
 
@@ -327,11 +357,20 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider) error {
 
 	var cfg *wgtypes.Config = nil
 
+	routes := m.getRoutes(mesh)
+	configParams := &GetConfigParams{
+		mesh:    mesh,
+		peers:   peers,
+		clients: clients,
+		dev:     dev,
+		routes:  routes,
+	}
+
 	switch self.GetType() {
 	case conf.PEER_ROLE:
-		cfg, err = m.getPeerConfig(mesh, peers, clients, dev)
+		cfg, err = m.getPeerConfig(configParams)
 	case conf.CLIENT_ROLE:
-		cfg, err = m.getClientConfig(mesh, peers, clients, dev)
+		cfg, err = m.getClientConfig(configParams)
 	}
 
 	if err != nil {
@@ -388,5 +427,9 @@ func NewWgMeshConfigApplyer(config *conf.WgMeshConfiguration) MeshConfigApplyer 
 	return &WgMeshConfigApplyer{
 		config:         config,
 		routeInstaller: route.NewRouteInstaller(),
+		hashFunc: func(mn MeshNode) int {
+			pubKey, _ := mn.GetPublicKey()
+			return lib.HashString(pubKey.String())
+		},
 	}
 }
