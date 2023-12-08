@@ -15,7 +15,7 @@ type Bucket[D any] struct {
 // GMap is a set that can only grow in size
 type GMap[K cmp.Ordered, D any] struct {
 	lock     sync.RWMutex
-	contents map[K]Bucket[D]
+	contents map[uint64]Bucket[D]
 	clock    *VectorClock[K]
 }
 
@@ -24,7 +24,7 @@ func (g *GMap[K, D]) Put(key K, value D) {
 
 	clock := g.clock.IncrementClock()
 
-	g.contents[key] = Bucket[D]{
+	g.contents[g.clock.hashFunc(key)] = Bucket[D]{
 		Vector:   clock,
 		Contents: value,
 	}
@@ -33,6 +33,10 @@ func (g *GMap[K, D]) Put(key K, value D) {
 }
 
 func (g *GMap[K, D]) Contains(key K) bool {
+	return g.contains(g.clock.hashFunc(key))
+}
+
+func (g *GMap[K, D]) contains(key uint64) bool {
 	g.lock.RLock()
 
 	_, ok := g.contents[key]
@@ -42,7 +46,7 @@ func (g *GMap[K, D]) Contains(key K) bool {
 	return ok
 }
 
-func (g *GMap[K, D]) put(key K, b Bucket[D]) {
+func (g *GMap[K, D]) put(key uint64, b Bucket[D]) {
 	g.lock.Lock()
 
 	if g.contents[key].Vector < b.Vector {
@@ -52,7 +56,7 @@ func (g *GMap[K, D]) put(key K, b Bucket[D]) {
 	g.lock.Unlock()
 }
 
-func (g *GMap[K, D]) get(key K) Bucket[D] {
+func (g *GMap[K, D]) get(key uint64) Bucket[D] {
 	g.lock.RLock()
 	bucket := g.contents[key]
 	g.lock.RUnlock()
@@ -61,14 +65,14 @@ func (g *GMap[K, D]) get(key K) Bucket[D] {
 }
 
 func (g *GMap[K, D]) Get(key K) D {
-	return g.get(key).Contents
+	return g.get(g.clock.hashFunc(key)).Contents
 }
 
 func (g *GMap[K, D]) Mark(key K) {
 	g.lock.Lock()
-	bucket := g.contents[key]
+	bucket := g.contents[g.clock.hashFunc(key)]
 	bucket.Gravestone = true
-	g.contents[key] = bucket
+	g.contents[g.clock.hashFunc(key)] = bucket
 	g.lock.Unlock()
 }
 
@@ -78,7 +82,7 @@ func (g *GMap[K, D]) IsMarked(key K) bool {
 
 	g.lock.RLock()
 
-	bucket, ok := g.contents[key]
+	bucket, ok := g.contents[g.clock.hashFunc(key)]
 
 	if ok {
 		marked = bucket.Gravestone
@@ -89,10 +93,10 @@ func (g *GMap[K, D]) IsMarked(key K) bool {
 	return marked
 }
 
-func (g *GMap[K, D]) Keys() []K {
+func (g *GMap[K, D]) Keys() []uint64 {
 	g.lock.RLock()
 
-	contents := make([]K, len(g.contents))
+	contents := make([]uint64, len(g.contents))
 	index := 0
 
 	for key := range g.contents {
@@ -104,8 +108,8 @@ func (g *GMap[K, D]) Keys() []K {
 	return contents
 }
 
-func (g *GMap[K, D]) Save() map[K]Bucket[D] {
-	buckets := make(map[K]Bucket[D])
+func (g *GMap[K, D]) Save() map[uint64]Bucket[D] {
+	buckets := make(map[uint64]Bucket[D])
 	g.lock.RLock()
 
 	for key, value := range g.contents {
@@ -116,8 +120,8 @@ func (g *GMap[K, D]) Save() map[K]Bucket[D] {
 	return buckets
 }
 
-func (g *GMap[K, D]) SaveWithKeys(keys []K) map[K]Bucket[D] {
-	buckets := make(map[K]Bucket[D])
+func (g *GMap[K, D]) SaveWithKeys(keys []uint64) map[uint64]Bucket[D] {
+	buckets := make(map[uint64]Bucket[D])
 	g.lock.RLock()
 
 	for _, key := range keys {
@@ -128,8 +132,8 @@ func (g *GMap[K, D]) SaveWithKeys(keys []K) map[K]Bucket[D] {
 	return buckets
 }
 
-func (g *GMap[K, D]) GetClock() map[K]uint64 {
-	clock := make(map[K]uint64)
+func (g *GMap[K, D]) GetClock() map[uint64]uint64 {
+	clock := make(map[uint64]uint64)
 	g.lock.RLock()
 
 	for key, bucket := range g.contents {
@@ -166,7 +170,7 @@ func (g *GMap[K, D]) Prune() {
 
 func NewGMap[K cmp.Ordered, D any](clock *VectorClock[K]) *GMap[K, D] {
 	return &GMap[K, D]{
-		contents: make(map[K]Bucket[D]),
+		contents: make(map[uint64]Bucket[D]),
 		clock:    clock,
 	}
 }

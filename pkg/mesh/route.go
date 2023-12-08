@@ -43,13 +43,14 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 		}
 
 		if r.conf.AdvertiseDefaultRoute {
-			_, defaultRoute, _ := net.ParseCIDR("::/0")
+			_, ipv6Default, _ := net.ParseCIDR("::/0")
 
-			mesh1.AddRoutes(NodeID(self), &RouteStub{
-				Destination: defaultRoute,
-				HopCount:    0,
-				Path:        make([]string, 0),
-			})
+			mesh1.AddRoutes(NodeID(self),
+				&RouteStub{
+					Destination: ipv6Default,
+					HopCount:    0,
+					Path:        make([]string, 0),
+				})
 		}
 
 		for _, mesh2 := range meshes {

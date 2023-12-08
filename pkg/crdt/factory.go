@@ -18,9 +18,9 @@ func (f *TwoPhaseMapFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) 
 		Client: params.Client,
 		conf:   params.Conf,
 		store: NewTwoPhaseMap[string, MeshNode](params.NodeID, func(s string) uint64 {
-			h := fnv.New32a()
+			h := fnv.New64a()
 			h.Write([]byte(s))
-			return uint64(h.Sum32())
+			return h.Sum64()
 		}, uint64(3*params.Conf.KeepAliveTime)),
 	}, nil
 }

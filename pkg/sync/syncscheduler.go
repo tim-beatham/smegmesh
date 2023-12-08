@@ -8,7 +8,8 @@ import (
 // Run implements SyncScheduler.
 func syncFunction(syncer Syncer) lib.TimerFunc {
 	return func() error {
-		return syncer.SyncMeshes()
+		syncer.SyncMeshes()
+		return nil
 	}
 }
 

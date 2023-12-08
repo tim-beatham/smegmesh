@@ -123,7 +123,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 		err := s.Sync(meshId)
 
 		if err != nil {
-			return err
+			logging.Log.WriteErrorf(err.Error())
 		}
 	}
 

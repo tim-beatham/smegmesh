@@ -248,6 +248,14 @@ func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...R
 			if route.equal(r) {
 				return false
 			}
+
+			if family == unix.AF_INET && route.Destination.IP.To4() == nil {
+				return false
+			}
+
+			if family == unix.AF_INET6 && route.Destination.IP.To16() == nil {
+				return false
+			}
 		}
 		return true
 	}
@@ -255,7 +263,7 @@ func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...R
 	toDelete := Filter(ifRoutes, shouldExclude)
 
 	for _, route := range toDelete {
-		logging.Log.WriteInfof("Deleting route: %s", route.Gateway.String())
+		logging.Log.WriteInfof("Deleting route: %s", route.Destination.String())
 		err := c.DeleteRoute(ifName, route)
 
 		if err != nil {
