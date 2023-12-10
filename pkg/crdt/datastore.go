@@ -320,7 +320,7 @@ func (m *TwoPhaseStoreMeshManager) AddRoutes(nodeId string, routes ...mesh.Route
 }
 
 // DeleteRoutes: deletes the routes from the node
-func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...string) error {
+func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Route) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
 	}
@@ -331,8 +331,15 @@ func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...string)
 
 	node := m.store.Get(nodeId)
 
+	changes := false
+
 	for _, route := range routes {
-		delete(node.Routes, route)
+		changes = true
+		delete(node.Routes, route.GetDestination().String())
+	}
+
+	if changes {
+		m.store.Put(nodeId, node)
 	}
 
 	return nil

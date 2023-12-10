@@ -6,12 +6,10 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
 type RouteManager interface {
 	UpdateRoutes() error
-	RemoveRoutes(meshId string) error
 }
 
 type RouteManagerImpl struct {
@@ -21,7 +19,7 @@ type RouteManagerImpl struct {
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
 	meshes := r.meshManager.GetMeshes()
-	ulaBuilder := new(ip.ULABuilder)
+	routes := make(map[string][]Route)
 
 	for _, mesh1 := range meshes {
 		self, err := r.meshManager.GetSelf(mesh1.GetMeshId())
@@ -30,13 +28,11 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 			return err
 		}
 
-		pubKey, err := self.GetPublicKey()
-
-		if err != nil {
-			return err
+		if _, ok := routes[mesh1.GetMeshId()]; !ok {
+			routes[mesh1.GetMeshId()] = make([]Route, 0)
 		}
 
-		routeMap, err := mesh1.GetRoutes(pubKey.String())
+		routeMap, err := mesh1.GetRoutes(NodeID(self))
 
 		if err != nil {
 			return err
@@ -54,54 +50,59 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 		}
 
 		for _, mesh2 := range meshes {
+			routeValues, ok := routes[mesh2.GetMeshId()]
+
+			if !ok {
+				routeValues = make([]Route, 0)
+			}
+
 			if mesh1 == mesh2 {
 				continue
 			}
 
-			ipNet, err := ulaBuilder.GetIPNet(mesh2.GetMeshId())
+			mesh1IpNet, _ := (&ip.ULABuilder{}).GetIPNet(mesh1.GetMeshId())
 
-			if err != nil {
-				logging.Log.WriteErrorf(err.Error())
-				return err
-			}
-
-			routes := lib.MapValues(routeMap)
-
-			err = mesh2.AddRoutes(NodeID(self), append(routes, &RouteStub{
-				Destination: ipNet,
+			routeValues = append(routeValues, &RouteStub{
+				Destination: mesh1IpNet,
 				HopCount:    0,
-				Path:        make([]string, 0),
-			})...)
+				Path:        []string{mesh1.GetMeshId()},
+			})
 
-			if err != nil {
-				return err
+			routeValues = append(routeValues, lib.MapValues(routeMap)...)
+			mesh2IpNet, _ := (&ip.ULABuilder{}).GetIPNet(mesh2.GetMeshId())
+			routeValues = lib.Filter(routeValues, func(r Route) bool {
+				pathNotMesh := func(s string) bool {
+					return s == mesh2.GetMeshId()
+				}
+
+				// Ensure that the route does not see it's own IP
+				return !r.GetDestination().IP.Equal(mesh2IpNet.IP) && !lib.Contains(r.GetPath()[1:], pathNotMesh)
+			})
+
+			routes[mesh2.GetMeshId()] = routeValues
+		}
+	}
+
+	// Calculate the set different of each, working out routes to remove and to keep.
+	for meshId, meshRoutes := range routes {
+		mesh := r.meshManager.GetMesh(meshId)
+		self, _ := r.meshManager.GetSelf(meshId)
+		toRemove := make([]Route, 0)
+
+		prevRoutes, _ := mesh.GetRoutes(NodeID(self))
+
+		for _, route := range prevRoutes {
+			if !lib.Contains(meshRoutes, func(r Route) bool {
+				return RouteEquals(r, route)
+			}) {
+				toRemove = append(toRemove, route)
 			}
 		}
+
+		mesh.RemoveRoutes(NodeID(self), toRemove...)
+		mesh.AddRoutes(NodeID(self), meshRoutes...)
 	}
 
-	return nil
-}
-
-// removeRoutes: removes all meshes we are no longer a part of
-func (r *RouteManagerImpl) RemoveRoutes(meshId string) error {
-	ulaBuilder := new(ip.ULABuilder)
-	meshes := r.meshManager.GetMeshes()
-
-	ipNet, err := ulaBuilder.GetIPNet(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	for _, mesh1 := range meshes {
-		self, err := r.meshManager.GetSelf(meshId)
-
-		if err != nil {
-			return err
-		}
-
-		mesh1.RemoveRoutes(NodeID(self), ipNet.String())
-	}
 	return nil
 }
 

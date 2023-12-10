@@ -30,15 +30,12 @@ type SyncerImpl struct {
 
 // Sync: Sync random nodes
 func (s *SyncerImpl) Sync(meshId string) error {
-	self, err := s.manager.GetSelf(meshId)
-
-	if err != nil {
-		return err
-	}
+	// Self can be nil if the node is removed
+	self, _ := s.manager.GetSelf(meshId)
 
 	s.manager.GetMesh(meshId).Prune()
 
-	if self.GetType() == conf.PEER_ROLE && !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
+	if self != nil && self.GetType() == conf.PEER_ROLE && !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
 		logging.Log.WriteInfof("No changes for %s", meshId)
 		return nil
 	}
@@ -52,10 +49,16 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	nodeNames := s.manager.GetMesh(meshId).GetPeers()
 
+	if self != nil {
+		nodeNames = lib.Filter(nodeNames, func(s string) bool {
+			return s != mesh.NodeID(self)
+		})
+	}
+
 	var gossipNodes []string
 
 	// Clients always pings its peer for configuration
-	if self.GetType() == conf.CLIENT_ROLE {
+	if self != nil && self.GetType() == conf.CLIENT_ROLE {
 		keyFunc := lib.HashString
 		bucketFunc := lib.HashString
 
@@ -108,7 +111,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	s.lastSync = uint64(time.Now().Unix())
 
 	logging.Log.WriteInfof("UPDATING WG CONF")
-	err = s.manager.ApplyConfig()
+	err := s.manager.ApplyConfig()
 
 	if err != nil {
 		logging.Log.WriteInfof("Failed to update config %w", err)
