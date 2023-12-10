@@ -449,7 +449,7 @@ func (m *CrdtMeshManager) RemoveNode(nodeId string) error {
 }
 
 // DeleteRoutes deletes the specified routes
-func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...string) error {
+func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Route) error {
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 
 	if err != nil {
@@ -467,7 +467,7 @@ func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...string) error {
 	}
 
 	for _, route := range routes {
-		err = routeMap.Map().Delete(route)
+		err = routeMap.Map().Delete(route.GetDestination().String())
 	}
 
 	return err

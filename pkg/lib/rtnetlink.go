@@ -140,26 +140,38 @@ func (c *RtNetlinkConfig) AddRoute(ifName string, route Route) error {
 		family = unix.AF_INET
 	}
 
-	attr := rtnetlink.RouteAttributes{
-		Dst:      dst.IP,
-		OutIface: uint32(iface.Index),
-		Gateway:  gw,
-	}
-
-	ones, _ := dst.Mask.Size()
-
-	err = c.conn.Route.Replace(&rtnetlink.RouteMessage{
-		Family:     family,
-		Table:      unix.RT_TABLE_MAIN,
-		Protocol:   unix.RTPROT_BOOT,
-		Scope:      unix.RT_SCOPE_LINK,
-		Type:       unix.RTN_UNICAST,
-		DstLength:  uint8(ones),
-		Attributes: attr,
-	})
+	routes, err := c.listRoutes(ifName, family)
 
 	if err != nil {
-		return fmt.Errorf("failed to add route %w", err)
+		return err
+	}
+
+	// If it already exists no need to add the route
+	if !Contains(routes, func(prevRoute rtnetlink.RouteMessage) bool {
+		return prevRoute.Attributes.Dst.Equal(route.Destination.IP) &&
+			prevRoute.Attributes.Gateway.Equal(route.Gateway)
+	}) {
+		attr := rtnetlink.RouteAttributes{
+			Dst:      dst.IP,
+			OutIface: uint32(iface.Index),
+			Gateway:  gw,
+		}
+
+		ones, _ := dst.Mask.Size()
+
+		err = c.conn.Route.Replace(&rtnetlink.RouteMessage{
+			Family:     family,
+			Table:      unix.RT_TABLE_MAIN,
+			Protocol:   unix.RTPROT_BOOT,
+			Scope:      unix.RT_SCOPE_LINK,
+			Type:       unix.RTN_UNICAST,
+			DstLength:  uint8(ones),
+			Attributes: attr,
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to add route %w", err)
+		}
 	}
 
 	return nil

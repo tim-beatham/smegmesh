@@ -7,6 +7,27 @@ func MapValues[K cmp.Ordered, V any](m map[K]V) []V {
 	return MapValuesWithExclude(m, map[K]struct{}{})
 }
 
+type MapItemsEntry[K cmp.Ordered, V any] struct {
+	Key   K
+	Value V
+}
+
+func MapItems[K cmp.Ordered, V any](m map[K]V) []MapItemsEntry[K, V] {
+	keys := MapKeys(m)
+	values := MapValues(m)
+
+	vs := make([]MapItemsEntry[K, V], len(keys))
+
+	for index, _ := range keys {
+		vs[index] = MapItemsEntry[K, V]{
+			Key:   keys[index],
+			Value: values[index],
+		}
+	}
+
+	return vs
+}
+
 func MapValuesWithExclude[K cmp.Ordered, V any](m map[K]V, exclude map[K]struct{}) []V {
 	values := make([]V, len(m)-len(exclude))
 

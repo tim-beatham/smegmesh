@@ -4,6 +4,7 @@ package mesh
 
 import (
 	"net"
+	"slices"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -17,6 +18,12 @@ type Route interface {
 	GetHopCount() int
 	// GetPath: get a list of AS paths to get to the destination
 	GetPath() []string
+}
+
+func RouteEquals(r1, r2 Route) bool {
+	return r1.GetDestination().String() == r2.GetDestination().String() &&
+		r1.GetHopCount() == r2.GetHopCount() &&
+		slices.Equal(r1.GetPath(), r2.GetPath())
 }
 
 type RouteStub struct {
@@ -71,11 +78,6 @@ func NodeEquals(node1, node2 MeshNode) bool {
 	return key1.String() == key2.String()
 }
 
-func RouteEquals(route1, route2 Route) bool {
-	return route1.GetDestination().String() == route2.GetDestination().String() &&
-		route1.GetHopCount() == route2.GetHopCount()
-}
-
 func NodeID(node MeshNode) string {
 	key, _ := node.GetPublicKey()
 	return key.String()
@@ -116,7 +118,7 @@ type MeshProvider interface {
 	// AddRoutes: adds routes to the given node
 	AddRoutes(nodeId string, route ...Route) error
 	// DeleteRoutes: deletes the routes from the node
-	RemoveRoutes(nodeId string, route ...string) error
+	RemoveRoutes(nodeId string, route ...Route) error
 	// GetSyncer: returns the automerge syncer for sync
 	GetSyncer() MeshSyncer
 	// GetNode get a particular not within the mesh

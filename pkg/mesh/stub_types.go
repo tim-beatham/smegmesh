@@ -126,7 +126,7 @@ func (*MeshProviderStub) SetAlias(nodeId string, alias string) error {
 }
 
 // RemoveRoutes implements MeshProvider.
-func (*MeshProviderStub) RemoveRoutes(nodeId string, route ...string) error {
+func (*MeshProviderStub) RemoveRoutes(nodeId string, route ...Route) error {
 	return nil
 }
 

@@ -98,7 +98,12 @@ func (m *VectorClock[K]) Prune() {
 }
 
 func (m *VectorClock[K]) GetTimestamp(processId K) uint64 {
-	return m.vectors[m.hashFunc(m.processID)].lastUpdate
+	m.lock.RLock()
+
+	lastUpdate := m.vectors[m.hashFunc(m.processID)].lastUpdate
+
+	m.lock.RUnlock()
+	return lastUpdate
 }
 
 func (m *VectorClock[K]) Put(key K, value uint64) {

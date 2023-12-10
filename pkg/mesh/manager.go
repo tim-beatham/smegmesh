@@ -276,7 +276,7 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 	}
 
 	s.Meshes[params.MeshId].AddNode(node)
-	return s.RouteManager.UpdateRoutes()
+	return nil
 }
 
 // LeaveMesh leaves the mesh network
@@ -287,10 +287,7 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	var err error
-
-	s.RouteManager.RemoveRoutes(meshId)
-	err = mesh.RemoveNode(s.HostParameters.GetPublicKey())
+	err := mesh.RemoveNode(s.HostParameters.GetPublicKey())
 
 	if err != nil {
 		return err
