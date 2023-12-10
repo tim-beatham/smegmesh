@@ -16,7 +16,7 @@ import (
 
 // NewCtrlServerParams are the params requried to create a new ctrl server
 type NewCtrlServerParams struct {
-	Conf         *conf.WgMeshConfiguration
+	Conf         *conf.DaemonConfiguration
 	Client       *wgctrl.Client
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
@@ -28,7 +28,9 @@ type NewCtrlServerParams struct {
 // operation failed
 func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ctrlServer := new(MeshCtrlServer)
-	meshFactory := &crdt.TwoPhaseMapFactory{}
+	meshFactory := &crdt.TwoPhaseMapFactory{
+		Config: params.Conf,
+	}
 	nodeFactory := &crdt.MeshNodeFactory{
 		Config: *params.Conf,
 	}
@@ -36,7 +38,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ipAllocator := &ip.ULABuilder{}
 	interfaceManipulator := wg.NewWgInterfaceManipulator(params.Client)
 
-	configApplyer := mesh.NewWgMeshConfigApplyer(params.Conf)
+	configApplyer := mesh.NewWgMeshConfigApplyer()
 
 	meshManagerParams := &mesh.NewMeshManagerParams{
 		Conf:                 *params.Conf,
@@ -87,7 +89,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	return ctrlServer, nil
 }
 
-func (s *MeshCtrlServer) GetConfiguration() *conf.WgMeshConfiguration {
+func (s *MeshCtrlServer) GetConfiguration() *conf.DaemonConfiguration {
 	return s.Conf
 }
 

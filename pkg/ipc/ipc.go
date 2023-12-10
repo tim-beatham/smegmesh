@@ -16,6 +16,7 @@ type NewMeshArgs struct {
 	// Endpoint is the routable alias of the machine. Can be an IP
 	// or DNS entry
 	Endpoint string
+	Role     string
 }
 
 type JoinMeshArgs struct {
@@ -25,12 +26,12 @@ type JoinMeshArgs struct {
 	IpAdress string
 	// Port is the WireGuard port to expose
 	Port int
-	// Endpoint is the routable address of this machine. If not provided
-	// defaults to the default address
+	// Endpoint to use to override the default
 	Endpoint string
 	// Client specifies whether we should join as a client of the peer
 	// we are connecting to
 	Client bool
+	Role   string
 }
 
 type PutServiceArgs struct {

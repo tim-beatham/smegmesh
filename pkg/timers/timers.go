@@ -11,6 +11,5 @@ func NewTimestampScheduler(ctrlServer *ctrlserver.MeshCtrlServer) lib.Timer {
 		logging.Log.WriteInfof("Updated Timestamp")
 		return ctrlServer.MeshManager.UpdateTimeStamp()
 	}
-
 	return *lib.NewTimer(timerFunc, ctrlServer.Conf.KeepAliveTime)
 }

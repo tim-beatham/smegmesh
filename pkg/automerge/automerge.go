@@ -24,7 +24,7 @@ type CrdtMeshManager struct {
 	Client        *wgctrl.Client
 	doc           *automerge.Doc
 	LastHash      automerge.ChangeHash
-	conf          *conf.WgMeshConfiguration
+	conf          *conf.WgConfiguration
 	cache         *MeshCrdt
 	lastCacheHash automerge.ChangeHash
 }
@@ -74,8 +74,8 @@ func (c *CrdtMeshManager) isAlive(nodeId string) bool {
 		return false
 	}
 
-	keepAliveTime := timestamp.Int64()
-	return (time.Now().Unix() - keepAliveTime) < int64(c.conf.DeadTime)
+	return true
+	// return (time.Now().Unix() - keepAliveTime) < int64(c.conf.DeadTime)
 }
 
 func (c *CrdtMeshManager) GetPeers() []string {
@@ -135,7 +135,7 @@ type NewCrdtNodeMangerParams struct {
 	MeshId  string
 	DevName string
 	Port    int
-	Conf    conf.WgMeshConfiguration
+	Conf    *conf.WgConfiguration
 	Client  *wgctrl.Client
 }
 
@@ -146,7 +146,7 @@ func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, erro
 	manager.doc = automerge.New()
 	manager.IfName = params.DevName
 	manager.Client = params.Client
-	manager.conf = &params.Conf
+	manager.conf = params.Conf
 	manager.cache = nil
 	return &manager, nil
 }
@@ -473,59 +473,20 @@ func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Route) erro
 	return err
 }
 
+// GetConfiguration: gets the configuration for this mesh network
+func (m *CrdtMeshManager) GetConfiguration() *conf.WgConfiguration {
+	return m.conf
+}
+
+// Mark: mark the node as locally dead
+func (m *CrdtMeshManager) Mark(nodeId string) {
+}
+
 func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }
 
 func (m *CrdtMeshManager) Prune() error {
-	// nodes, err := m.doc.Path("nodes").Get()
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if nodes.Kind() != automerge.KindMap {
-	// 	return errors.New("node must be a map")
-	// }
-
-	// values, err := nodes.Map().Values()
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// deletionNodes := make([]string, 0)
-
-	// for nodeId, node := range values {
-	// 	if node.Kind() != automerge.KindMap {
-	// 		return errors.New("node must be a map")
-	// 	}
-
-	// 	nodeMap := node.Map()
-
-	// 	timeStamp, err := nodeMap.Get("timestamp")
-
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if timeStamp.Kind() != automerge.KindInt64 {
-	// 		return errors.New("timestamp is not int64")
-	// 	}
-
-	// 	timeValue := timeStamp.Int64()
-	// 	nowValue := time.Now().Unix()
-
-	// 	if nowValue-timeValue >= int64(pruneTime) {
-	// 		deletionNodes = append(deletionNodes, nodeId)
-	// 	}
-	// }
-
-	// for _, node := range deletionNodes {
-	// 	logging.Log.WriteInfof("Pruning %s", node)
-	// 	nodes.Map().Delete(node)
-	// }
-
 	return nil
 }
 

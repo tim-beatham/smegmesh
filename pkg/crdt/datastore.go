@@ -154,12 +154,13 @@ func (m *MeshSnapshot) GetNodes() map[string]mesh.MeshNode {
 }
 
 type TwoPhaseStoreMeshManager struct {
-	MeshId    string
-	IfName    string
-	Client    *wgctrl.Client
-	LastClock uint64
-	conf      *conf.WgMeshConfiguration
-	store     *TwoPhaseMap[string, MeshNode]
+	MeshId     string
+	IfName     string
+	Client     *wgctrl.Client
+	LastClock  uint64
+	conf       *conf.WgConfiguration
+	daemonConf *conf.DaemonConfiguration
+	store      *TwoPhaseMap[string, MeshNode]
 }
 
 // AddNode() adds a node to the mesh
@@ -264,7 +265,7 @@ func (m *TwoPhaseStoreMeshManager) UpdateTimeStamp(nodeId string) error {
 
 	peerToUpdate := peers[0]
 
-	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.conf.KeepAliveTime) {
+	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.daemonConf.KeepAliveTime) {
 		m.store.Mark(peerToUpdate)
 
 		if len(peers) < 2 {
@@ -505,4 +506,9 @@ func (m *TwoPhaseStoreMeshManager) RemoveNode(nodeId string) error {
 
 	m.store.Remove(nodeId)
 	return nil
+}
+
+// GetConfiguration implements mesh.MeshProvider.
+func (m *TwoPhaseStoreMeshManager) GetConfiguration() *conf.WgConfiguration {
+	return m.conf
 }

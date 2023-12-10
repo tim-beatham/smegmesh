@@ -14,13 +14,13 @@ func (f *CrdtProviderFactory) CreateMesh(params *mesh.MeshProviderFactoryParams)
 	return NewCrdtNodeManager(&NewCrdtNodeMangerParams{
 		MeshId:  params.MeshId,
 		DevName: params.DevName,
-		Conf:    *params.Conf,
+		Conf:    params.Conf,
 		Client:  params.Client,
 	})
 }
 
 type MeshNodeFactory struct {
-	Config conf.WgMeshConfiguration
+	Config conf.DaemonConfiguration
 }
 
 // Build builds the mesh node that represents the host machine to add
@@ -30,7 +30,7 @@ func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNod
 
 	grpcEndpoint := fmt.Sprintf("%s:%s", hostName, f.Config.GrpcPort)
 
-	if f.Config.Role == conf.CLIENT_ROLE {
+	if *params.MeshConfig.Role == conf.CLIENT_ROLE {
 		grpcEndpoint = "-"
 	}
 
@@ -44,7 +44,7 @@ func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNod
 		Routes:      make(map[string]Route),
 		Description: "",
 		Alias:       "",
-		Type:        string(f.Config.Role),
+		Type:        string(*params.MeshConfig.Role),
 	}
 }
 
@@ -54,12 +54,12 @@ func (f *MeshNodeFactory) getAddress(params *mesh.MeshNodeFactoryParams) string 
 
 	if params.Endpoint != "" {
 		hostName = params.Endpoint
-	} else if len(f.Config.Endpoint) != 0 {
-		hostName = f.Config.Endpoint
+	} else if len(*params.MeshConfig.Endpoint) != 0 {
+		hostName = *params.MeshConfig.Endpoint
 	} else {
 		ipFunc := lib.GetPublicIP
 
-		if f.Config.IPDiscovery == conf.DNS_IP_DISCOVERY {
+		if *params.MeshConfig.IPDiscovery == conf.DNS_IP_DISCOVERY {
 			ipFunc = lib.GetOutboundIP
 		}
 

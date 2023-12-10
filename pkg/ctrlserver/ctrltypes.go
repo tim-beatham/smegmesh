@@ -34,7 +34,7 @@ type Mesh struct {
 }
 
 type CtrlServer interface {
-	GetConfiguration() *conf.WgMeshConfiguration
+	GetConfiguration() *conf.DaemonConfiguration
 	GetClient() *wgctrl.Client
 	GetQuerier() query.Querier
 	GetMeshManager() mesh.MeshManager
@@ -48,6 +48,6 @@ type MeshCtrlServer struct {
 	MeshManager       mesh.MeshManager
 	ConnectionManager conn.ConnectionManager
 	ConnectionServer  *conn.ConnectionServer
-	Conf              *conf.WgMeshConfiguration
+	Conf              *conf.DaemonConfiguration
 	Querier           query.Querier
 }

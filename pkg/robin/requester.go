@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
@@ -21,7 +22,25 @@ type IpcHandler struct {
 }
 
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
-	meshId, err := n.Server.GetMeshManager().CreateMesh(args.WgPort)
+	overrideConf := &conf.WgConfiguration{}
+
+	if args.Role != "" {
+		role := conf.NodeType(args.Role)
+		overrideConf.Role = &role
+	}
+
+	if args.Endpoint != "" {
+		overrideConf.Endpoint = &args.Endpoint
+	}
+
+	if *overrideConf.Role == conf.CLIENT_ROLE {
+		return fmt.Errorf("cannot create a mesh with no public endpoint")
+	}
+
+	meshId, err := n.Server.GetMeshManager().CreateMesh(&mesh.CreateMeshParams{
+		Port: args.WgPort,
+		Conf: overrideConf,
+	})
 
 	if err != nil {
 		return err
@@ -45,7 +64,7 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	meshNames := make([]string, len(n.Server.GetMeshManager().GetMeshes()))
 
 	i := 0
-	for meshId, _ := range n.Server.GetMeshManager().GetMeshes() {
+	for meshId := range n.Server.GetMeshManager().GetMeshes() {
 		meshNames[i] = meshId
 		i++
 	}
@@ -55,6 +74,17 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 }
 
 func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
+	overrideConf := &conf.WgConfiguration{}
+
+	if args.Role != "" {
+		role := conf.NodeType(args.Role)
+		overrideConf.Role = &role
+	}
+
+	if args.Endpoint != "" {
+		overrideConf.Endpoint = &args.Endpoint
+	}
+
 	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAdress)
 
 	if err != nil {
@@ -88,6 +118,7 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 		MeshId:    args.MeshId,
 		WgPort:    args.Port,
 		MeshBytes: meshReply.Mesh,
+		Conf:      overrideConf,
 	})
 
 	if err != nil {

@@ -23,10 +23,10 @@ func NewCtrlServerStub() *CtrlServerStub {
 	}
 }
 
-func (c *CtrlServerStub) GetConfiguration() *conf.WgMeshConfiguration {
-	return &conf.WgMeshConfiguration{
-		GrpcPort: "8080",
-		Endpoint: "abc.com",
+func (c *CtrlServerStub) GetConfiguration() *conf.DaemonConfiguration {
+	return &conf.DaemonConfiguration{
+		GrpcPort:          8080,
+		BaseConfiguration: conf.WgConfiguration{},
 	}
 }
 

@@ -4,7 +4,7 @@ package conf
 import (
 	"os"
 
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,172 +30,187 @@ const (
 	DNS_IP_DISCOVERY    = "dns"
 )
 
-type WgMeshConfiguration struct {
+// WgConfiguration contains per-mesh WireGuard configuration. Contains poitner types only so we can
+// tell if the attribute is set
+type WgConfiguration struct {
+	// IPDIscovery: how to discover your IP if not specified. Use your outgoing IP or use a public
+	// service for IPDiscoverability
+	IPDiscovery *IPDiscovery `yaml:"ipDiscovery" validate:"required,eq=public|eq=dns"`
+	// AdvertiseRoutes: specifies whether the node can act as a router routing packets between meshes
+	AdvertiseRoutes *bool `yaml:"advertiseRoutes"`
+	// AdvertiseDefaultRoute: specifies whether or not this route should advertise a default route
+	// for all nodes to route their packets to
+	AdvertiseDefaultRoute *bool `yaml:"advertiseDefaults"`
+	// Endpoint contains what value should be set as the public endpoint of this node
+	Endpoint *string `yaml:"publicEndpoint"`
+	// Role specifies whether or not the user is globally accessible.
+	// If the user is globaly accessible they specify themselves as a client.
+	Role *NodeType `yaml:"role" validate:"required,eq=client|eq=peer"`
+	// KeepAliveWg configures the implementation so that we send keep alive packets to peers.
+	// KeepAlive can only be set if role is type client
+	KeepAliveWg *int `yaml:"keepAliveWg" validate:"omitempty,gte=0"`
+	// PreUp are WireGuard commands to run before adding the WG interface
+	PreUp []string `yaml:"preUp"`
+	// PostUp are WireGuard commands to run after adding the WG interface
+	PostUp []string `yaml:"postUp"`
+	// PreDown are WireGuard commands to run prior to removing the WG interface
+	PreDown []string `yaml:"preDown"`
+	// PostDown are WireGuard command to run after removing the WG interface
+	PostDown []string `yaml:"postDown"`
+}
+
+type DaemonConfiguration struct {
 	// CertificatePath is the path to the certificate to use in mTLS
-	CertificatePath string `yaml:"certificatePath"`
+	CertificatePath string `yaml:"certificatePath" validate:"required,file"`
 	// PrivateKeypath is the path to the clients private key in mTLS
-	PrivateKeyPath string `yaml:"privateKeyPath"`
+	PrivateKeyPath string `yaml:"privateKeyPath" validate:"required,file"`
 	// CaCeritifcatePath path to the certificate of the trust certificate authority
-	CaCertificatePath string `yaml:"caCertificatePath"`
+	CaCertificatePath string `yaml:"caCertificatePath" validate:"required,file"`
 	// SkipCertVerification specify to skip certificate verification. Should only be used
 	// in test environments
 	SkipCertVerification bool `yaml:"skipCertVerification"`
 	// Port to run the GrpcServer on
-	GrpcPort string `yaml:"gRPCPort"`
-	// IPDIscovery: how to discover your IP if not specified. Use DNS server 8.8.8.8 or
-	// use public IP discovery library
-	IPDiscovery IPDiscovery `yaml:"ipDiscovery"`
-	// AdvertiseRoutes advertises other meshes if the node is in multiple meshes
-	AdvertiseRoutes bool `yaml:"advertiseRoutes"`
-	// AdvertiseDefaultRoute advertises a default route out of the mesh.
-	AdvertiseDefaultRoute bool `yaml:"advertiseDefaults"`
-	// Endpoint is the IP in which this computer is publicly reachable.
-	// usecase is when the node has multiple IP addresses
-	Endpoint string `yaml:"publicEndpoint"`
-	// ClusterSize size of the cluster to split on
-	ClusterSize int `yaml:"clusterSize"`
-	// SyncRate number of times per second to perform a sync
-	SyncRate float64 `yaml:"syncRate"`
-	// InterClusterChance proability of inter-cluster communication in a sync round
-	InterClusterChance float64 `yaml:"interClusterChance"`
-	// BranchRate number of nodes to randomly communicate with
-	BranchRate int `yaml:"branchRate"`
-	// InfectionCount number of times we sync before we can no longer catch the udpate
-	InfectionCount int `yaml:"infectionCount"`
-	// KeepAliveTime number of seconds before we update node indicating that we are still alive
-	KeepAliveTime int `yaml:"keepAliveTime"`
-	// Timeout number of seconds before we consider the node as dead
-	Timeout int `yaml:"timeout"`
-	// PruneTime number of seconds before we remove nodes that are likely to be dead
-	PruneTime int `yaml:"pruneTime"`
-	// DeadTime: number of seconds before we consider the node as dead and stop considering it
-	// when picking a random peer
-	DeadTime int `yaml:"deadTime"`
+	GrpcPort int `yaml:"gRPCPort" validate:"required"`
+	// Timeout number of seconds without response that a node is considered unreachable by gRPC
+	Timeout int `yaml:"timeout" validate:"required,gte=1"`
 	// Profile whether or not to include a http server that profiles the code
 	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
 	StubWg bool `yaml:"stubWg"`
-	// Role specifies whether or not the user is globally accessible.
-	// If the user is globaly accessible they specify themselves as a client.
-	Role NodeType `yaml:"role"`
-	// KeepAliveWg configures the implementation so that we send keep alive packets to peers.
-	// KeepAlive can only be set if role is type client
-	KeepAliveWg int `yaml:"keepAliveWg"`
+	// SyncRate specifies how long the minimum time should be between synchronisation
+	SyncRate int `yaml:"syncRate" validate:"required,gte=1"`
+	// KeepAliveTime: number of seconds before the leader of the mesh sends an update to
+	// send to every member in the mesh
+	KeepAliveTime int `yaml:"keepAliveTime" validate:"required,gte=1"`
+	// ClusterSize specifies how many neighbours you should synchronise with per round
+	ClusterSize int `yaml:"clusterSize" valdiate:"required,gt=0"`
+	// InterClusterChance specifies the probabilityof inter-cluster communication in a sync round
+	InterClusterChance float64 `yaml:"interClusterChance" valdiate:"required,gt=0"`
+	// BranchRate specifies the number of nodes to synchronise with when a node has
+	// new changes to send to the mesh
+	BranchRate int `yaml:"branchRate" validate:"required,gte=1"`
+	// InfectionCount: number of time to sync before an update can no longer be 'caught'
+	InfectionCount int `yaml:"infectionCount" validate:"required,gte=1"`
+	// BaseConfiguration base WireGuard configuration to use, this is used when none is provided
+	BaseConfiguration WgConfiguration `yaml:"baseConfiguration" validate:"required"`
 }
 
-func ValidateConfiguration(c *WgMeshConfiguration) error {
-	if len(c.CertificatePath) == 0 {
-		return &WgMeshConfigurationError{
-			msg: "A public certificate must be specified for mTLS",
-		}
+// ValdiateMeshConfiguration: validates the mesh configuration
+func ValidateMeshConfiguration(conf *WgConfiguration) error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err := validate.Struct(conf)
+
+	if conf.PostDown == nil {
+		conf.PostDown = make([]string, 0)
 	}
 
-	if len(c.PrivateKeyPath) == 0 {
-		return &WgMeshConfigurationError{
-			msg: "A private key must be specified for mTLS",
-		}
+	if conf.PostUp == nil {
+		conf.PostUp = make([]string, 0)
 	}
 
-	if len(c.CaCertificatePath) == 0 {
-		return &WgMeshConfigurationError{
-			msg: "A ca certificate must be specified for mTLS",
-		}
+	if conf.PreDown == nil {
+		conf.PreDown = make([]string, 0)
 	}
 
-	if len(c.GrpcPort) == 0 {
-		return &WgMeshConfigurationError{
-			msg: "A grpc port must be specified",
-		}
+	if conf.PreUp == nil {
+		conf.PreUp = make([]string, 0)
 	}
 
-	if c.ClusterSize <= 0 {
-		return &WgMeshConfigurationError{
-			msg: "A cluster size must not be 0",
-		}
-	}
-
-	if c.SyncRate <= 0 {
-		return &WgMeshConfigurationError{
-			msg: "SyncRate cannot be negative",
-		}
-	}
-
-	if c.BranchRate <= 0 {
-		return &WgMeshConfigurationError{
-			msg: "Branch rate cannot be negative",
-		}
-	}
-
-	if c.InfectionCount <= 0 {
-		return &WgMeshConfigurationError{
-			msg: "Infection count cannot be less than 1",
-		}
-	}
-
-	if c.KeepAliveTime <= 0 {
-		return &WgMeshConfigurationError{
-			msg: "KeepAliveRate cannot be less than negative",
-		}
-	}
-
-	if c.InterClusterChance <= 0 {
-		return &WgMeshConfigurationError{
-			msg: "Intercluster chance cannot be less than 0",
-		}
-	}
-
-	if c.Timeout < 1 {
-		return &WgMeshConfigurationError{
-			msg: "Timeout should be greater than or equal to 1",
-		}
-	}
-
-	if c.PruneTime < 1 {
-		return &WgMeshConfigurationError{
-			msg: "Prune time cannot be < 1",
-		}
-	}
-
-	if c.DeadTime < 1 {
-		return &WgMeshConfigurationError{
-			msg: "Dead time cannot be < 1",
-		}
-	}
-
-	if c.KeepAliveTime <= 1 {
-		return &WgMeshConfigurationError{
-			msg: "Prune time cannot be less than keep alive time",
-		}
-	}
-
-	if c.Role == "" {
-		c.Role = PEER_ROLE
-	}
-
-	if c.IPDiscovery == "" {
-		c.IPDiscovery = PUBLIC_IP_DISCOVERY
-	}
-
-	return nil
+	return err
 }
 
-// ParseConfiguration parses the mesh configuration
-func ParseConfiguration(filePath string) (*WgMeshConfiguration, error) {
-	var conf WgMeshConfiguration
+// ValidateDaemonConfiguration: validates the dameon configuration that is used.
+func ValidateDaemonConfiguration(c *DaemonConfiguration) error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err := validate.Struct(c)
+	return err
+}
+
+// ParseMeshConfiguration: parses the mesh network configuration. Parses parameters such as
+// keepalive time, role and so forth.
+func ParseMeshConfiguration(filePath string) (*WgConfiguration, error) {
+	var conf WgConfiguration
 
 	yamlBytes, err := os.ReadFile(filePath)
 
 	if err != nil {
-		logging.Log.WriteErrorf("Read file error: %s\n", err.Error())
 		return nil, err
 	}
 
 	err = yaml.Unmarshal(yamlBytes, &conf)
 
 	if err != nil {
-		logging.Log.WriteErrorf("Unmarshal error: %s\n", err.Error())
 		return nil, err
 	}
 
-	return &conf, ValidateConfiguration(&conf)
+	return &conf, ValidateMeshConfiguration(&conf)
+}
+
+// ParseDaemonConfiguration parses the mesh configuration and validates the configuration
+func ParseDaemonConfiguration(filePath string) (*DaemonConfiguration, error) {
+	var conf DaemonConfiguration
+
+	yamlBytes, err := os.ReadFile(filePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(yamlBytes, &conf)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &conf, ValidateDaemonConfiguration(&conf)
+}
+
+// MergemeshConfiguration: merges the configuration in precedence where the last
+// element in the list takes the most and the first takes the least
+func MergeMeshConfiguration(cfgs ...WgConfiguration) (WgConfiguration, error) {
+	var result WgConfiguration
+
+	for _, cfg := range cfgs {
+		if cfg.AdvertiseDefaultRoute != nil {
+			result.AdvertiseDefaultRoute = cfg.AdvertiseDefaultRoute
+		}
+
+		if cfg.AdvertiseRoutes != nil {
+			result.AdvertiseRoutes = cfg.AdvertiseRoutes
+		}
+
+		if cfg.Endpoint != nil {
+			result.Endpoint = cfg.Endpoint
+		}
+
+		if cfg.IPDiscovery != nil {
+			result.IPDiscovery = cfg.IPDiscovery
+		}
+
+		if cfg.KeepAliveWg != nil {
+			result.KeepAliveWg = cfg.KeepAliveWg
+		}
+
+		if cfg.PostDown != nil {
+			result.PostDown = cfg.PostDown
+		}
+
+		if cfg.PostUp != nil {
+			result.PostUp = cfg.PostUp
+		}
+
+		if cfg.PreDown != nil {
+			result.PreDown = cfg.PreDown
+		}
+
+		if cfg.PreUp != nil {
+			result.PreUp = cfg.PreUp
+		}
+
+		if cfg.Role != nil {
+			result.Role = cfg.Role
+		}
+	}
+
+	return result, ValidateMeshConfiguration(&result)
 }

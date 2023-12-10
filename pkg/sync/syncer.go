@@ -24,7 +24,7 @@ type SyncerImpl struct {
 	infectionCount int
 	syncCount      int
 	cluster        conn.ConnCluster
-	conf           *conf.WgMeshConfiguration
+	conf           *conf.DaemonConfiguration
 	lastSync       uint64
 }
 
@@ -33,7 +33,9 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	// Self can be nil if the node is removed
 	self, _ := s.manager.GetSelf(meshId)
 
-	s.manager.GetMesh(meshId).Prune()
+	correspondingMesh := s.manager.GetMesh(meshId)
+
+	correspondingMesh.Prune()
 
 	if self != nil && self.GetType() == conf.PEER_ROLE && !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
 		logging.Log.WriteInfof("No changes for %s", meshId)
@@ -47,7 +49,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	logging.Log.WriteInfof(publicKey.String())
 
-	nodeNames := s.manager.GetMesh(meshId).GetPeers()
+	nodeNames := correspondingMesh.GetPeers()
 
 	if self != nil {
 		nodeNames = lib.Filter(nodeNames, func(s string) bool {
@@ -133,7 +135,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 	return nil
 }
 
-func NewSyncer(m mesh.MeshManager, conf *conf.WgMeshConfiguration, r SyncRequester) Syncer {
+func NewSyncer(m mesh.MeshManager, conf *conf.DaemonConfiguration, r SyncRequester) Syncer {
 	cluster, _ := conn.NewConnCluster(conf.ClusterSize)
 	return &SyncerImpl{
 		manager:        m,

@@ -145,6 +145,9 @@ type MeshProvider interface {
 	// Mark: marks the node as unreachable. This is not broadcast to the entire
 	// this is not considered when syncing node state
 	Mark(nodeId string)
+	// GetConfiguration: gets the configuration parameters specific for this
+	// mesh network
+	GetConfiguration() *conf.WgConfiguration
 }
 
 // HostParameters contains the IDs of a node
@@ -159,12 +162,13 @@ func (h *HostParameters) GetPublicKey() string {
 
 // MeshProviderFactoryParams parameters required to build a mesh provider
 type MeshProviderFactoryParams struct {
-	DevName string
-	MeshId  string
-	Port    int
-	Conf    *conf.WgMeshConfiguration
-	Client  *wgctrl.Client
-	NodeID  string
+	DevName    string
+	MeshId     string
+	Port       int
+	Conf       *conf.WgConfiguration
+	DaemonConf *conf.DaemonConfiguration
+	Client     *wgctrl.Client
+	NodeID     string
 }
 
 // MeshProviderFactory creates an instance of a mesh provider
@@ -175,10 +179,11 @@ type MeshProviderFactory interface {
 // MeshNodeFactoryParams are the parameters required to construct
 // a mesh node
 type MeshNodeFactoryParams struct {
-	PublicKey *wgtypes.Key
-	NodeIP    net.IP
-	WgPort    int
-	Endpoint  string
+	PublicKey  *wgtypes.Key
+	NodeIP     net.IP
+	WgPort     int
+	Endpoint   string
+	MeshConfig *conf.WgConfiguration
 }
 
 // MeshBuilder build the hosts mesh node for it to be added to the mesh
