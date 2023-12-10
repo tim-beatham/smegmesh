@@ -33,7 +33,7 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		overrideConf.Endpoint = &args.Endpoint
 	}
 
-	if *overrideConf.Role == conf.CLIENT_ROLE {
+	if overrideConf.Role != nil && *overrideConf.Role == conf.CLIENT_ROLE {
 		return fmt.Errorf("cannot create a mesh with no public endpoint")
 	}
 
