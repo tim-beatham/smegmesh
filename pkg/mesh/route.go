@@ -3,7 +3,6 @@ package mesh
 import (
 	"net"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
 )
@@ -14,7 +13,6 @@ type RouteManager interface {
 
 type RouteManagerImpl struct {
 	meshManager MeshManager
-	conf        *conf.DaemonConfiguration
 }
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
@@ -32,21 +30,23 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 			routes[mesh1.GetMeshId()] = make([]Route, 0)
 		}
 
+		if *mesh1.GetConfiguration().AdvertiseDefaultRoute {
+			_, ipv6Default, _ := net.ParseCIDR("::/0")
+
+			defaultRoute := &RouteStub{
+				Destination: ipv6Default,
+				HopCount:    0,
+				Path:        []string{mesh1.GetMeshId()},
+			}
+
+			mesh1.AddRoutes(NodeID(self), defaultRoute)
+			routes[mesh1.GetMeshId()] = append(routes[mesh1.GetMeshId()], defaultRoute)
+		}
+
 		routeMap, err := mesh1.GetRoutes(NodeID(self))
 
 		if err != nil {
 			return err
-		}
-
-		if *r.conf.BaseConfiguration.AdvertiseDefaultRoute {
-			_, ipv6Default, _ := net.ParseCIDR("::/0")
-
-			mesh1.AddRoutes(NodeID(self),
-				&RouteStub{
-					Destination: ipv6Default,
-					HopCount:    0,
-					Path:        make([]string, 0),
-				})
 		}
 
 		for _, mesh2 := range meshes {
@@ -75,8 +75,9 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 					return s == mesh2.GetMeshId()
 				}
 
-				// Ensure that the route does not see it's own IP
-				return !r.GetDestination().IP.Equal(mesh2IpNet.IP) && !lib.Contains(r.GetPath()[1:], pathNotMesh)
+				// Remove any potential routing loops
+				return !r.GetDestination().IP.Equal(mesh2IpNet.IP) &&
+					!lib.Contains(r.GetPath()[1:], pathNotMesh)
 			})
 
 			routes[mesh2.GetMeshId()] = routeValues
@@ -106,6 +107,6 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 	return nil
 }
 
-func NewRouteManager(m MeshManager, conf *conf.DaemonConfiguration) RouteManager {
-	return &RouteManagerImpl{meshManager: m, conf: conf}
+func NewRouteManager(m MeshManager) RouteManager {
+	return &RouteManagerImpl{meshManager: m}
 }

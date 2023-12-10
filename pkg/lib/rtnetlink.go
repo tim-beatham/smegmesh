@@ -225,8 +225,11 @@ type Route struct {
 }
 
 func (r1 Route) equal(r2 Route) bool {
+	mask1Ones, _ := r1.Destination.Mask.Size()
+	mask2Ones, _ := r2.Destination.Mask.Size()
+
 	return r1.Gateway.String() == r2.Gateway.String() &&
-		r1.Destination.String() == r2.Destination.String()
+		(mask1Ones == 0 && mask2Ones == 0 || r1.Destination.IP.Equal(r2.Destination.IP))
 }
 
 // DeleteRoutes deletes all routes not in exclude
@@ -257,18 +260,11 @@ func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...R
 
 	shouldExclude := func(r Route) bool {
 		for _, route := range exclude {
-			if route.equal(r) {
-				return false
-			}
-
-			if family == unix.AF_INET && route.Destination.IP.To4() == nil {
-				return false
-			}
-
-			if family == unix.AF_INET6 && route.Destination.IP.To16() == nil {
+			if r.equal(route) {
 				return false
 			}
 		}
+
 		return true
 	}
 

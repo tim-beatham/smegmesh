@@ -134,10 +134,7 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) map[string][]
 
 		for _, route := range node.GetRoutes() {
 			if lib.Contains(meshPrefixes, func(prefix *net.IPNet) bool {
-				v6Default, _, _ := net.ParseCIDR("::/0")
-				v4Default, _, _ := net.ParseCIDR("0.0.0.0/0")
-
-				if (prefix.IP.Equal(v6Default) || prefix.IP.Equal(v4Default)) && *meshProvider.GetConfiguration().AdvertiseDefaultRoute {
+				if prefix.IP.Equal(net.IPv6zero) && *meshProvider.GetConfiguration().AdvertiseDefaultRoute {
 					return true
 				}
 

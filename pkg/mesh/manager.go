@@ -510,7 +510,7 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	m.RouteManager = params.RouteManager
 
 	if m.RouteManager == nil {
-		m.RouteManager = NewRouteManager(m, &params.Conf)
+		m.RouteManager = NewRouteManager(m)
 	}
 
 	if params.CommandRunner == nil {
