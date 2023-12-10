@@ -22,7 +22,7 @@ func setUpTests() *TestParams {
 		DevName: "wg0",
 		Port:    5000,
 		Client:  nil,
-		Conf:    conf.WgMeshConfiguration{},
+		Conf:    conf.DaemonConfiguration{},
 	})
 
 	return &TestParams{

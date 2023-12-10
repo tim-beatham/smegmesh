@@ -2,6 +2,7 @@ package conn
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
@@ -21,13 +22,13 @@ type ConnectionServer struct {
 	ctrlProvider rpc.MeshCtrlServerServer
 	// the sync service to synchronise nodes
 	syncProvider rpc.SyncServiceServer
-	Conf         *conf.WgMeshConfiguration
+	Conf         *conf.DaemonConfiguration
 	listener     net.Listener
 }
 
 // NewConnectionServerParams contains params for creating a new connection server
 type NewConnectionServerParams struct {
-	Conf         *conf.WgMeshConfiguration
+	Conf         *conf.DaemonConfiguration
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
 }
@@ -76,10 +77,10 @@ func (s *ConnectionServer) Listen() error {
 
 	rpc.RegisterSyncServiceServer(s.server, s.syncProvider)
 
-	lis, err := net.Listen("tcp", ":"+s.Conf.GrpcPort)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.Conf.GrpcPort))
 	s.listener = lis
 
-	logging.Log.WriteInfof("GRPC listening on %s\n", s.Conf.GrpcPort)
+	logging.Log.WriteInfof("GRPC listening on %d\n", s.Conf.GrpcPort)
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())

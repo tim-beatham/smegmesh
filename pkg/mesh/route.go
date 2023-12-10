@@ -14,7 +14,7 @@ type RouteManager interface {
 
 type RouteManagerImpl struct {
 	meshManager MeshManager
-	conf        *conf.WgMeshConfiguration
+	conf        *conf.DaemonConfiguration
 }
 
 func (r *RouteManagerImpl) UpdateRoutes() error {
@@ -38,7 +38,7 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 			return err
 		}
 
-		if r.conf.AdvertiseDefaultRoute {
+		if *r.conf.BaseConfiguration.AdvertiseDefaultRoute {
 			_, ipv6Default, _ := net.ParseCIDR("::/0")
 
 			mesh1.AddRoutes(NodeID(self),
@@ -106,6 +106,6 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 	return nil
 }
 
-func NewRouteManager(m MeshManager, conf *conf.WgMeshConfiguration) RouteManager {
+func NewRouteManager(m MeshManager, conf *conf.DaemonConfiguration) RouteManager {
 	return &RouteManagerImpl{meshManager: m, conf: conf}
 }

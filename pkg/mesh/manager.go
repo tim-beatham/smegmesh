@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/tim-beatham/wgmesh/pkg/cmd"
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ip"
 	"github.com/tim-beatham/wgmesh/pkg/lib"
@@ -14,7 +15,7 @@ import (
 )
 
 type MeshManager interface {
-	CreateMesh(port int) (string, error)
+	CreateMesh(params *CreateMeshParams) (string, error)
 	AddMesh(params *AddMeshParams) error
 	HasChanges(meshid string) bool
 	GetMesh(meshId string) MeshProvider
@@ -30,7 +31,6 @@ type MeshManager interface {
 	UpdateTimeStamp() error
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
-	Prune() error
 	Close() error
 	GetMonitor() MeshMonitor
 	GetNode(string, string) MeshNode
@@ -45,7 +45,7 @@ type MeshManagerImpl struct {
 	// HostParameters contains information that uniquely locates
 	// the node in the mesh network.
 	HostParameters       *HostParameters
-	conf                 *conf.WgMeshConfiguration
+	conf                 *conf.DaemonConfiguration
 	meshProviderFactory  MeshProviderFactory
 	nodeFactory          MeshNodeFactory
 	configApplyer        MeshConfigApplyer
@@ -53,6 +53,7 @@ type MeshManagerImpl struct {
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
 	Monitor              MeshMonitor
+	cmdRunner            cmd.CmdRunner
 	OnDelete             func(MeshProvider)
 }
 
@@ -108,21 +109,38 @@ func (m *MeshManagerImpl) GetMonitor() MeshMonitor {
 	return m.Monitor
 }
 
-// Prune implements MeshManager.
-func (m *MeshManagerImpl) Prune() error {
-	for _, mesh := range m.Meshes {
-		err := mesh.Prune()
+// CreateMeshParams contains the parameters required to create a mesh
+type CreateMeshParams struct {
+	Port int
+	Conf *conf.WgConfiguration
+}
+
+// getConf: gets the new configuration with the base configuration overriden
+// from the recent
+func (m *MeshManagerImpl) getConf(override *conf.WgConfiguration) (*conf.WgConfiguration, error) {
+	meshConfiguration := m.conf.BaseConfiguration
+
+	if override != nil {
+		newConf, err := conf.MergeMeshConfiguration(meshConfiguration, *override)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		meshConfiguration = newConf
 	}
 
-	return nil
+	return &meshConfiguration, nil
 }
 
 // CreateMesh: Creates a new mesh, stores it and returns the mesh id
-func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
+func (m *MeshManagerImpl) CreateMesh(args *CreateMeshParams) (string, error) {
+	meshConfiguration, err := m.getConf(args.Conf)
+
+	if err != nil {
+		return "", err
+	}
+
 	meshId, err := m.idGenerator.GetId()
 
 	var ifName string = ""
@@ -131,8 +149,10 @@ func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 		return "", err
 	}
 
+	m.cmdRunner.RunCommands(m.conf.BaseConfiguration.PreUp...)
+
 	if !m.conf.StubWg {
-		ifName, err = m.interfaceManipulator.CreateInterface(port, m.HostParameters.PrivateKey)
+		ifName, err = m.interfaceManipulator.CreateInterface(args.Port, m.HostParameters.PrivateKey)
 
 		if err != nil {
 			return "", fmt.Errorf("error creating mesh: %w", err)
@@ -140,12 +160,13 @@ func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 	}
 
 	nodeManager, err := m.meshProviderFactory.CreateMesh(&MeshProviderFactoryParams{
-		DevName: ifName,
-		Port:    port,
-		Conf:    m.conf,
-		Client:  m.Client,
-		MeshId:  meshId,
-		NodeID:  m.HostParameters.GetPublicKey(),
+		DevName:    ifName,
+		Port:       args.Port,
+		Conf:       meshConfiguration,
+		Client:     m.Client,
+		MeshId:     meshId,
+		DaemonConf: m.conf,
+		NodeID:     m.HostParameters.GetPublicKey(),
 	})
 
 	if err != nil {
@@ -155,6 +176,9 @@ func (m *MeshManagerImpl) CreateMesh(port int) (string, error) {
 	m.lock.Lock()
 	m.Meshes[meshId] = nodeManager
 	m.lock.Unlock()
+
+	m.cmdRunner.RunCommands(m.conf.BaseConfiguration.PostUp...)
+
 	return meshId, nil
 }
 
@@ -162,12 +186,21 @@ type AddMeshParams struct {
 	MeshId    string
 	WgPort    int
 	MeshBytes []byte
+	Conf      *conf.WgConfiguration
 }
 
 // AddMesh: Add the mesh to the list of meshes
 func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 	var ifName string
 	var err error
+
+	meshConfiguration, err := m.getConf(params.Conf)
+
+	if err != nil {
+		return err
+	}
+
+	m.cmdRunner.RunCommands(meshConfiguration.PreUp...)
 
 	if !m.conf.StubWg {
 		ifName, err = m.interfaceManipulator.CreateInterface(params.WgPort, m.HostParameters.PrivateKey)
@@ -178,13 +211,16 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 	}
 
 	meshProvider, err := m.meshProviderFactory.CreateMesh(&MeshProviderFactoryParams{
-		DevName: ifName,
-		Port:    params.WgPort,
-		Conf:    m.conf,
-		Client:  m.Client,
-		MeshId:  params.MeshId,
-		NodeID:  m.HostParameters.GetPublicKey(),
+		DevName:    ifName,
+		Port:       params.WgPort,
+		Conf:       meshConfiguration,
+		Client:     m.Client,
+		MeshId:     params.MeshId,
+		DaemonConf: m.conf,
+		NodeID:     m.HostParameters.GetPublicKey(),
 	})
+
+	m.cmdRunner.RunCommands(meshConfiguration.PostUp...)
 
 	if err != nil {
 		return err
@@ -255,10 +291,11 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 	}
 
 	node := s.nodeFactory.Build(&MeshNodeFactoryParams{
-		PublicKey: &pubKey,
-		NodeIP:    nodeIP,
-		WgPort:    params.WgPort,
-		Endpoint:  params.Endpoint,
+		PublicKey:  &pubKey,
+		NodeIP:     nodeIP,
+		WgPort:     params.WgPort,
+		Endpoint:   params.Endpoint,
+		MeshConfig: mesh.GetConfiguration(),
 	})
 
 	if !s.conf.StubWg {
@@ -301,6 +338,8 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	delete(s.Meshes, meshId)
 	s.lock.Unlock()
 
+	s.cmdRunner.RunCommands(s.conf.BaseConfiguration.PreDown...)
+
 	if !s.conf.StubWg {
 		device, err := mesh.GetDevice()
 
@@ -314,6 +353,8 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 			return err
 		}
 	}
+
+	s.cmdRunner.RunCommands(s.conf.BaseConfiguration.PostDown...)
 
 	return err
 }
@@ -436,7 +477,7 @@ func (s *MeshManagerImpl) Close() error {
 
 // NewMeshManagerParams params required to create an instance of a mesh manager
 type NewMeshManagerParams struct {
-	Conf                 conf.WgMeshConfiguration
+	Conf                 conf.DaemonConfiguration
 	Client               *wgctrl.Client
 	MeshProvider         MeshProviderFactory
 	NodeFactory          MeshNodeFactory
@@ -445,6 +486,7 @@ type NewMeshManagerParams struct {
 	InterfaceManipulator wg.WgInterfaceManipulator
 	ConfigApplyer        MeshConfigApplyer
 	RouteManager         RouteManager
+	CommandRunner        cmd.CmdRunner
 	OnDelete             func(MeshProvider)
 }
 
@@ -469,6 +511,10 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 
 	if m.RouteManager == nil {
 		m.RouteManager = NewRouteManager(m, &params.Conf)
+	}
+
+	if params.CommandRunner == nil {
+		m.cmdRunner = &cmd.UnixCmdRunner{}
 	}
 
 	m.idGenerator = params.IdGenerator

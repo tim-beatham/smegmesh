@@ -81,6 +81,11 @@ type MeshProviderStub struct {
 	snapshot *MeshSnapshotStub
 }
 
+// GetConfiguration implements MeshProvider.
+func (*MeshProviderStub) GetConfiguration() *conf.WgConfiguration {
+	panic("unimplemented")
+}
+
 // Mark implements MeshProvider.
 func (*MeshProviderStub) Mark(nodeId string) {
 	panic("unimplemented")
@@ -195,7 +200,7 @@ func (s *StubMeshProviderFactory) CreateMesh(params *MeshProviderFactoryParams) 
 }
 
 type StubNodeFactory struct {
-	Config *conf.WgMeshConfiguration
+	Config *conf.DaemonConfiguration
 }
 
 func (s *StubNodeFactory) Build(params *MeshNodeFactoryParams) MeshNode {
@@ -274,7 +279,7 @@ func NewMeshManagerStub() MeshManager {
 	return &MeshManagerStub{meshes: make(map[string]MeshProvider)}
 }
 
-func (m *MeshManagerStub) CreateMesh(port int) (string, error) {
+func (m *MeshManagerStub) CreateMesh(*CreateMeshParams) (string, error) {
 	return "tim123", nil
 }
 

@@ -9,16 +9,9 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/wg"
 )
 
-func getMeshConfiguration() *conf.WgMeshConfiguration {
-	return &conf.WgMeshConfiguration{
-		GrpcPort:           "8080",
-		Endpoint:           "abc.com",
-		ClusterSize:        64,
-		SyncRate:           4,
-		BranchRate:         3,
-		InterClusterChance: 0.15,
-		InfectionCount:     2,
-		KeepAliveTime:      60,
+func getMeshConfiguration() *conf.DaemonConfiguration {
+	return &conf.DaemonConfiguration{
+		GrpcPort: 8080,
 	}
 }
 

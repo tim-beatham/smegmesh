@@ -19,13 +19,13 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		logging.Log.WriteErrorf("Need to provide configuration.yaml")
+		logging.Log.WriteErrorf("Did not provide configuration")
 		return
 	}
 
-	conf, err := conf.ParseConfiguration(os.Args[1])
+	conf, err := conf.ParseDaemonConfiguration(os.Args[1])
 	if err != nil {
-		logging.Log.WriteInfof("Could not parse configuration")
+		logging.Log.WriteErrorf("Could not parse configuration: %s", err.Error())
 		return
 	}
 

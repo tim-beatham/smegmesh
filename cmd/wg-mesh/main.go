@@ -4,13 +4,9 @@ import (
 	"fmt"
 	ipcRpc "net/rpc"
 	"os"
-	"strings"
-	"time"
 
 	"github.com/akamensky/argparse"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
 
@@ -20,6 +16,7 @@ type CreateMeshParams struct {
 	Client   *ipcRpc.Client
 	WgPort   int
 	Endpoint string
+	Role     string
 }
 
 func createMesh(args *CreateMeshParams) string {
@@ -27,6 +24,7 @@ func createMesh(args *CreateMeshParams) string {
 	newMeshParams := ipc.NewMeshArgs{
 		WgPort:   args.WgPort,
 		Endpoint: args.Endpoint,
+		Role:     args.Role,
 	}
 
 	err := args.Client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
@@ -60,6 +58,7 @@ type JoinMeshParams struct {
 	IfName    string
 	WgPort    int
 	Endpoint  string
+	Role      string
 }
 
 func joinMesh(params *JoinMeshParams) string {
@@ -69,6 +68,7 @@ func joinMesh(params *JoinMeshParams) string {
 		MeshId:   params.MeshId,
 		IpAdress: params.IpAddress,
 		Port:     params.WgPort,
+		Role:     params.Role,
 	}
 
 	err := params.Client.Call("IpcHandler.JoinMesh", &args, &reply)
@@ -78,34 +78,6 @@ func joinMesh(params *JoinMeshParams) string {
 	}
 
 	return reply
-}
-
-func getMesh(client *ipcRpc.Client, meshId string) {
-	reply := new(ipc.GetMeshReply)
-
-	err := client.Call("IpcHandler.GetMesh", &meshId, &reply)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	for _, node := range reply.Nodes {
-		fmt.Println("Public Key: " + node.PublicKey)
-		fmt.Println("Control Endpoint: " + node.HostEndpoint)
-		fmt.Println("WireGuard Endpoint: " + node.WgEndpoint)
-		fmt.Println("Wg IP: " + node.WgHost)
-		fmt.Printf("Timestamp: %s", time.Unix(node.Timestamp, 0).String())
-
-		mapFunc := func(r ctrlserver.MeshRoute) string {
-			return r.Destination
-		}
-
-		advertiseRoutes := strings.Join(lib.Map(node.Routes, mapFunc), ",")
-		fmt.Printf("Routes: %s\n", advertiseRoutes)
-
-		fmt.Println("---")
-	}
 }
 
 func leaveMesh(client *ipcRpc.Client, meshId string) {
@@ -255,11 +227,13 @@ func main() {
 
 	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{})
 	var newMeshEndpoint *string = newMeshCmd.String("e", "endpoint", &argparse.Options{})
+	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{})
 
 	var joinMeshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
 	var joinMeshIpAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
 	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{})
 	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{})
+	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{})
 
 	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
 
@@ -300,6 +274,7 @@ func main() {
 			Client:   client,
 			WgPort:   *newMeshPort,
 			Endpoint: *newMeshEndpoint,
+			Role:     *newMeshRole,
 		}))
 	}
 
@@ -314,6 +289,7 @@ func main() {
 			IpAddress: *joinMeshIpAddress,
 			MeshId:    *joinMeshId,
 			Endpoint:  *joinMeshEndpoint,
+			Role:      *joinMeshRole,
 		}))
 	}
 

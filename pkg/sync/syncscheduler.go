@@ -14,5 +14,5 @@ func syncFunction(syncer Syncer) lib.TimerFunc {
 }
 
 func NewSyncScheduler(s *ctrlserver.MeshCtrlServer, syncRequester SyncRequester, syncer Syncer) *lib.Timer {
-	return lib.NewTimer(syncFunction(syncer), int(s.Conf.SyncRate))
+	return lib.NewTimer(syncFunction(syncer), s.Conf.SyncRate)
 }
