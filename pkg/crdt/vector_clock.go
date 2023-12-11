@@ -23,6 +23,8 @@ type VectorClock[K cmp.Ordered] struct {
 	processID K
 	staleTime uint64
 	hashFunc  func(K) uint64
+	// highest update that's been garbage collected
+	highestStale uint64
 }
 
 // IncrementClock: increments the node's value in the vector clock
@@ -78,11 +80,21 @@ func (m *VectorClock[K]) getStale() []uint64 {
 	for key, bucket := range m.vectors {
 		if maxTimeStamp-bucket.lastUpdate > m.staleTime {
 			toRemove = append(toRemove, key)
+			m.highestStale = max(bucket.clock, m.highestStale)
 		}
 	}
 
 	m.lock.RUnlock()
 	return toRemove
+}
+
+// GetStaleCount: returns a vector clock which is considered to be stale.
+// all updates must be greater than this
+func (m *VectorClock[K]) GetStaleCount() uint64 {
+	m.lock.RLock()
+	staleCount := m.highestStale
+	m.lock.RUnlock()
+	return staleCount
 }
 
 func (m *VectorClock[K]) Prune() {
@@ -120,7 +132,9 @@ func (m *VectorClock[K]) put(key uint64, value uint64) {
 		clockValue = bucket.clock
 	}
 
-	if value > clockValue {
+	// Make sure that entries that were garbage collected don't get
+	// addded back
+	if value > clockValue && value > m.highestStale {
 		newBucket := VectorBucket{
 			clock:      value,
 			lastUpdate: uint64(time.Now().Unix()),

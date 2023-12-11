@@ -94,9 +94,9 @@ func present(syncer *TwoPhaseSyncer) ([]byte, bool) {
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
-	}
+	} 
 
-	difference := syncer.mapState.Difference(&mapState)
+	difference := syncer.mapState.Difference(syncer.manager.store.Clock.GetStaleCount(), &mapState)
 	syncer.manager.store.Clock.Merge(mapState.Vectors)
 
 	var sendBuffer bytes.Buffer

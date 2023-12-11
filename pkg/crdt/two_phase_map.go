@@ -151,7 +151,7 @@ func (m *TwoPhaseMap[K, D]) GenerateMessage() *TwoPhaseMapState[K] {
 	}
 }
 
-func (m *TwoPhaseMapState[K]) Difference(state *TwoPhaseMapState[K]) *TwoPhaseMapState[K] {
+func (m *TwoPhaseMapState[K]) Difference(highestStale uint64, state *TwoPhaseMapState[K]) *TwoPhaseMapState[K] {
 	mapState := &TwoPhaseMapState[K]{
 		AddContents:    make(map[uint64]uint64),
 		RemoveContents: make(map[uint64]uint64),
@@ -160,7 +160,7 @@ func (m *TwoPhaseMapState[K]) Difference(state *TwoPhaseMapState[K]) *TwoPhaseMa
 	for key, value := range state.AddContents {
 		otherValue, ok := m.AddContents[key]
 
-		if !ok || otherValue < value {
+		if value > highestStale && (!ok || otherValue < value) {
 			mapState.AddContents[key] = value
 		}
 	}
@@ -168,7 +168,7 @@ func (m *TwoPhaseMapState[K]) Difference(state *TwoPhaseMapState[K]) *TwoPhaseMa
 	for key, value := range state.RemoveContents {
 		otherValue, ok := m.RemoveContents[key]
 
-		if !ok || otherValue < value {
+		if value > highestStale && (!ok || otherValue < value) {
 			mapState.RemoveContents[key] = value
 		}
 	}
