@@ -1,8 +1,17 @@
 package api
 
+import "time"
+
 type Route struct {
 	Prefix string   `json:"prefix"`
 	Path   []string `json:"path"`
+}
+
+type SmegStats struct {
+	TotalTransmit     int64         `json:"totalTransmit"`
+	TotalReceived     int64         `json:"totalReceived"`
+	KeepAliveInterval time.Duration `json:"keepaliveInterval"`
+	AllowedIps        []string      `json:"allowedIps"`
 }
 
 type SmegNode struct {
@@ -15,6 +24,7 @@ type SmegNode struct {
 	PublicKey   string            `json:"publicKey"`
 	Routes      []Route           `json:"routes"`
 	Services    map[string]string `json:"services"`
+	Stats       SmegStats         `json:"stats"`
 }
 
 type SmegMesh struct {

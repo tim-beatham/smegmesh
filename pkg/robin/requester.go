@@ -11,7 +11,6 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
 	"github.com/tim-beatham/wgmesh/pkg/query"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
@@ -171,30 +170,9 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 
 	i := 0
 	for _, node := range meshSnapshot.GetNodes() {
-		pubKey, _ := node.GetPublicKey()
+		node := ctrlserver.NewCtrlNode(theMesh, node)
 
-		if err != nil {
-			return err
-		}
-
-		node := ctrlserver.MeshNode{
-			HostEndpoint: node.GetHostEndpoint(),
-			WgEndpoint:   node.GetWgEndpoint(),
-			PublicKey:    pubKey.String(),
-			WgHost:       node.GetWgHost().String(),
-			Timestamp:    node.GetTimeStamp(),
-			Routes: lib.Map(node.GetRoutes(), func(r mesh.Route) ctrlserver.MeshRoute {
-				return ctrlserver.MeshRoute{
-					Destination: r.GetDestination().String(),
-					Path:        r.GetPath(),
-				}
-			}),
-			Description: node.GetDescription(),
-			Alias:       node.GetAlias(),
-			Services:    node.GetServices(),
-		}
-
-		nodes[i] = node
+		nodes[i] = *node
 		i += 1
 	}
 

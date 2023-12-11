@@ -89,6 +89,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	return ctrlServer, nil
 }
 
+
 func (s *MeshCtrlServer) GetConfiguration() *conf.DaemonConfiguration {
 	return s.Conf
 }

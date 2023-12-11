@@ -65,6 +65,12 @@ func (s *SmegServer) meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNo
 		PublicKey:   meshNode.PublicKey,
 		Alias:       alias,
 		Services:    meshNode.Services,
+		Stats: SmegStats{
+			TotalTransmit:     meshNode.Stats.TransmitBytes,
+			TotalReceived:     meshNode.Stats.ReceivedBytes,
+			KeepAliveInterval: meshNode.Stats.PersistentKeepAliveInterval,
+			AllowedIps:        meshNode.Stats.AllowedIPs,
+		},
 	}
 }
 
