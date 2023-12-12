@@ -13,21 +13,21 @@ import (
 const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 type CreateMeshParams struct {
-	Client   *ipcRpc.Client
-	WgPort   int
-	Endpoint string
-	Role     string
+	Client           *ipcRpc.Client
+	Endpoint         string
+	Role             string
+	WgArgs           ipc.WireGuardArgs
+	AdvertiseRoutes  bool
+	AdvertiseDefault bool
 }
 
-func createMesh(args *CreateMeshParams) string {
+func createMesh(params *CreateMeshParams) string {
 	var reply string
 	newMeshParams := ipc.NewMeshArgs{
-		WgPort:   args.WgPort,
-		Endpoint: args.Endpoint,
-		Role:     args.Role,
+		WgArgs: params.WgArgs,
 	}
 
-	err := args.Client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
+	err := params.Client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
 
 	if err != nil {
 		return err.Error()
@@ -52,13 +52,14 @@ func listMeshes(client *ipcRpc.Client) {
 }
 
 type JoinMeshParams struct {
-	Client    *ipcRpc.Client
-	MeshId    string
-	IpAddress string
-	IfName    string
-	WgPort    int
-	Endpoint  string
-	Role      string
+	Client           *ipcRpc.Client
+	MeshId           string
+	IpAddress        string
+	Endpoint         string
+	Role             string
+	WgArgs           ipc.WireGuardArgs
+	AdvertiseRoutes  bool
+	AdvertiseDefault bool
 }
 
 func joinMesh(params *JoinMeshParams) string {
@@ -67,8 +68,7 @@ func joinMesh(params *JoinMeshParams) string {
 	args := ipc.JoinMeshArgs{
 		MeshId:   params.MeshId,
 		IpAdress: params.IpAddress,
-		Port:     params.WgPort,
-		Role:     params.Role,
+		WgArgs:   params.WgArgs,
 	}
 
 	err := params.Client.Call("IpcHandler.JoinMesh", &args, &reply)
@@ -84,19 +84,6 @@ func leaveMesh(client *ipcRpc.Client, meshId string) {
 	var reply string
 
 	err := client.Call("IpcHandler.LeaveMesh", &meshId, &reply)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	fmt.Println(reply)
-}
-
-func enableInterface(client *ipcRpc.Client, meshId string) {
-	var reply string
-
-	err := client.Call("IpcHandler.EnableInterface", &meshId, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -191,31 +178,13 @@ func deleteService(client *ipcRpc.Client, service string) {
 	fmt.Println(reply)
 }
 
-func getNode(client *ipcRpc.Client, nodeId, meshId string) {
-	var reply string
-	args := &ipc.GetNodeArgs{
-		NodeId: nodeId,
-		MeshId: meshId,
-	}
-
-	err := client.Call("IpcHandler.GetNode", &args, &reply)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	fmt.Println(reply)
-}
-
 func main() {
 	parser := argparse.NewParser("wg-mesh",
-		"wg-mesh Manipulate WireGuard meshes")
+		"wg-mesh Manipulate WireGuard mesh networks")
 
 	newMeshCmd := parser.NewCommand("new-mesh", "Create a new mesh")
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")
 	joinMeshCmd := parser.NewCommand("join-mesh", "Join a mesh network")
-	enableInterfaceCmd := parser.NewCommand("enable-interface", "Enable A Specific Mesh Interface")
 	getGraphCmd := parser.NewCommand("get-graph", "Convert a mesh into DOT format")
 	leaveMeshCmd := parser.NewCommand("leave-mesh", "Leave a mesh network")
 	queryMeshCmd := parser.NewCommand("query-mesh", "Query a mesh network using JMESPath")
@@ -223,38 +192,115 @@ func main() {
 	putAliasCmd := parser.NewCommand("put-alias", "Place an alias for the node")
 	setServiceCmd := parser.NewCommand("set-service", "Place a service into your advertisements")
 	deleteServiceCmd := parser.NewCommand("delete-service", "Remove a service from your advertisements")
-	getNodeCmd := parser.NewCommand("get-node", "Get a specific node from the mesh")
 
-	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{})
-	var newMeshEndpoint *string = newMeshCmd.String("e", "endpoint", &argparse.Options{})
-	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{})
+	var newMeshPort *int = newMeshCmd.Int("p", "wgport", &argparse.Options{
+		Default: 0,
+		Help:    "WireGuard port to use to the interface. A default of 0 uses an unused ephmeral port.",
+	})
 
-	var joinMeshId *string = joinMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
-	var joinMeshIpAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{Required: true})
-	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{})
-	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{})
-	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{})
+	var newMeshEndpoint *string = newMeshCmd.String("e", "endpoint", &argparse.Options{
+		Help: "Publicly routeable endpoint to advertise within the mesh",
+	})
 
-	var enableInterfaceMeshId *string = enableInterfaceCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
+		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
+			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
+			" protocol",
+	})
+	var newMeshKeepAliveWg *int = newMeshCmd.Int("k", "KeepAliveWg", &argparse.Options{
+		Default: 0,
+		Help:    "WireGuard KeepAlive value for NAT traversal and firewall holepunching",
+	})
 
-	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var newMeshAdvertiseRoutes *bool = newMeshCmd.Flag("a", "advertise", &argparse.Options{
+		Help: "Advertise routes to other mesh network into the mesh",
+	})
 
-	var leaveMeshMeshId *string = leaveMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
+	var newMeshAdvertiseDefaults *bool = newMeshCmd.Flag("d", "defaults", &argparse.Options{
+		Help: "Advertise ::/0 into the mesh network",
+	})
 
-	var queryMeshMeshId *string = queryMeshCmd.String("m", "mesh", &argparse.Options{Required: true})
-	var queryMeshQuery *string = queryMeshCmd.String("q", "query", &argparse.Options{Required: true})
+	var joinMeshId *string = joinMeshCmd.String("m", "meshid", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh network to join",
+	})
 
-	var description *string = putDescriptionCmd.String("d", "description", &argparse.Options{Required: true})
+	var joinMeshIpAddress *string = joinMeshCmd.String("i", "ip", &argparse.Options{
+		Required: true,
+		Help:     "IP address of the bootstrapping node to join through",
+	})
 
-	var alias *string = putAliasCmd.String("a", "alias", &argparse.Options{Required: true})
+	var joinMeshEndpoint *string = joinMeshCmd.String("e", "endpoint", &argparse.Options{
+		Help: "Publicly routeable endpoint to advertise within the mesh",
+	})
 
-	var serviceKey *string = setServiceCmd.String("s", "service", &argparse.Options{Required: true})
-	var serviceValue *string = setServiceCmd.String("v", "value", &argparse.Options{Required: true})
+	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
+		Default: "Peer",
+		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
+			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
+			" protocol",
+	})
 
-	var deleteServiceKey *string = deleteServiceCmd.String("s", "service", &argparse.Options{Required: true})
+	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{
+		Default: 0,
+		Help:    "WireGuard port to use to the interface. A default of 0 uses an unused ephmeral port.",
+	})
 
-	var getNodeNodeId *string = getNodeCmd.String("n", "nodeid", &argparse.Options{Required: true})
-	var getNodeMeshId *string = getNodeCmd.String("m", "meshid", &argparse.Options{Required: true})
+	var joinMeshKeepAliveWg *int = joinMeshCmd.Int("k", "KeepAliveWg", &argparse.Options{
+		Default: 0,
+		Help:    "WireGuard KeepAlive value for NAT traversal and firewall ho;lepunching",
+	})
+
+	var joinMeshAdvertiseRoutes *bool = joinMeshCmd.Flag("a", "advertise", &argparse.Options{
+		Help: "Advertise routes to other mesh network into the mesh",
+	})
+
+	var joinMeshAdvertiseDefaults *bool = joinMeshCmd.Flag("d", "defaults", &argparse.Options{
+		Help: "Advertise ::/0 into the mesh network",
+	})
+
+	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the graph to get",
+	})
+
+	var leaveMeshMeshId *string = leaveMeshCmd.String("m", "mesh", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh to leave",
+	})
+
+	var queryMeshMeshId *string = queryMeshCmd.String("m", "mesh", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh to query",
+	})
+	var queryMeshQuery *string = queryMeshCmd.String("q", "query", &argparse.Options{
+		Required: true,
+		Help:     "JMESPath Query Of The Mesh Network To Query",
+	})
+
+	var description *string = putDescriptionCmd.String("d", "description", &argparse.Options{
+		Required: true,
+		Help:     "Description of the node in the mesh",
+	})
+
+	var alias *string = putAliasCmd.String("a", "alias", &argparse.Options{
+		Required: true,
+		Help:     "Alias of the node to set can be used in DNS to lookup an IP address",
+	})
+
+	var serviceKey *string = setServiceCmd.String("s", "service", &argparse.Options{
+		Required: true,
+		Help:     "Key of the service to advertise in the mesh network",
+	})
+	var serviceValue *string = setServiceCmd.String("v", "value", &argparse.Options{
+		Required: true,
+		Help:     "Value of the service to advertise in the mesh network",
+	})
+
+	var deleteServiceKey *string = deleteServiceCmd.String("s", "service", &argparse.Options{
+		Required: true,
+		Help:     "Key of the service to remove",
+	})
 
 	err := parser.Parse(os.Args)
 
@@ -272,9 +318,16 @@ func main() {
 	if newMeshCmd.Happened() {
 		fmt.Println(createMesh(&CreateMeshParams{
 			Client:   client,
-			WgPort:   *newMeshPort,
 			Endpoint: *newMeshEndpoint,
 			Role:     *newMeshRole,
+			WgArgs: ipc.WireGuardArgs{
+				Endpoint:              *newMeshEndpoint,
+				Role:                  *newMeshRole,
+				WgPort:                *newMeshPort,
+				KeepAliveWg:           *newMeshKeepAliveWg,
+				AdvertiseDefaultRoute: *newMeshAdvertiseDefaults,
+				AdvertiseRoutes:       *newMeshAdvertiseRoutes,
+			},
 		}))
 	}
 
@@ -285,20 +338,23 @@ func main() {
 	if joinMeshCmd.Happened() {
 		fmt.Println(joinMesh(&JoinMeshParams{
 			Client:    client,
-			WgPort:    *joinMeshPort,
 			IpAddress: *joinMeshIpAddress,
 			MeshId:    *joinMeshId,
 			Endpoint:  *joinMeshEndpoint,
 			Role:      *joinMeshRole,
+			WgArgs: ipc.WireGuardArgs{
+				Endpoint:              *joinMeshEndpoint,
+				Role:                  *joinMeshRole,
+				WgPort:                *joinMeshPort,
+				KeepAliveWg:           *joinMeshKeepAliveWg,
+				AdvertiseDefaultRoute: *joinMeshAdvertiseDefaults,
+				AdvertiseRoutes:       *joinMeshAdvertiseRoutes,
+			},
 		}))
 	}
 
 	if getGraphCmd.Happened() {
 		getGraph(client, *getGraphMeshId)
-	}
-
-	if enableInterfaceCmd.Happened() {
-		enableInterface(client, *enableInterfaceMeshId)
 	}
 
 	if leaveMeshCmd.Happened() {
@@ -323,9 +379,5 @@ func main() {
 
 	if deleteServiceCmd.Happened() {
 		deleteService(client, *deleteServiceKey)
-	}
-
-	if getNodeCmd.Happened() {
-		getNode(client, *getNodeNodeId, *getNodeMeshId)
 	}
 }

@@ -37,10 +37,10 @@ type WgConfiguration struct {
 	// service for IPDiscoverability
 	IPDiscovery *IPDiscovery `yaml:"ipDiscovery" validate:"required,eq=public|eq=dns"`
 	// AdvertiseRoutes: specifies whether the node can act as a router routing packets between meshes
-	AdvertiseRoutes *bool `yaml:"advertiseRoute"`
+	AdvertiseRoutes *bool `yaml:"advertiseRoute" validate:"required"`
 	// AdvertiseDefaultRoute: specifies whether or not this route should advertise a default route
 	// for all nodes to route their packets to
-	AdvertiseDefaultRoute *bool `yaml:"advertiseDefaults"`
+	AdvertiseDefaultRoute *bool `yaml:"advertiseDefaults" validate:"required"`
 	// Endpoint contains what value should be set as the public endpoint of this node
 	Endpoint *string `yaml:"publicEndpoint"`
 	// Role specifies whether or not the user is globally accessible.

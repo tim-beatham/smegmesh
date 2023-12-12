@@ -10,13 +10,29 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 )
 
-type NewMeshArgs struct {
+// WireGuardArgs are provided args specific to WireGuard
+type WireGuardArgs struct {
 	// WgPort is the WireGuard port to expose
 	WgPort int
+	// KeepAliveWg is the number of seconds to keep alive
+	// for WireGuard NAT/firewall traversal
+	KeepAliveWg int
+	// AdvertiseRoutes whether or not to advertise routes to and from the
+	// mesh network
+	AdvertiseRoutes bool
+	// AdvertiseDefaultRoute whether or not to advertise the default route
+	// into the mesh network
+	AdvertiseDefaultRoute bool
 	// Endpoint is the routable alias of the machine. Can be an IP
 	// or DNS entry
 	Endpoint string
-	Role     string
+	// Role is the role of the individual in the mesh
+	Role string
+}
+
+type NewMeshArgs struct {
+	// WgArgs are specific WireGuard args to use
+	WgArgs WireGuardArgs
 }
 
 type JoinMeshArgs struct {
@@ -24,14 +40,8 @@ type JoinMeshArgs struct {
 	MeshId string
 	// IpAddress is a routable IP in another mesh
 	IpAdress string
-	// Port is the WireGuard port to expose
-	Port int
-	// Endpoint to use to override the default
-	Endpoint string
-	// Client specifies whether we should join as a client of the peer
-	// we are connecting to
-	Client bool
-	Role   string
+	// WgArgs is the WireGuard parameters to use.
+	WgArgs WireGuardArgs
 }
 
 type PutServiceArgs struct {
@@ -52,11 +62,6 @@ type QueryMesh struct {
 	Query  string
 }
 
-type GetNodeArgs struct {
-	NodeId string
-	MeshId string
-}
-
 type MeshIpc interface {
 	CreateMesh(args *NewMeshArgs, reply *string) error
 	ListMeshes(name string, reply *ListMeshReply) error
@@ -68,7 +73,6 @@ type MeshIpc interface {
 	PutDescription(description string, reply *string) error
 	PutAlias(alias string, reply *string) error
 	PutService(args PutServiceArgs, reply *string) error
-	GetNode(args GetNodeArgs, reply *string) error
 	DeleteService(service string, reply *string) error
 }
 

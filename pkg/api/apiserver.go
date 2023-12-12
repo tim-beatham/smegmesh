@@ -99,7 +99,9 @@ func (s *SmegServer) CreateMesh(c *gin.Context) {
 	}
 
 	ipcRequest := ipc.NewMeshArgs{
-		WgPort: createMesh.WgPort,
+		WgArgs: ipc.WireGuardArgs{
+			WgPort: createMesh.WgPort,
+		},
 	}
 
 	var reply string
@@ -132,7 +134,9 @@ func (s *SmegServer) JoinMesh(c *gin.Context) {
 	ipcRequest := ipc.JoinMeshArgs{
 		MeshId:   joinMesh.MeshId,
 		IpAdress: joinMesh.Bootstrap,
-		Port:     joinMesh.WgPort,
+		WgArgs: ipc.WireGuardArgs{
+			WgPort: joinMesh.WgPort,
+		},
 	}
 
 	var reply string
