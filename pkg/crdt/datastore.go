@@ -386,7 +386,7 @@ func (m *TwoPhaseStoreMeshManager) SetAlias(nodeId string, alias string) error {
 	}
 
 	node := m.store.Get(nodeId)
-	node.Description = alias
+	node.Alias = alias
 
 	m.store.Put(nodeId, node)
 	return nil
