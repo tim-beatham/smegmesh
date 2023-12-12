@@ -20,6 +20,10 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 	routes := make(map[string][]Route)
 
 	for _, mesh1 := range meshes {
+		if !*mesh1.GetConfiguration().AdvertiseRoutes {
+			continue
+		}
+
 		self, err := r.meshManager.GetSelf(mesh1.GetMeshId())
 
 		if err != nil {

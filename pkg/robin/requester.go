@@ -2,7 +2,6 @@ package robin
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -12,7 +11,6 @@ import (
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/query"
 	"github.com/tim-beatham/wgmesh/pkg/rpc"
 )
 
@@ -20,8 +18,8 @@ type IpcHandler struct {
 	Server ctrlserver.CtrlServer
 }
 
-func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
-	overrideConf := &conf.WgConfiguration{}
+func getOverrideConfiguration(args *ipc.WireGuardArgs) conf.WgConfiguration {
+	overrideConf := conf.WgConfiguration{}
 
 	if args.Role != "" {
 		role := conf.NodeType(args.Role)
@@ -32,13 +30,26 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 		overrideConf.Endpoint = &args.Endpoint
 	}
 
+	if args.KeepAliveWg != 0 {
+		keepAliveWg := args.KeepAliveWg
+		overrideConf.KeepAliveWg = &keepAliveWg
+	}
+
+	overrideConf.AdvertiseRoutes = &args.AdvertiseRoutes
+	overrideConf.AdvertiseDefaultRoute = &args.AdvertiseDefaultRoute
+	return overrideConf
+}
+
+func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
+	overrideConf := getOverrideConfiguration(&args.WgArgs)
+
 	if overrideConf.Role != nil && *overrideConf.Role == conf.CLIENT_ROLE {
 		return fmt.Errorf("cannot create a mesh with no public endpoint")
 	}
 
 	meshId, err := n.Server.GetMeshManager().CreateMesh(&mesh.CreateMeshParams{
-		Port: args.WgPort,
-		Conf: overrideConf,
+		Port: args.WgArgs.WgPort,
+		Conf: &overrideConf,
 	})
 
 	if err != nil {
@@ -47,8 +58,8 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 
 	err = n.Server.GetMeshManager().AddSelf(&mesh.AddSelfParams{
 		MeshId:   meshId,
-		WgPort:   args.WgPort,
-		Endpoint: args.Endpoint,
+		WgPort:   args.WgArgs.WgPort,
+		Endpoint: args.WgArgs.Endpoint,
 	})
 
 	if err != nil {
@@ -73,16 +84,7 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 }
 
 func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
-	overrideConf := &conf.WgConfiguration{}
-
-	if args.Role != "" {
-		role := conf.NodeType(args.Role)
-		overrideConf.Role = &role
-	}
-
-	if args.Endpoint != "" {
-		overrideConf.Endpoint = &args.Endpoint
-	}
+	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
 	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAdress)
 
@@ -115,9 +117,9 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 	err = n.Server.GetMeshManager().AddMesh(&mesh.AddMeshParams{
 		MeshId:    args.MeshId,
-		WgPort:    args.Port,
+		WgPort:    args.WgArgs.WgPort,
 		MeshBytes: meshReply.Mesh,
-		Conf:      overrideConf,
+		Conf:      &overrideConf,
 	})
 
 	if err != nil {
@@ -126,8 +128,8 @@ func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 
 	err = n.Server.GetMeshManager().AddSelf(&mesh.AddSelfParams{
 		MeshId:   args.MeshId,
-		WgPort:   args.Port,
-		Endpoint: args.Endpoint,
+		WgPort:   args.WgArgs.WgPort,
+		Endpoint: args.WgArgs.Endpoint,
 	})
 
 	if err != nil {
@@ -245,27 +247,6 @@ func (n *IpcHandler) DeleteService(service string, reply *string) error {
 	}
 
 	*reply = "success"
-	return nil
-}
-
-func (n *IpcHandler) GetNode(args ipc.GetNodeArgs, reply *string) error {
-	node := n.Server.GetMeshManager().GetNode(args.MeshId, args.NodeId)
-
-	if node == nil {
-		*reply = "nil"
-		return nil
-	}
-
-	queryNode := query.MeshNodeToQueryNode(node)
-
-	bytes, err := json.Marshal(queryNode)
-
-	if err != nil {
-		*reply = err.Error()
-		return nil
-	}
-
-	*reply = string(bytes)
 	return nil
 }
 
