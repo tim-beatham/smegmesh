@@ -37,11 +37,6 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	correspondingMesh.Prune()
 
-	if self != nil && self.GetType() == conf.PEER_ROLE && !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
-		logging.Log.WriteInfof("No changes for %s", meshId)
-		return nil
-	}
-
 	before := time.Now()
 	s.manager.GetRouteManager().UpdateRoutes()
 
