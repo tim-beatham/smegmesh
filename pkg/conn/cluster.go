@@ -55,12 +55,14 @@ func (i *ConnClusterImpl) GetNeighbours(global []string, selfId string) []string
 // you will communicate with a random node that is not in your cluster.
 func (i *ConnClusterImpl) GetInterCluster(global []string, selfId string) string {
 	// Doesn't matter if not in it. Get index of where the node 'should' be
+	slices.Sort(global)
+
 	index, _ := binarySearch(global, selfId, 1)
 	numClusters := math.Ceil(float64(len(global)) / float64(i.clusterSize))
 
 	randomCluster := rand.Intn(int(numClusters)-1) + 1
 
-	neighbourIndex := (index + randomCluster) % len(global)
+	neighbourIndex := (index + (randomCluster * i.clusterSize)) % len(global)
 	return global[neighbourIndex]
 }
 
