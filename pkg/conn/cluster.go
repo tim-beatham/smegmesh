@@ -58,11 +58,11 @@ func (i *ConnClusterImpl) GetInterCluster(global []string, selfId string) string
 	slices.Sort(global)
 
 	index, _ := binarySearch(global, selfId, 1)
-	numClusters := math.Ceil(float64(len(global)) / float64(i.clusterSize))
 
-	randomCluster := rand.Intn(int(numClusters)-1) + 1
+	randomCluster := rand.Intn(2) + 1
 
-	neighbourIndex := (index + (randomCluster * i.clusterSize)) % len(global)
+	// cluster is considered a heap
+	neighbourIndex := (2*index + (randomCluster * i.clusterSize)) % len(global)
 	return global[neighbourIndex]
 }
 
