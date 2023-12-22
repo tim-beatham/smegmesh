@@ -10,8 +10,32 @@ import (
 )
 
 func getMeshConfiguration() *conf.DaemonConfiguration {
+	advertiseRoutes := true
+	advertiseDefaultRoute := true
+	ipDiscovery := conf.PUBLIC_IP_DISCOVERY
+	role := conf.PEER_ROLE
+
 	return &conf.DaemonConfiguration{
-		GrpcPort: 8080,
+		GrpcPort:             8080,
+		CertificatePath:      "./somecertificatepath",
+		PrivateKeyPath:       "./someprivatekeypath",
+		CaCertificatePath:    "./somecacertificatepath",
+		SkipCertVerification: true,
+		Timeout:              5,
+		Profile:              false,
+		StubWg:               false,
+		SyncRate:             2,
+		KeepAliveTime:        60,
+		ClusterSize:          64,
+		InterClusterChance:   0.15,
+		BranchRate:           3,
+		InfectionCount:       3,
+		BaseConfiguration: conf.WgConfiguration{
+			IPDiscovery:           &ipDiscovery,
+			AdvertiseRoutes:       &advertiseRoutes,
+			AdvertiseDefaultRoute: &advertiseDefaultRoute,
+			Role:                  &role,
+		},
 	}
 }
 
@@ -34,7 +58,10 @@ func getMeshManager() MeshManager {
 func TestCreateMeshCreatesANewMeshProvider(t *testing.T) {
 	manager := getMeshManager()
 
-	meshId, err := manager.CreateMesh("wg0", 5000)
+	meshId, err := manager.CreateMesh(&CreateMeshParams{
+		Port: 0,
+		Conf: &conf.WgConfiguration{},
+	})
 
 	if err != nil {
 		t.Error(err)
@@ -121,7 +148,7 @@ func TestAddSelfAddsSelfToTheMesh(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, ok := mesh.GetNodes()["abc.com"]
+	_, ok := mesh.GetNodes()[manager.GetPublicKey().String()]
 
 	if !ok {
 		t.Fatalf(`node has not been added`)
@@ -186,12 +213,51 @@ func TestLeaveMeshDeletesMesh(t *testing.T) {
 	}
 }
 
+func TestSetAlias(t *testing.T) {
+	manager := getMeshManager()
+	alias := "Firpo"
+
+	meshId, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5000,
+		Conf: &conf.WgConfiguration{},
+	})
+
+	manager.AddSelf(&AddSelfParams{
+		MeshId:   meshId,
+		WgPort:   5000,
+		Endpoint: "abc.com:8080",
+	})
+
+	err := manager.SetAlias(alias)
+
+	if err != nil {
+		t.Fatalf(`failed to set the alias`)
+	}
+
+	self, err := manager.GetSelf(meshId)
+
+	if err != nil {
+		t.Fatalf(`failed to set the alias err: %s`, err.Error())
+	}
+
+	if alias != self.GetAlias() {
+		t.Fatalf(`alias should be %s was %s`, alias, self.GetAlias())
+	}
+}
+
 func TestSetDescription(t *testing.T) {
 	manager := getMeshManager()
 	description := "wooooo"
 
-	meshId1, _ := manager.CreateMesh(5000)
-	meshId2, _ := manager.CreateMesh(5001)
+	meshId1, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5000,
+		Conf: &conf.WgConfiguration{},
+	})
+
+	meshId2, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5001,
+		Conf: &conf.WgConfiguration{},
+	})
 
 	manager.AddSelf(&AddSelfParams{
 		MeshId:   meshId1,
@@ -209,13 +275,40 @@ func TestSetDescription(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`failed to set the descriptions`)
 	}
+
+	self1, err := manager.GetSelf(meshId1)
+
+	if err != nil {
+		t.Fatalf(`failed to set the description`)
+	}
+
+	if description != self1.GetDescription() {
+		t.Fatalf(`description should be %s was %s`, description, self1.GetDescription())
+	}
+
+	self2, err := manager.GetSelf(meshId2)
+
+	if err != nil {
+		t.Fatalf(`failed to set the description`)
+	}
+
+	if description != self2.GetDescription() {
+		t.Fatalf(`description should be %s was %s`, description, self2.GetDescription())
+	}
 }
 
 func TestUpdateTimeStampUpdatesAllMeshes(t *testing.T) {
 	manager := getMeshManager()
 
-	meshId1, _ := manager.CreateMesh(5000)
-	meshId2, _ := manager.CreateMesh(5001)
+	meshId1, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5000,
+		Conf: &conf.WgConfiguration{},
+	})
+
+	meshId2, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5001,
+		Conf: &conf.WgConfiguration{},
+	})
 
 	manager.AddSelf(&AddSelfParams{
 		MeshId:   meshId1,

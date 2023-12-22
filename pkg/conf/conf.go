@@ -26,8 +26,8 @@ const (
 type IPDiscovery string
 
 const (
-	PUBLIC_IP_DISCOVERY = "public"
-	DNS_IP_DISCOVERY    = "dns"
+	PUBLIC_IP_DISCOVERY IPDiscovery = "public"
+	DNS_IP_DISCOVERY    IPDiscovery = "dns"
 )
 
 // WgConfiguration contains per-mesh WireGuard configuration. Contains poitner types only so we can
@@ -61,11 +61,11 @@ type WgConfiguration struct {
 
 type DaemonConfiguration struct {
 	// CertificatePath is the path to the certificate to use in mTLS
-	CertificatePath string `yaml:"certificatePath" validate:"required,file"`
+	CertificatePath string `yaml:"certificatePath" validate:"required"`
 	// PrivateKeypath is the path to the clients private key in mTLS
-	PrivateKeyPath string `yaml:"privateKeyPath" validate:"required,file"`
+	PrivateKeyPath string `yaml:"privateKeyPath" validate:"required"`
 	// CaCeritifcatePath path to the certificate of the trust certificate authority
-	CaCertificatePath string `yaml:"caCertificatePath" validate:"required,file"`
+	CaCertificatePath string `yaml:"caCertificatePath" validate:"required"`
 	// SkipCertVerification specify to skip certificate verification. Should only be used
 	// in test environments
 	SkipCertVerification bool `yaml:"skipCertVerification"`
@@ -83,9 +83,9 @@ type DaemonConfiguration struct {
 	// send to every member in the mesh
 	KeepAliveTime int `yaml:"keepAliveTime" validate:"required,gte=1"`
 	// ClusterSize specifies how many neighbours you should synchronise with per round
-	ClusterSize int `yaml:"clusterSize" valdiate:"required,gt=0"`
+	ClusterSize int `yaml:"clusterSize" validate:"gte=1"`
 	// InterClusterChance specifies the probabilityof inter-cluster communication in a sync round
-	InterClusterChance float64 `yaml:"interClusterChance" valdiate:"required,gt=0"`
+	InterClusterChance float64 `yaml:"interClusterChance" validate:"gt=0"`
 	// BranchRate specifies the number of nodes to synchronise with when a node has
 	// new changes to send to the mesh
 	BranchRate int `yaml:"branchRate" validate:"required,gte=1"`
