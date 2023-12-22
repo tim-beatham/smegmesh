@@ -15,7 +15,6 @@ const SockAddr = "/tmp/wgmesh_ipc.sock"
 type CreateMeshParams struct {
 	Client           *ipcRpc.Client
 	Endpoint         string
-	Role             string
 	WgArgs           ipc.WireGuardArgs
 	AdvertiseRoutes  bool
 	AdvertiseDefault bool
@@ -56,7 +55,6 @@ type JoinMeshParams struct {
 	MeshId           string
 	IpAddress        string
 	Endpoint         string
-	Role             string
 	WgArgs           ipc.WireGuardArgs
 	AdvertiseRoutes  bool
 	AdvertiseDefault bool
@@ -203,6 +201,7 @@ func main() {
 	})
 
 	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
+		Default: "peer",
 		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
 			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
 			" protocol",
@@ -235,7 +234,7 @@ func main() {
 	})
 
 	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Default: "Peer",
+		Default: "peer",
 		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
 			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
 			" protocol",
@@ -319,7 +318,6 @@ func main() {
 		fmt.Println(createMesh(&CreateMeshParams{
 			Client:   client,
 			Endpoint: *newMeshEndpoint,
-			Role:     *newMeshRole,
 			WgArgs: ipc.WireGuardArgs{
 				Endpoint:              *newMeshEndpoint,
 				Role:                  *newMeshRole,
@@ -341,7 +339,6 @@ func main() {
 			IpAddress: *joinMeshIpAddress,
 			MeshId:    *joinMeshId,
 			Endpoint:  *joinMeshEndpoint,
-			Role:      *joinMeshRole,
 			WgArgs: ipc.WireGuardArgs{
 				Endpoint:              *joinMeshEndpoint,
 				Role:                  *joinMeshRole,
