@@ -1,4 +1,4 @@
-// crdt is a golang implementation of a crdt
+// crdt provides go implementations for crdts
 package crdt
 
 import (
@@ -65,10 +65,19 @@ func (g *GMap[K, D]) get(key uint64) Bucket[D] {
 }
 
 func (g *GMap[K, D]) Get(key K) D {
+	if !g.Contains(key) {
+		var def D
+		return def
+	}
+
 	return g.get(g.clock.hashFunc(key)).Contents
 }
 
 func (g *GMap[K, D]) Mark(key K) {
+	if !g.Contains(key) {
+		return
+	}
+
 	g.lock.Lock()
 	bucket := g.contents[g.clock.hashFunc(key)]
 	bucket.Gravestone = true
@@ -89,7 +98,6 @@ func (g *GMap[K, D]) IsMarked(key K) bool {
 	}
 
 	g.lock.RUnlock()
-
 	return marked
 }
 
