@@ -23,7 +23,7 @@ func getMeshConfiguration() *conf.DaemonConfiguration {
 		SkipCertVerification: true,
 		Timeout:              5,
 		Profile:              false,
-		StubWg:               false,
+		StubWg:               true,
 		SyncRate:             2,
 		KeepAliveTime:        60,
 		ClusterSize:          64,

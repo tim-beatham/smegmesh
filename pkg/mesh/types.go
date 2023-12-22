@@ -20,6 +20,12 @@ type Route interface {
 	GetPath() []string
 }
 
+func RouteEqual(r1 Route, r2 Route) bool {
+	return r1.GetDestination().IP.Equal(r2.GetDestination().IP) &&
+		r1.GetHopCount() == r2.GetHopCount() &&
+		slices.Equal(r1.GetPath(), r2.GetPath())
+}
+
 func RouteEquals(r1, r2 Route) bool {
 	return r1.GetDestination().String() == r2.GetDestination().String() &&
 		r1.GetHopCount() == r2.GetHopCount() &&

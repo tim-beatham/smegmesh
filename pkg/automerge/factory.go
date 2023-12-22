@@ -28,7 +28,7 @@ type MeshNodeFactory struct {
 func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNode {
 	hostName := f.getAddress(params)
 
-	grpcEndpoint := fmt.Sprintf("%s:%s", hostName, f.Config.GrpcPort)
+	grpcEndpoint := fmt.Sprintf("%s:%d", hostName, f.Config.GrpcPort)
 
 	if *params.MeshConfig.Role == conf.CLIENT_ROLE {
 		grpcEndpoint = "-"
