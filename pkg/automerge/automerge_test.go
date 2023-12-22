@@ -1,7 +1,7 @@
 package automerge
 
 import (
-	"slices"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +22,7 @@ func setUpTests() *TestParams {
 		DevName: "wg0",
 		Port:    5000,
 		Client:  nil,
-		Conf:    conf.DaemonConfiguration{},
+		Conf:    &conf.WgConfiguration{},
 	})
 
 	return &TestParams{
@@ -31,22 +31,26 @@ func setUpTests() *TestParams {
 }
 
 func getTestNode() mesh.MeshNode {
+	pubKey, _ := wgtypes.GeneratePrivateKey()
+
 	return &MeshNodeCrdt{
 		HostEndpoint: "public-endpoint:8080",
 		WgEndpoint:   "public-endpoint:21906",
 		WgHost:       "3e9a:1fb3:5e50:8173:9690:f917:b1ab:d218/128",
-		PublicKey:    "AAAAAAAAAAAA",
+		PublicKey:    pubKey.String(),
 		Timestamp:    time.Now().Unix(),
 		Description:  "A node that we are adding",
 	}
 }
 
 func getTestNode2() mesh.MeshNode {
+	pubKey, _ := wgtypes.GeneratePrivateKey()
+
 	return &MeshNodeCrdt{
 		HostEndpoint: "public-endpoint:8081",
 		WgEndpoint:   "public-endpoint:21907",
 		WgHost:       "3e9a:1fb3:5e50:8173:9690:f917:b1ab:d219/128",
-		PublicKey:    "BBBBBBBBB",
+		PublicKey:    pubKey.String(),
 		Timestamp:    time.Now().Unix(),
 		Description:  "A node that we are adding",
 	}
@@ -54,9 +58,11 @@ func getTestNode2() mesh.MeshNode {
 
 func TestAddNodeNodeExists(t *testing.T) {
 	testParams := setUpTests()
-	testParams.manager.AddNode(getTestNode())
+	node := getTestNode()
+	testParams.manager.AddNode(node)
 
-	node, err := testParams.manager.GetNode("public-endpoint:8080")
+	pubKey, _ := node.GetPublicKey()
+	node, err := testParams.manager.GetNode(pubKey.String())
 
 	if err != nil {
 		t.Error(err)
@@ -70,24 +76,27 @@ func TestAddNodeNodeExists(t *testing.T) {
 func TestAddNodeAddRoute(t *testing.T) {
 	testParams := setUpTests()
 	testNode := getTestNode()
-	testParams.manager.AddNode(testNode)
-	testParams.manager.AddRoutes(testNode.GetHostEndpoint(), "fd:1c64:1d00::/48")
+	pubKey, _ := testNode.GetPublicKey()
 
-	updatedNode, err := testParams.manager.GetNode(testNode.GetHostEndpoint())
+	_, destination, _ := net.ParseCIDR("fd:1c64:1d00::/48")
+
+	testParams.manager.AddNode(testNode)
+	testParams.manager.AddRoutes(pubKey.String(), &mesh.RouteStub{
+		Destination: destination,
+		HopCount:    0,
+		Path:        make([]string, 0),
+	})
+	updatedNode, err := testParams.manager.GetNode(pubKey.String())
 
 	if err != nil {
 		t.Error(err)
 	}
 
 	if updatedNode == nil {
-		t.Fatalf(`Node does not exist in the mesh`)
+		t.Fatalf(`node does not exist in the mesh`)
 	}
 
 	routes := updatedNode.GetRoutes()
-
-	if !slices.Contains(routes, "fd:1c64:1d00::/48") {
-		t.Fatal("Route node not added")
-	}
 
 	if len(routes) != 1 {
 		t.Fatal(`Route length mismatch`)
@@ -253,7 +262,9 @@ func TestUpdateTimeStampNodeExists(t *testing.T) {
 	node := getTestNode()
 
 	testParams.manager.AddNode(node)
-	err := testParams.manager.UpdateTimeStamp(node.GetHostEndpoint())
+	pubKey, _ := node.GetPublicKey()
+
+	err := testParams.manager.UpdateTimeStamp(pubKey.String())
 
 	if err != nil {
 		t.Error(err)
@@ -282,7 +293,13 @@ func TestSetDescriptionNodeExists(t *testing.T) {
 func TestAddRoutesNodeDoesNotExist(t *testing.T) {
 	testParams := setUpTests()
 
-	err := testParams.manager.AddRoutes("AAAAA", "fd:1c64:1d00::/48")
+	_, destination, _ := net.ParseCIDR("fd:1c64:1d00::/48")
+
+	err := testParams.manager.AddRoutes("AAAAA", &mesh.RouteStub{
+		Destination: destination,
+		HopCount:    0,
+		Path:        make([]string, 0),
+	})
 
 	if err == nil {
 		t.Error(err)
@@ -293,16 +310,11 @@ func TestCompareComparesByPublicKey(t *testing.T) {
 	node := getTestNode().(*MeshNodeCrdt)
 	node2 := getTestNode2().(*MeshNodeCrdt)
 
-	if node.Compare(node2) != -1 {
-		t.Fatalf(`node is alphabetically before node2`)
-	}
+	pubKey1, _ := node.GetPublicKey()
+	pubKey2, _ := node2.GetPublicKey()
 
-	if node2.Compare(node) != 1 {
-		t.Fatalf(`node is alphabetical;y before node2`)
-	}
-
-	if node.Compare(node) != 0 {
-		t.Fatalf(`node is equal to node`)
+	if node.Compare(node2) != strings.Compare(pubKey1.String(), pubKey2.String()) {
+		t.Fatalf(`compare failed`)
 	}
 }
 

@@ -3,6 +3,7 @@ package robin
 import (
 	"testing"
 
+	"github.com/tim-beatham/wgmesh/pkg/conf"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	"github.com/tim-beatham/wgmesh/pkg/mesh"
@@ -17,9 +18,11 @@ func TestCreateMeshRepliesMeshId(t *testing.T) {
 	requester := getRequester()
 
 	err := requester.CreateMesh(&ipc.NewMeshArgs{
-		IfName:   "wg0",
-		WgPort:   5000,
-		Endpoint: "abc.com",
+		WgArgs: ipc.WireGuardArgs{
+			WgPort:   500,
+			Endpoint: "abc.com:1234",
+			Role:     "peer",
+		},
 	}, &reply)
 
 	if err != nil {
@@ -52,9 +55,8 @@ func TestListMeshesMeshesNotEmpty(t *testing.T) {
 
 	requester.Server.GetMeshManager().AddMesh(&mesh.AddMeshParams{
 		MeshId:    "tim123",
-		DevName:   "wg0",
-		WgPort:    5000,
 		MeshBytes: make([]byte, 0),
+		Conf:      &conf.WgConfiguration{},
 	})
 
 	err := requester.ListMeshes("", &reply)

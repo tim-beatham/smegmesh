@@ -40,7 +40,11 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	crdt.Services = make(map[string]string)
 	crdt.Timestamp = time.Now().Unix()
 
-	c.doc.Path("nodes").Map().Set(crdt.PublicKey, crdt)
+	err := c.doc.Path("nodes").Map().Set(crdt.PublicKey, crdt)
+
+	if err != nil {
+		logging.Log.WriteInfof("error")
+	}
 }
 
 func (c *CrdtMeshManager) isPeer(nodeId string) bool {
@@ -161,7 +165,7 @@ func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {
 	node, err := m.doc.Path("nodes").Map().Get(endpoint)
 
 	if node.Kind() != automerge.KindMap {
-		return nil, fmt.Errorf("GetNode: something went wrong %s is not a map type")
+		return nil, fmt.Errorf("getnode: node is not a map")
 	}
 
 	if err != nil {
