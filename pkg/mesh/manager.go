@@ -32,7 +32,6 @@ type MeshManager interface {
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
 	Close() error
-	GetMonitor() MeshMonitor
 	GetNode(string, string) MeshNode
 	GetRouteManager() RouteManager
 }
@@ -52,7 +51,6 @@ type MeshManagerImpl struct {
 	idGenerator          lib.IdGenerator
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
-	Monitor              MeshMonitor
 	cmdRunner            cmd.CmdRunner
 	OnDelete             func(MeshProvider)
 }
@@ -102,11 +100,6 @@ func (m *MeshManagerImpl) GetNode(meshid, nodeId string) MeshNode {
 	}
 
 	return node
-}
-
-// GetMonitor implements MeshManager.
-func (m *MeshManagerImpl) GetMonitor() MeshMonitor {
-	return m.Monitor
 }
 
 // CreateMeshParams contains the parameters required to create a mesh
@@ -521,11 +514,6 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	m.ipAllocator = params.IPAllocator
 	m.interfaceManipulator = params.InterfaceManipulator
 
-	m.Monitor = NewMeshMonitor(m)
-
-	aliasManager := NewAliasManager()
-	m.Monitor.AddUpdateCallback(aliasManager.AddAliases)
-	m.Monitor.AddRemoveCallback(aliasManager.RemoveAliases)
 	m.OnDelete = params.OnDelete
 	return m
 }

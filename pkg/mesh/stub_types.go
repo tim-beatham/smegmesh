@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
+	"github.com/tim-beatham/wgmesh/pkg/lib"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -19,6 +20,8 @@ type MeshNodeStub struct {
 	routes       []Route
 	identifier   string
 	description  string
+	alias        string
+	services     map[string]string
 }
 
 // GetType implements MeshNode.
@@ -32,8 +35,8 @@ func (*MeshNodeStub) GetServices() map[string]string {
 }
 
 // GetAlias implements MeshNode.
-func (*MeshNodeStub) GetAlias() string {
-	return ""
+func (s *MeshNodeStub) GetAlias() string {
+	return s.alias
 }
 
 func (m *MeshNodeStub) GetHostEndpoint() string {
@@ -83,17 +86,26 @@ type MeshProviderStub struct {
 
 // GetConfiguration implements MeshProvider.
 func (*MeshProviderStub) GetConfiguration() *conf.WgConfiguration {
-	panic("unimplemented")
+	advertiseRoutes := true
+	advertiseDefaultRoute := true
+	ipDiscovery := conf.PUBLIC_IP_DISCOVERY
+	role := conf.PEER_ROLE
+
+	return &conf.WgConfiguration{
+		IPDiscovery:           &ipDiscovery,
+		AdvertiseRoutes:       &advertiseRoutes,
+		AdvertiseDefaultRoute: &advertiseDefaultRoute,
+		Role:                  &role,
+	}
 }
 
 // Mark implements MeshProvider.
 func (*MeshProviderStub) Mark(nodeId string) {
-	panic("unimplemented")
 }
 
 // RemoveNode implements MeshProvider.
 func (*MeshProviderStub) RemoveNode(nodeId string) error {
-	panic("unimplemented")
+	return nil
 }
 
 func (*MeshProviderStub) GetRoutes(targetId string) (map[string]Route, error) {
@@ -106,32 +118,53 @@ func (*MeshProviderStub) GetPeers() []string {
 }
 
 // GetNode implements MeshProvider.
-func (*MeshProviderStub) GetNode(string) (MeshNode, error) {
-	return nil, nil
+func (m *MeshProviderStub) GetNode(nodeId string) (MeshNode, error) {
+	return m.snapshot.nodes[nodeId], nil
 }
 
 // NodeExists implements MeshProvider.
-func (*MeshProviderStub) NodeExists(string) bool {
-	return false
+func (m *MeshProviderStub) NodeExists(nodeId string) bool {
+	return m.snapshot.nodes[nodeId] != nil
 }
 
 // AddService implements MeshProvider.
-func (*MeshProviderStub) AddService(nodeId string, key string, value string) error {
+func (m *MeshProviderStub) AddService(nodeId string, key string, value string) error {
+	node := (m.snapshot.nodes[nodeId]).(*MeshNodeStub)
+	node.services[key] = value
 	return nil
 }
 
 // RemoveService implements MeshProvider.
-func (*MeshProviderStub) RemoveService(nodeId string, key string) error {
+func (m *MeshProviderStub) RemoveService(nodeId string, key string) error {
+	node := (m.snapshot.nodes[nodeId]).(*MeshNodeStub)
+	delete(node.services, key)
 	return nil
 }
 
 // SetAlias implements MeshProvider.
-func (*MeshProviderStub) SetAlias(nodeId string, alias string) error {
+func (m *MeshProviderStub) SetAlias(nodeId string, alias string) error {
+	node := (m.snapshot.nodes[nodeId]).(*MeshNodeStub)
+	node.alias = alias
+	return nil
+}
+
+// AddRoutes implements
+func (m *MeshProviderStub) AddRoutes(nodeId string, route ...Route) error {
+	node := (m.snapshot.nodes[nodeId]).(*MeshNodeStub)
+	node.routes = append(node.routes, route...)
 	return nil
 }
 
 // RemoveRoutes implements MeshProvider.
-func (*MeshProviderStub) RemoveRoutes(nodeId string, route ...Route) error {
+func (m *MeshProviderStub) RemoveRoutes(nodeId string, route ...Route) error {
+	node := (m.snapshot.nodes[nodeId]).(*MeshNodeStub)
+
+	newRoutes := lib.Filter(node.routes, func(r1 Route) bool {
+		return !lib.Contains(route, func(r2 Route) bool {
+			return RouteEqual(r1, r2)
+		})
+	})
+	node.routes = newRoutes
 	return nil
 }
 
@@ -141,12 +174,15 @@ func (*MeshProviderStub) Prune() error {
 }
 
 // UpdateTimeStamp implements MeshProvider.
-func (*MeshProviderStub) UpdateTimeStamp(nodeId string) error {
+func (m *MeshProviderStub) UpdateTimeStamp(nodeId string) error {
+	node := (m.snapshot.nodes[nodeId]).(*MeshNodeStub)
+	node.timeStamp = time.Now().Unix()
 	return nil
 }
 
 func (s *MeshProviderStub) AddNode(node MeshNode) {
-	s.snapshot.nodes[node.GetHostEndpoint()] = node
+	pubKey, _ := node.GetPublicKey()
+	s.snapshot.nodes[pubKey.String()] = node
 }
 
 func (s *MeshProviderStub) GetMesh() (MeshSnapshot, error) {
@@ -178,15 +214,13 @@ func (s *MeshProviderStub) HasChanges() bool {
 	return false
 }
 
-func (s *MeshProviderStub) AddRoutes(nodeId string, route ...Route) error {
-	return nil
-}
-
 func (s *MeshProviderStub) GetSyncer() MeshSyncer {
 	return nil
 }
 
 func (s *MeshProviderStub) SetDescription(nodeId string, description string) error {
+	meshNode := (s.snapshot.nodes[nodeId]).(*MeshNodeStub)
+	meshNode.description = description
 	return nil
 }
 
@@ -209,7 +243,7 @@ func (s *StubNodeFactory) Build(params *MeshNodeFactoryParams) MeshNode {
 	return &MeshNodeStub{
 		hostEndpoint: params.Endpoint,
 		publicKey:    *params.PublicKey,
-		wgEndpoint:   fmt.Sprintf("%s:%s", params.Endpoint, s.Config.GrpcPort),
+		wgEndpoint:   fmt.Sprintf("%s:%d", params.Endpoint, s.Config.GrpcPort),
 		wgHost:       wgHost,
 		timeStamp:    time.Now().Unix(),
 		routes:       make([]Route, 0),
@@ -252,11 +286,6 @@ func (*MeshManagerStub) RemoveService(service string) error {
 
 // SetService implements MeshManager.
 func (*MeshManagerStub) SetService(service string, value string) error {
-	panic("unimplemented")
-}
-
-// GetMonitor implements MeshManager.
-func (*MeshManagerStub) GetMonitor() MeshMonitor {
 	panic("unimplemented")
 }
 
