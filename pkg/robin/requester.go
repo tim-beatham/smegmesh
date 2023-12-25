@@ -182,19 +182,6 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	return nil
 }
 
-func (n *IpcHandler) GetDOT(meshId string, reply *string) error {
-	g := mesh.NewMeshDotConverter(n.Server.GetMeshManager())
-
-	result, err := g.Generate(meshId)
-
-	if err != nil {
-		return err
-	}
-
-	*reply = result
-	return nil
-}
-
 func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 	queryResponse, err := n.Server.GetQuerier().Query(params.MeshId, params.Query)
 

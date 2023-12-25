@@ -68,7 +68,6 @@ type MeshIpc interface {
 	JoinMesh(args JoinMeshArgs, reply *string) error
 	LeaveMesh(meshId string, reply *string) error
 	GetMesh(meshId string, reply *GetMeshReply) error
-	GetDOT(meshId string, reply *string) error
 	Query(query QueryMesh, reply *string) error
 	PutDescription(description string, reply *string) error
 	PutAlias(alias string, reply *string) error
