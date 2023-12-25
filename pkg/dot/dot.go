@@ -18,9 +18,10 @@ const (
 )
 
 const (
-	CIRCLE  Shape = "circle"
-	STAR    Shape = "star"
-	HEXAGON Shape = "hexagon"
+	CIRCLE        Shape = "circle"
+	STAR          Shape = "star"
+	HEXAGON       Shape = "hexagon"
+	PARALLELOGRAM Shape = "parallelogram"
 )
 
 type Graph interface {

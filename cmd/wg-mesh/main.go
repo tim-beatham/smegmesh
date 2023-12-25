@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/akamensky/argparse"
+	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	graph "github.com/tim-beatham/wgmesh/pkg/dot"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 )
@@ -91,17 +93,40 @@ func leaveMesh(client *ipcRpc.Client, meshId string) {
 	fmt.Println(reply)
 }
 
-func getGraph(client *ipcRpc.Client, meshId string) {
-	var reply string
+func getGraph(client *ipcRpc.Client) {
+	listMeshesReply := new(ipc.ListMeshReply)
 
-	err := client.Call("IpcHandler.GetDOT", &meshId, &reply)
+	err := client.Call("IpcHandler.ListMeshes", "", &listMeshesReply)
 
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
-	fmt.Println(reply)
+	meshes := make(map[string][]ctrlserver.MeshNode)
+
+	for _, meshId := range listMeshesReply.Meshes {
+		var meshReply ipc.GetMeshReply
+
+		err := client.Call("IpcHandler.GetMesh", &meshId, &meshReply)
+
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		meshes[meshId] = meshReply.Nodes
+	}
+
+	dotGenerator := graph.NewMeshGraphConverter(meshes)
+	dot, err := dotGenerator.Generate()
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(dot)
 }
 
 func queryMesh(client *ipcRpc.Client, meshId, query string) {
@@ -258,11 +283,6 @@ func main() {
 		Help: "Advertise ::/0 into the mesh network",
 	})
 
-	var getGraphMeshId *string = getGraphCmd.String("m", "mesh", &argparse.Options{
-		Required: true,
-		Help:     "MeshID of the graph to get",
-	})
-
 	var leaveMeshMeshId *string = leaveMeshCmd.String("m", "mesh", &argparse.Options{
 		Required: true,
 		Help:     "MeshID of the mesh to leave",
@@ -351,7 +371,7 @@ func main() {
 	}
 
 	if getGraphCmd.Happened() {
-		getGraph(client, *getGraphMeshId)
+		getGraph(client)
 	}
 
 	if leaveMeshCmd.Happened() {

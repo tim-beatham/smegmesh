@@ -34,7 +34,7 @@ func (c *MeshDOTConverter) Generate() (string, error) {
 	}
 
 	for destination := range c.destinations {
-		g.PutNode(destination, destination, 3, CIRCLE)
+		g.PutNode(destination, destination, 1, HEXAGON)
 	}
 
 	return g.GetDOT()
@@ -67,7 +67,7 @@ func (c *MeshDOTConverter) graphNode(g *RootGraph, node ctrlserver.MeshNode, mes
 	g.PutNode(node.PublicKey, alias, 2, CIRCLE)
 
 	for _, route := range node.Routes {
-		if len(route.Path) == 0 && route.Destination == "::/0" {
+		if len(route.Path) == 0 {
 			g.AddEdge(route.Destination, "", node.PublicKey, route.Destination)
 			continue
 		}
@@ -88,7 +88,7 @@ func (c *MeshDOTConverter) graphNode(g *RootGraph, node ctrlserver.MeshNode, mes
 			g.AddEdge(routeID, "", reversedPath[index], reversedPath[index+1])
 		}
 
-		if reversedPath[len(reversedPath)-1] == "::/0" {
+		if route.Destination == "::/0" {
 			c.destinations[route.Destination] = struct{}{}
 			lastMesh := reversedPath[len(reversedPath)-1]
 			routeID := fmt.Sprintf("%s to %s", lastMesh, route.Destination)
@@ -97,15 +97,14 @@ func (c *MeshDOTConverter) graphNode(g *RootGraph, node ctrlserver.MeshNode, mes
 	}
 
 	for service := range node.Services {
-		c.putService(g, service, node)
+		c.putService(g, service, meshId, node)
 	}
 }
 
 // putService: construct a service node and a link between the nodes
-func (c *MeshDOTConverter) putService(g *RootGraph, key string, node ctrlserver.MeshNode) {
-	serviceID := fmt.Sprintf("%s%s", key, node.PublicKey)
-
-	g.PutNode(serviceID, key, 1, CIRCLE)
+func (c *MeshDOTConverter) putService(g *RootGraph, key, meshId string, node ctrlserver.MeshNode) {
+	serviceID := fmt.Sprintf("%s%s%s", key, node.PublicKey, meshId)
+	g.PutNode(serviceID, key, 1, PARALLELOGRAM)
 	g.AddEdge(fmt.Sprintf("%s to %s", node.PublicKey, serviceID), "", node.PublicKey, serviceID)
 }
 
