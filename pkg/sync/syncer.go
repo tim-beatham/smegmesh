@@ -54,9 +54,6 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	s.manager.GetRouteManager().UpdateRoutes()
 
 	publicKey := s.manager.GetPublicKey()
-
-	logging.Log.WriteInfof(publicKey.String())
-
 	nodeNames := correspondingMesh.GetPeers()
 
 	if self != nil {
@@ -68,7 +65,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 	var gossipNodes []string
 
 	// Clients always pings its peer for configuration
-	if self != nil && self.GetType() == conf.CLIENT_ROLE {
+	if self != nil && self.GetType() == conf.CLIENT_ROLE && len(nodeNames) > 1 {
 		keyFunc := lib.HashString
 		bucketFunc := lib.HashString
 
@@ -92,6 +89,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 		if correspondingPeer == nil {
 			logging.Log.WriteErrorf("node %s does not exist", node)
+			continue
 		}
 
 		err := s.requester.SyncMesh(meshId, correspondingPeer)
@@ -103,6 +101,10 @@ func (s *SyncerImpl) Sync(meshId string) error {
 			// preventing the peer from being re-contacted until it has updated
 			// itself
 			s.manager.GetMesh(meshId).Mark(node)
+		}
+
+		if err != nil {
+			logging.Log.WriteInfof(err.Error())
 		}
 	}
 
