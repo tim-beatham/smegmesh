@@ -91,7 +91,11 @@ func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wg
 		return p.PublicKey.String() == pubKey.String()
 	})
 
-	endpoint, err := net.ResolveUDPAddr("udp", params.node.GetWgEndpoint())
+	var endpoint *net.UDPAddr = nil
+
+	if params.node.GetType() == conf.PEER_ROLE {
+		endpoint, err = net.ResolveUDPAddr("udp", params.node.GetWgEndpoint())
+	}
 
 	if err != nil {
 		return nil, err
