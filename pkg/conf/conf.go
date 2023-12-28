@@ -126,26 +126,6 @@ func ValidateDaemonConfiguration(c *DaemonConfiguration) error {
 	return err
 }
 
-// ParseMeshConfiguration: parses the mesh network configuration. Parses parameters such as
-// keepalive time, role and so forth.
-func ParseMeshConfiguration(filePath string) (*WgConfiguration, error) {
-	var conf WgConfiguration
-
-	yamlBytes, err := os.ReadFile(filePath)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = yaml.Unmarshal(yamlBytes, &conf)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &conf, ValidateMeshConfiguration(&conf)
-}
-
 // ParseDaemonConfiguration parses the mesh configuration and validates the configuration
 func ParseDaemonConfiguration(filePath string) (*DaemonConfiguration, error) {
 	var conf DaemonConfiguration
@@ -160,6 +140,11 @@ func ParseDaemonConfiguration(filePath string) (*DaemonConfiguration, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if conf.BaseConfiguration.KeepAliveWg == nil {
+		var keepAlive int = 0
+		conf.BaseConfiguration.KeepAliveWg = &keepAlive
 	}
 
 	return &conf, ValidateDaemonConfiguration(&conf)
