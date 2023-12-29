@@ -53,13 +53,13 @@ func TestNewConnectionManagerCACertDoesNotExistAndVerify(t *testing.T) {
 
 func TestNewConnectionManagerCACertDoesNotExistAndNotVerify(t *testing.T) {
 	params := getConnectionManagerParams()
-	params.CaCert = ""
+	params.CaCert = "./cert/sdjsdjsdjk.pem"
 	params.SkipCertVerification = true
 
 	_, err := NewConnectionManager(params)
 
-	if err != nil {
-		t.Fatal(`an error should not be thrown`)
+	if err == nil {
+		t.Fatalf(`an error should be thrown`)
 	}
 }
 

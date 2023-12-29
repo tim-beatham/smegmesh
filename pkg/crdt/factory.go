@@ -18,8 +18,8 @@ func (f *TwoPhaseMapFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) 
 		MeshId:     params.MeshId,
 		IfName:     params.DevName,
 		Client:     params.Client,
-		conf:       params.Conf,
-		daemonConf: params.DaemonConf,
+		Conf:       params.Conf,
+		DaemonConf: params.DaemonConf,
 		store: NewTwoPhaseMap[string, MeshNode](params.NodeID, func(s string) uint64 {
 			h := fnv.New64a()
 			h.Write([]byte(s))

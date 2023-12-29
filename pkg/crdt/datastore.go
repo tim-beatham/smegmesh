@@ -158,8 +158,8 @@ type TwoPhaseStoreMeshManager struct {
 	IfName     string
 	Client     *wgctrl.Client
 	LastClock  uint64
-	conf       *conf.WgConfiguration
-	daemonConf *conf.DaemonConfiguration
+	Conf       *conf.WgConfiguration
+	DaemonConf *conf.DaemonConfiguration
 	store      *TwoPhaseMap[string, MeshNode]
 }
 
@@ -204,7 +204,6 @@ func (m *TwoPhaseStoreMeshManager) Save() []byte {
 
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-
 	err := enc.Encode(*snapshot)
 
 	if err != nil {
@@ -265,7 +264,7 @@ func (m *TwoPhaseStoreMeshManager) UpdateTimeStamp(nodeId string) error {
 
 	peerToUpdate := peers[0]
 
-	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.daemonConf.KeepAliveTime) {
+	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.DaemonConf.KeepAliveTime) {
 		m.store.Mark(peerToUpdate)
 
 		if len(peers) < 2 {
@@ -411,6 +410,11 @@ func (m *TwoPhaseStoreMeshManager) RemoveService(nodeId string, key string) erro
 	}
 
 	node := m.store.Get(nodeId)
+
+	if _, ok := node.Services[key]; !ok {
+		return fmt.Errorf("datastore: node does not contain service %s", key)
+	}
+
 	delete(node.Services, key)
 	m.store.Put(nodeId, node)
 	return nil
@@ -510,5 +514,5 @@ func (m *TwoPhaseStoreMeshManager) RemoveNode(nodeId string) error {
 
 // GetConfiguration implements mesh.MeshProvider.
 func (m *TwoPhaseStoreMeshManager) GetConfiguration() *conf.WgConfiguration {
-	return m.conf
+	return m.Conf
 }
