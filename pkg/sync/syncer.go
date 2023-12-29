@@ -96,7 +96,7 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 		if err == nil || err == io.EOF {
 			succeeded = true
-		} else {
+		} else if self.GetType() == conf.PEER_ROLE {
 			// If the synchronisation operation has failed them mark a gravestone
 			// preventing the peer from being re-contacted until it has updated
 			// itself

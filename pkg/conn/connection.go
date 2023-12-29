@@ -51,10 +51,10 @@ func (c *WgCtrlConnection) CreateGrpcConnection() error {
 		  "waitForReady": true,
 		  "retryPolicy": {
 			  "MaxAttempts": 2,
-			  "InitialBackoff": ".01s",
-			  "MaxBackoff": ".01s",
+			  "InitialBackoff": ".1s",
+			  "MaxBackoff": ".1s",
 			  "BackoffMultiplier": 1.0,
-			  "RetryableStatusCodes": [ "UNAVAILABLE" ]
+			  "RetryableStatusCodes": [ "UNAVAILABLE", "DEADLINE_EXCEEDED", "UNKNOWN" ]
 		  }
 		}]}`
 
