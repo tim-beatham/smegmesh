@@ -2,8 +2,11 @@ package conn
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
@@ -14,10 +17,8 @@ import (
 
 // ConnectionServer manages gRPC server peer connections
 type ConnectionServer struct {
-	// tlsConfiguration of the server
-	serverConfig *tls.Config
 	// server an instance of the grpc server
-	server *grpc.Server // the authentication service to authenticate nodes
+	server *grpc.Server
 	// the ctrl service to manage node
 	ctrlProvider rpc.MeshCtrlServerServer
 	// the sync service to synchronise nodes
@@ -48,9 +49,26 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 		serverAuth = tls.RequireAnyClientCert
 	}
 
+	certPool := x509.NewCertPool()
+
+	if params.Conf.CaCertificatePath == "" {
+		return nil, errors.New("CA Cert is not specified")
+	}
+
+	caCert, err := os.ReadFile(params.Conf.CaCertificatePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if ok := certPool.AppendCertsFromPEM(caCert); !ok {
+		return nil, errors.New("could not parse PEM")
+	}
+
 	serverConfig := &tls.Config{
 		ClientAuth:   serverAuth,
 		Certificates: []tls.Certificate{cert},
+		ClientCAs:    certPool,
 	}
 
 	server := grpc.NewServer(
@@ -61,7 +79,6 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 	syncProvider := params.SyncProvider
 
 	connServer := ConnectionServer{
-		serverConfig: serverConfig,
 		server:       server,
 		ctrlProvider: ctrlProvider,
 		syncProvider: syncProvider,
@@ -74,7 +91,6 @@ func NewConnectionServer(params *NewConnectionServerParams) (*ConnectionServer, 
 // Listen for incoming requests. Returns an error if something went wrong.
 func (s *ConnectionServer) Listen() error {
 	rpc.RegisterMeshCtrlServerServer(s.server, s.ctrlProvider)
-
 	rpc.RegisterSyncServiceServer(s.server, s.syncProvider)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.Conf.GrpcPort))

@@ -34,7 +34,6 @@ type ConnectionManagerImpl struct {
 	// clientConnections maps an endpoint to a connection
 	conLoc            sync.RWMutex
 	clientConnections map[string]PeerConnection
-	serverConfig      *tls.Config
 	clientConfig      *tls.Config
 	connFactory       PeerConnectionFactory
 }
@@ -63,37 +62,25 @@ func NewConnectionManager(params *NewConnectionManagerParams) (ConnectionManager
 		return nil, err
 	}
 
-	serverAuth := tls.RequireAndVerifyClientCert
-
-	if params.SkipCertVerification {
-		serverAuth = tls.RequireAnyClientCert
-	}
-
 	certPool := x509.NewCertPool()
 
-	if !params.SkipCertVerification {
-
-		if params.CaCert == "" {
-			return nil, errors.New("CA Cert is not specified")
-		}
-
-		caCert, err := os.ReadFile(params.CaCert)
-
-		if err != nil {
-			return nil, err
-		}
-
-		certPool.AppendCertsFromPEM(caCert)
+	if params.CaCert == "" {
+		return nil, errors.New("CA Cert is not specified")
 	}
 
-	serverConfig := &tls.Config{
-		ClientAuth:   serverAuth,
-		Certificates: []tls.Certificate{cert},
+	caCert, err := os.ReadFile(params.CaCert)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if ok := certPool.AppendCertsFromPEM(caCert); !ok {
+		return nil, errors.New("could not parse PEM")
 	}
 
 	clientConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: params.SkipCertVerification,
+		Certificates:       []tls.Certificate{cert},
 		RootCAs:            certPool,
 	}
 
@@ -101,7 +88,6 @@ func NewConnectionManager(params *NewConnectionManagerParams) (ConnectionManager
 	connMgr := ConnectionManagerImpl{
 		sync.RWMutex{},
 		connections,
-		serverConfig,
 		clientConfig,
 		params.ConnFactory,
 	}
