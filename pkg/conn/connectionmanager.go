@@ -19,7 +19,7 @@ type ConnectionManager interface {
 	// If the endpoint does not exist then add the connection. Returns an error
 	// if something went wrong
 	GetConnection(endPoint string) (PeerConnection, error)
-	// HasConnections returns true if a client has already registered at the givne
+	// HasConnections returns true if a peer has already registered at the given
 	// endpoint or false otherwise.
 	HasConnection(endPoint string) bool
 	// Goes through all the connections and closes eachone
