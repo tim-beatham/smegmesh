@@ -16,6 +16,11 @@ func (s *ConnectionManagerStub) AddConnection(endPoint string) (PeerConnection, 
 	return mock, nil
 }
 
+func (s *ConnectionManagerStub) RemoveConnection(endPoint string) error {
+	delete(s.Endpoints, endPoint)
+	return nil
+}
+
 func (s *ConnectionManagerStub) GetConnection(endPoint string) (PeerConnection, error) {
 	endpoint, ok := s.Endpoints[endPoint]
 

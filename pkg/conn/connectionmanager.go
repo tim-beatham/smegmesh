@@ -22,6 +22,8 @@ type ConnectionManager interface {
 	// HasConnections returns true if a peer has already registered at the given
 	// endpoint or false otherwise.
 	HasConnection(endPoint string) bool
+	// Removes a connection if it exists
+	RemoveConnection(endPoint string) error
 	// Goes through all the connections and closes eachone
 	Close() error
 }
@@ -150,6 +152,15 @@ func (m *ConnectionManagerImpl) HasConnection(endPoint string) bool {
 	return exists
 }
 
+// RemoveConnection removes the given connection if it exists
+func (m *ConnectionManagerImpl) RemoveConnection(endPoint string) error {
+	m.conLoc.Lock()
+	err := m.clientConnections[endPoint].Close()
+
+	delete(m.clientConnections, endPoint)
+	m.conLoc.Unlock()
+	return err
+}
 func (m *ConnectionManagerImpl) Close() error {
 	for _, conn := range m.clientConnections {
 		if err := conn.Close(); err != nil {
