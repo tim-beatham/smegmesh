@@ -66,12 +66,14 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	// Clients always pings its peer for configuration
 	if self != nil && self.GetType() == conf.CLIENT_ROLE && len(nodeNames) > 1 {
-		keyFunc := lib.HashString
-		bucketFunc := lib.HashString
+		neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
 
-		neighbour := lib.ConsistentHash(nodeNames, publicKey.String(), keyFunc, bucketFunc)
-		gossipNodes = make([]string, 1)
-		gossipNodes[0] = neighbour
+		if len(neighbours) == 0 {
+			return nil
+		}
+
+		redundancyLength := min(len(neighbours), 3)
+		gossipNodes = neighbours[:redundancyLength]
 	} else {
 		neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
 		gossipNodes = lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)

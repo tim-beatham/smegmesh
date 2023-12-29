@@ -42,25 +42,8 @@ func NewWgCtrlConnection(clientConfig *tls.Config, server string) (PeerConnectio
 
 // ConnectWithToken: Connects to a new gRPC peer given the address of the other server.
 func (c *WgCtrlConnection) CreateGrpcConnection() error {
-	retryPolicy := `{
-		"methodConfig": [{
-		  "name": [
-			{"service": "syncservice.SyncService"},
-			{"service": "ctrlserver.MeshCtrlServer"}
-		  ],
-		  "waitForReady": true,
-		  "retryPolicy": {
-			  "MaxAttempts": 2,
-			  "InitialBackoff": ".1s",
-			  "MaxBackoff": ".1s",
-			  "BackoffMultiplier": 1.0,
-			  "RetryableStatusCodes": [ "UNAVAILABLE", "DEADLINE_EXCEEDED", "UNKNOWN" ]
-		  }
-		}]}`
-
 	conn, err := grpc.Dial(c.endpoint,
-		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)),
-		grpc.WithDefaultServiceConfig(retryPolicy))
+		grpc.WithTransportCredentials(credentials.NewTLS(c.clientConfig)))
 
 	if err != nil {
 		logging.Log.WriteErrorf("Could not connect: %s\n", err.Error())

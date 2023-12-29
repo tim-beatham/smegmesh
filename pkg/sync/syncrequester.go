@@ -151,6 +151,6 @@ func (s *SyncRequesterImpl) syncMesh(mesh mesh.MeshProvider, ctx context.Context
 }
 
 func NewSyncRequester(s *ctrlserver.MeshCtrlServer) SyncRequester {
-	errorHdlr := NewSyncErrorHandler(s.MeshManager)
+	errorHdlr := NewSyncErrorHandler(s.MeshManager, s.ConnectionManager)
 	return &SyncRequesterImpl{server: s, errorHdlr: errorHdlr}
 }

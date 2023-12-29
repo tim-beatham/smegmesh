@@ -22,11 +22,16 @@ type SyncErrorHandlerImpl struct {
 func (s *SyncErrorHandlerImpl) handleFailed(meshId string, nodeId string) bool {
 	mesh := s.meshManager.GetMesh(meshId)
 	mesh.Mark(nodeId)
+	node, err := mesh.GetNode(nodeId)
+
+	if err != nil {
+		s.connManager.RemoveConnection(node.GetHostEndpoint())
+	}
 	return true
 }
 
 func (s *SyncErrorHandlerImpl) handleDeadlineExceeded(meshId string, nodeId string) bool {
-	mesh := s.meshManager.GetMesh(nodeId)
+	mesh := s.meshManager.GetMesh(meshId)
 
 	if mesh == nil {
 		return true
@@ -57,6 +62,6 @@ func (s *SyncErrorHandlerImpl) Handle(meshId string, nodeId string, err error) b
 	return false
 }
 
-func NewSyncErrorHandler(m mesh.MeshManager) SyncErrorHandler {
-	return &SyncErrorHandlerImpl{meshManager: m}
+func NewSyncErrorHandler(m mesh.MeshManager, conn conn.ConnectionManager) SyncErrorHandler {
+	return &SyncErrorHandlerImpl{meshManager: m, connManager: conn}
 }
