@@ -34,7 +34,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	nodeFactory := &crdt.MeshNodeFactory{
 		Config: *params.Conf,
 	}
-	idGenerator := &lib.IDNameGenerator{}
+	idGenerator := &lib.ShortIDGenerator{}
 	ipAllocator := &ip.ULABuilder{}
 	interfaceManipulator := wg.NewWgInterfaceManipulator(params.Client)
 
@@ -88,7 +88,6 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 
 	return ctrlServer, nil
 }
-
 
 func (s *MeshCtrlServer) GetConfiguration() *conf.DaemonConfiguration {
 	return s.Conf
