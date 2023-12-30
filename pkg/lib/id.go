@@ -3,6 +3,7 @@ package lib
 import (
 	"github.com/anandvarma/namegen"
 	"github.com/google/uuid"
+	"github.com/lithammer/shortuuid"
 )
 
 // IdGenerator generates unique ids
@@ -17,6 +18,14 @@ type UUIDGenerator struct {
 func (g *UUIDGenerator) GetId() (string, error) {
 	id := uuid.New()
 	return id.String(), nil
+}
+
+type ShortIDGenerator struct {
+}
+
+func (g *ShortIDGenerator) GetId() (string, error) {
+	id := shortuuid.New()
+	return id, nil
 }
 
 type IDNameGenerator struct {

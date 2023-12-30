@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/tim-beatham/wgmesh/pkg/conf"
@@ -169,12 +170,22 @@ func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) error {
 
 // SyncMeshes: Sync all meshes
 func (s *SyncerImpl) SyncMeshes() error {
-	for _, mesh := range s.manager.GetMeshes() {
-		err := s.Sync(mesh)
+	var wg sync.WaitGroup
 
-		if err != nil {
-			logging.Log.WriteErrorf(err.Error())
+	for _, mesh := range s.manager.GetMeshes() {
+		wg.Add(1)
+
+		sync := func() {
+			defer wg.Done()
+
+			err := s.Sync(mesh)
+
+			if err != nil {
+				logging.Log.WriteErrorf(err.Error())
+			}
 		}
+
+		go sync()
 	}
 
 	logging.Log.WriteInfof("updating the WireGuard configuration")
