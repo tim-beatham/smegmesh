@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -16,7 +15,7 @@ import (
 
 // Syncer: picks random nodes from the meshs
 type Syncer interface {
-	Sync(meshId string) error
+	Sync(theMesh mesh.MeshProvider) error
 	SyncMeshes() error
 }
 
@@ -30,21 +29,33 @@ type SyncerImpl struct {
 	lastSync       map[string]uint64
 }
 
-// Sync: Sync random nodes
-func (s *SyncerImpl) Sync(meshId string) error {
-	// Self can be nil if the node is removed
-	self, _ := s.manager.GetSelf(meshId)
+// Sync: Sync with random nodes
+func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
+	if correspondingMesh == nil {
+		return fmt.Errorf("mesh provided was nil cannot sync nil mesh")
+	}
 
-	correspondingMesh := s.manager.GetMesh(meshId)
+	// Self can be nil if the node is removed
+	selfID := s.manager.GetPublicKey()
+	self, _ := correspondingMesh.GetNode(selfID.String())
+
+	// Mesh has been removed
+	if self == nil {
+		return fmt.Errorf("mesh %s does not exist", correspondingMesh.GetMeshId())
+	}
 
 	correspondingMesh.Prune()
 
-	if self != nil && self.GetType() == conf.PEER_ROLE && !s.manager.HasChanges(meshId) && s.infectionCount == 0 {
-		logging.Log.WriteInfof("No changes for %s", meshId)
+	if correspondingMesh.HasChanges() {
+		logging.Log.WriteInfof("meshes %s has changes", correspondingMesh.GetMeshId())
+	}
+
+	if self.GetType() == conf.PEER_ROLE && !correspondingMesh.HasChanges() && s.infectionCount == 0 {
+		logging.Log.WriteInfof("no changes for %s", correspondingMesh.GetMeshId())
 
 		// If not synchronised in certain pull from random neighbour
-		if uint64(time.Now().Unix())-s.lastSync[meshId] > 20 {
-			return s.Pull(meshId)
+		if uint64(time.Now().Unix())-s.lastSync[correspondingMesh.GetMeshId()] > 20 {
+			return s.Pull(self, correspondingMesh)
 		}
 
 		return nil
@@ -87,14 +98,14 @@ func (s *SyncerImpl) Sync(meshId string) error {
 
 	// Do this synchronously to conserve bandwidth
 	for _, node := range gossipNodes {
-		correspondingPeer := s.manager.GetNode(meshId, node)
+		correspondingPeer := s.manager.GetNode(correspondingMesh.GetMeshId(), node)
 
 		if correspondingPeer == nil {
 			logging.Log.WriteErrorf("node %s does not exist", node)
 			continue
 		}
 
-		err := s.requester.SyncMesh(meshId, correspondingPeer)
+		err := s.requester.SyncMesh(correspondingMesh.GetMeshId(), correspondingPeer)
 
 		if err == nil || err == io.EOF {
 			succeeded = true
@@ -116,36 +127,18 @@ func (s *SyncerImpl) Sync(meshId string) error {
 		s.infectionCount++
 	}
 
-	s.manager.GetMesh(meshId).SaveChanges()
-	s.lastSync[meshId] = uint64(time.Now().Unix())
+	correspondingMesh.SaveChanges()
 
-	logging.Log.WriteInfof("UPDATING WG CONF")
-	err := s.manager.ApplyConfig()
-
-	if err != nil {
-		logging.Log.WriteInfof("Failed to update config %w", err)
-	}
-
+	s.lastSync[correspondingMesh.GetMeshId()] = uint64(time.Now().Unix())
 	return nil
 }
 
 // Pull one node in the cluster, if there has not been message dissemination
 // in a certain period of time pull a random node within the cluster
-func (s *SyncerImpl) Pull(meshId string) error {
-	mesh := s.manager.GetMesh(meshId)
-	self, err := s.manager.GetSelf(meshId)
-
-	if err != nil {
-		return err
-	}
-
+func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) error {
+	peers := mesh.GetPeers()
 	pubKey, _ := self.GetPublicKey()
 
-	if mesh == nil {
-		return errors.New("mesh is nil, invalid operation")
-	}
-
-	peers := mesh.GetPeers()
 	neighbours := s.cluster.GetNeighbours(peers, pubKey.String())
 	neighbour := lib.RandomSubsetOfLength(neighbours, 1)
 
@@ -162,10 +155,10 @@ func (s *SyncerImpl) Pull(meshId string) error {
 		return fmt.Errorf("node %s does not exist in the mesh", neighbour[0])
 	}
 
-	err = s.requester.SyncMesh(meshId, pullNode)
+	err = s.requester.SyncMesh(mesh.GetMeshId(), pullNode)
 
 	if err == nil || err == io.EOF {
-		s.lastSync[meshId] = uint64(time.Now().Unix())
+		s.lastSync[mesh.GetMeshId()] = uint64(time.Now().Unix())
 	} else {
 		return err
 	}
@@ -176,14 +169,20 @@ func (s *SyncerImpl) Pull(meshId string) error {
 
 // SyncMeshes: Sync all meshes
 func (s *SyncerImpl) SyncMeshes() error {
-	for meshId := range s.manager.GetMeshes() {
-		err := s.Sync(meshId)
+	for _, mesh := range s.manager.GetMeshes() {
+		err := s.Sync(mesh)
 
 		if err != nil {
 			logging.Log.WriteErrorf(err.Error())
 		}
 	}
 
+	logging.Log.WriteInfof("updating the WireGuard configuration")
+	err := s.manager.ApplyConfig()
+
+	if err != nil {
+		logging.Log.WriteInfof("failed to update config %w", err)
+	}
 	return nil
 }
 

@@ -24,7 +24,7 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 			continue
 		}
 
-		self, err := r.meshManager.GetSelf(mesh1.GetMeshId())
+		self, err := mesh1.GetNode(r.meshManager.GetPublicKey().String())
 
 		if err != nil {
 			return err
@@ -90,11 +90,20 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 
 	// Calculate the set different of each, working out routes to remove and to keep.
 	for meshId, meshRoutes := range routes {
-		mesh := r.meshManager.GetMesh(meshId)
-		self, _ := r.meshManager.GetSelf(meshId)
-		toRemove := make([]Route, 0)
+		mesh := meshes[meshId]
 
-		prevRoutes, _ := mesh.GetRoutes(NodeID(self))
+		self, err := mesh.GetNode(r.meshManager.GetPublicKey().String())
+
+		if err != nil {
+			return err
+		}
+
+		toRemove := make([]Route, 0)
+		prevRoutes, err := mesh.GetRoutes(NodeID(self))
+
+		if err != nil {
+			return err
+		}
 
 		for _, route := range prevRoutes {
 			if !lib.Contains(meshRoutes, func(r Route) bool {

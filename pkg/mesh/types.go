@@ -81,6 +81,10 @@ func NodeEquals(node1, node2 MeshNode) bool {
 	key1, _ := node1.GetPublicKey()
 	key2, _ := node2.GetPublicKey()
 
+	if node1 == nil || node2 == nil {
+		return false
+	}
+
 	return key1.String() == key2.String()
 }
 
