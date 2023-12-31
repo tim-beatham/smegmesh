@@ -47,7 +47,6 @@ type WgConfiguration struct {
 	// If the user is globaly accessible they specify themselves as a client.
 	Role *NodeType `yaml:"role" validate:"required,eq=client|eq=peer"`
 	// KeepAliveWg configures the implementation so that we send keep alive packets to peers.
-	// KeepAlive can only be set if role is type client
 	KeepAliveWg *int `yaml:"keepAliveWg" validate:"omitempty,gte=0"`
 	// PreUp are WireGuard commands to run before adding the WG interface
 	PreUp []string `yaml:"preUp"`
@@ -77,13 +76,13 @@ type DaemonConfiguration struct {
 	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
 	StubWg bool `yaml:"stubWg"`
-	// SyncRate specifies how long the minimum time should be between synchronisation
-	SyncRate int `yaml:"syncRate" validate:"required,gte=1"`
+	// SyncTime specifies how long the minimum time should be between synchronisation
+	SyncTime int `yaml:"syncTime" validate:"required,gte=1"`
 	// PullTime specifies the interval between checking for configuration changes
 	PullTime int `yaml:"pullTime" validate:"required,gte=0"`
-	// KeepAliveTime: number of seconds before the leader of the mesh sends an update to
+	// HeartBeat: number of seconds before the leader of the mesh sends an update to
 	// send to every member in the mesh
-	KeepAliveTime int `yaml:"keepAliveTime" validate:"required,gte=1"`
+	HeartBeat int `yaml:"heartBeatTime" validate:"required,gte=1"`
 	// ClusterSize specifies how many neighbours you should synchronise with per round
 	ClusterSize int `yaml:"clusterSize" validate:"gte=1"`
 	// InterClusterChance specifies the probabilityof inter-cluster communication in a sync round

@@ -59,6 +59,11 @@ func main() {
 	}
 
 	ctrlServer, err := ctrlserver.NewCtrlServer(&ctrlServerParams)
+
+	if err != nil {
+		panic(err)
+	}
+
 	syncProvider.Server = ctrlServer
 	syncRequester = sync.NewSyncRequester(ctrlServer)
 	syncer = sync.NewSyncer(ctrlServer.MeshManager, conf, syncRequester)

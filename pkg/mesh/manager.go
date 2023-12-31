@@ -134,6 +134,10 @@ func (m *MeshManagerImpl) CreateMesh(args *CreateMeshParams) (string, error) {
 		return "", err
 	}
 
+	if *meshConfiguration.Role == conf.CLIENT_ROLE {
+		return "", fmt.Errorf("cannot create mesh as a client")
+	}
+
 	meshId, err := m.idGenerator.GetId()
 
 	var ifName string = ""

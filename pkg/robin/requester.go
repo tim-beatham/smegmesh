@@ -43,10 +43,6 @@ func getOverrideConfiguration(args *ipc.WireGuardArgs) conf.WgConfiguration {
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
-	if overrideConf.Role != nil && *overrideConf.Role == conf.CLIENT_ROLE {
-		return fmt.Errorf("cannot create a mesh with no public endpoint")
-	}
-
 	meshId, err := n.Server.GetMeshManager().CreateMesh(&mesh.CreateMeshParams{
 		Port: args.WgArgs.WgPort,
 		Conf: &overrideConf,
@@ -85,6 +81,10 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 
 func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
+
+	if n.Server.GetMeshManager().GetMesh(args.MeshId) != nil {
+		return fmt.Errorf("user is already apart of the mesh")
+	}
 
 	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAdress)
 
@@ -147,7 +147,6 @@ func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 	if err == nil {
 		*reply = fmt.Sprintf("Left Mesh %s", meshId)
 	}
-
 	return err
 }
 

@@ -84,7 +84,8 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 			return nil
 		}
 
-		// Peer with 2 nodes
+		// Peer with 2 nodes so that there is redundnacy in
+		// the situation the node leaves pre-emptively
 		redundancyLength := min(len(neighbours), 2)
 		gossipNodes = neighbours[:redundancyLength]
 	} else {

@@ -91,7 +91,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 
 	c := rpc.NewSyncServiceClient(client)
 
-	syncTimeOut := float64(s.server.Conf.SyncRate) * float64(time.Second)
+	syncTimeOut := float64(s.server.Conf.SyncTime) * float64(time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(syncTimeOut))
 	defer cancel()

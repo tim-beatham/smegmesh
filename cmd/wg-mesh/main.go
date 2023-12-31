@@ -226,7 +226,6 @@ func main() {
 	})
 
 	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Default: "peer",
 		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
 			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
 			" protocol",
@@ -259,7 +258,6 @@ func main() {
 	})
 
 	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Default: "peer",
 		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
 			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
 			" protocol",
