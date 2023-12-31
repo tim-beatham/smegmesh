@@ -24,10 +24,10 @@ type MeshManager interface {
 	LeaveMesh(meshId string) error
 	GetSelf(meshId string) (MeshNode, error)
 	ApplyConfig() error
-	SetDescription(description string) error
-	SetAlias(alias string) error
-	SetService(service string, value string) error
-	RemoveService(service string) error
+	SetDescription(meshId, description string) error
+	SetAlias(meshId, alias string) error
+	SetService(meshId, service, value string) error
+	RemoveService(meshId, service string) error
 	UpdateTimeStamp() error
 	GetClient() *wgctrl.Client
 	GetMeshes() map[string]MeshProvider
@@ -61,29 +61,33 @@ func (m *MeshManagerImpl) GetRouteManager() RouteManager {
 }
 
 // RemoveService implements MeshManager.
-func (m *MeshManagerImpl) RemoveService(service string) error {
-	for _, mesh := range m.Meshes {
-		err := mesh.RemoveService(m.HostParameters.GetPublicKey(), service)
+func (m *MeshManagerImpl) RemoveService(meshId, service string) error {
+	mesh := m.GetMesh(meshId)
 
-		if err != nil {
-			return err
-		}
+	if mesh == nil {
+		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	return nil
+	if !mesh.NodeExists(m.HostParameters.GetPublicKey()) {
+		return fmt.Errorf("node %s does not exist in the mesh", meshId)
+	}
+
+	return mesh.RemoveService(m.HostParameters.GetPublicKey(), service)
 }
 
 // SetService implements MeshManager.
-func (m *MeshManagerImpl) SetService(service string, value string) error {
-	for _, mesh := range m.Meshes {
-		err := mesh.AddService(m.HostParameters.GetPublicKey(), service, value)
+func (m *MeshManagerImpl) SetService(meshId, service, value string) error {
+	mesh := m.GetMesh(meshId)
 
-		if err != nil {
-			return err
-		}
+	if mesh == nil {
+		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	return nil
+	if !mesh.NodeExists(m.HostParameters.GetPublicKey()) {
+		return fmt.Errorf("node %s does not exist in the mesh", meshId)
+	}
+
+	return mesh.AddService(m.HostParameters.GetPublicKey(), service, value)
 }
 
 func (m *MeshManagerImpl) GetNode(meshid, nodeId string) MeshNode {
@@ -352,7 +356,6 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	}
 
 	s.cmdRunner.RunCommands(s.conf.BaseConfiguration.PostDown...)
-
 	return err
 }
 
@@ -377,43 +380,36 @@ func (s *MeshManagerImpl) ApplyConfig() error {
 		return nil
 	}
 
-	err := s.configApplyer.ApplyConfig()
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.configApplyer.ApplyConfig()
 }
 
-func (s *MeshManagerImpl) SetDescription(description string) error {
-	meshes := s.GetMeshes()
-	for _, mesh := range meshes {
-		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
-			err := mesh.SetDescription(s.HostParameters.GetPublicKey(), description)
+func (s *MeshManagerImpl) SetDescription(meshId, description string) error {
+	mesh := s.GetMesh(meshId)
 
-			if err != nil {
-				return err
-			}
-		}
+	if mesh == nil {
+		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
 
-	return nil
+	if !mesh.NodeExists(s.HostParameters.GetPublicKey()) {
+		return fmt.Errorf("node %s does not exist in the mesh", meshId)
+	}
+
+	return mesh.SetDescription(s.HostParameters.GetPublicKey(), description)
 }
 
 // SetAlias implements MeshManager.
-func (s *MeshManagerImpl) SetAlias(alias string) error {
-	meshes := s.GetMeshes()
-	for _, mesh := range meshes {
-		if mesh.NodeExists(s.HostParameters.GetPublicKey()) {
-			err := mesh.SetAlias(s.HostParameters.GetPublicKey(), alias)
+func (s *MeshManagerImpl) SetAlias(meshId, alias string) error {
+	mesh := s.GetMesh(meshId)
 
-			if err != nil {
-				return err
-			}
-		}
+	if mesh == nil {
+		return fmt.Errorf("mesh %s does not exist", meshId)
 	}
-	return nil
+
+	if !mesh.NodeExists(s.HostParameters.GetPublicKey()) {
+		return fmt.Errorf("node %s does not exist in the mesh", meshId)
+	}
+
+	return mesh.SetAlias(s.HostParameters.GetPublicKey(), alias)
 }
 
 // UpdateTimeStamp updates the timestamp of this node in all meshes

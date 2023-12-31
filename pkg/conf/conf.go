@@ -79,7 +79,7 @@ type DaemonConfiguration struct {
 	// SyncTime specifies how long the minimum time should be between synchronisation
 	SyncTime int `yaml:"syncTime" validate:"required,gte=1"`
 	// PullTime specifies the interval between checking for configuration changes
-	PullTime int `yaml:"pullTime" validate:"required,gte=0"`
+	PullTime int `yaml:"pullTime" validate:"gte=0"`
 	// HeartBeat: number of seconds before the leader of the mesh sends an update to
 	// send to every member in the mesh
 	HeartBeat int `yaml:"heartBeatTime" validate:"required,gte=1"`

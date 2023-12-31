@@ -213,7 +213,7 @@ func TestLeaveMeshDeletesMesh(t *testing.T) {
 	}
 }
 
-func TestSetAlias(t *testing.T) {
+func TestSetAliasUpdatesAliasOfNode(t *testing.T) {
 	manager := getMeshManager()
 	alias := "Firpo"
 
@@ -221,14 +221,13 @@ func TestSetAlias(t *testing.T) {
 		Port: 5000,
 		Conf: &conf.WgConfiguration{},
 	})
-
 	manager.AddSelf(&AddSelfParams{
 		MeshId:   meshId,
 		WgPort:   5000,
 		Endpoint: "abc.com:8080",
 	})
 
-	err := manager.SetAlias(alias)
+	err := manager.SetAlias(meshId, alias)
 
 	if err != nil {
 		t.Fatalf(`failed to set the alias`)
@@ -245,7 +244,7 @@ func TestSetAlias(t *testing.T) {
 	}
 }
 
-func TestSetDescription(t *testing.T) {
+func TestSetDescriptionSetsTheDescriptionOfTheNode(t *testing.T) {
 	manager := getMeshManager()
 	description := "wooooo"
 
@@ -254,23 +253,13 @@ func TestSetDescription(t *testing.T) {
 		Conf: &conf.WgConfiguration{},
 	})
 
-	meshId2, _ := manager.CreateMesh(&CreateMeshParams{
-		Port: 5001,
-		Conf: &conf.WgConfiguration{},
-	})
-
 	manager.AddSelf(&AddSelfParams{
 		MeshId:   meshId1,
 		WgPort:   5000,
 		Endpoint: "abc.com:8080",
 	})
-	manager.AddSelf(&AddSelfParams{
-		MeshId:   meshId2,
-		WgPort:   5000,
-		Endpoint: "abc.com:8080",
-	})
 
-	err := manager.SetDescription(description)
+	err := manager.SetDescription(meshId1, description)
 
 	if err != nil {
 		t.Fatalf(`failed to set the descriptions`)
@@ -285,18 +274,7 @@ func TestSetDescription(t *testing.T) {
 	if description != self1.GetDescription() {
 		t.Fatalf(`description should be %s was %s`, description, self1.GetDescription())
 	}
-
-	self2, err := manager.GetSelf(meshId2)
-
-	if err != nil {
-		t.Fatalf(`failed to set the description`)
-	}
-
-	if description != self2.GetDescription() {
-		t.Fatalf(`description should be %s was %s`, description, self2.GetDescription())
-	}
 }
-
 func TestUpdateTimeStampUpdatesAllMeshes(t *testing.T) {
 	manager := getMeshManager()
 
@@ -325,5 +303,70 @@ func TestUpdateTimeStampUpdatesAllMeshes(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf(`failed to update the timestamp`)
+	}
+}
+
+func TestAddServiceAddsServiceToTheMesh(t *testing.T) {
+	manager := getMeshManager()
+
+	meshId1, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5000,
+		Conf: &conf.WgConfiguration{},
+	})
+	manager.AddSelf(&AddSelfParams{
+		MeshId:   meshId1,
+		WgPort:   5000,
+		Endpoint: "abc.com:8080",
+	})
+
+	serviceName := "hello"
+	manager.SetService(meshId1, serviceName, "dave")
+
+	self, err := manager.GetSelf(meshId1)
+
+	if err != nil {
+		t.Fatalf(`error thrown %s:`, err.Error())
+	}
+
+	if _, ok := self.GetServices()[serviceName]; !ok {
+		t.Fatalf(`service not added`)
+	}
+}
+
+func TestRemoveServiceRemovesTheServiceFromTheMesh(t *testing.T) {
+	manager := getMeshManager()
+
+	meshId1, _ := manager.CreateMesh(&CreateMeshParams{
+		Port: 5000,
+		Conf: &conf.WgConfiguration{},
+	})
+	manager.AddSelf(&AddSelfParams{
+		MeshId:   meshId1,
+		WgPort:   5000,
+		Endpoint: "abc.com:8080",
+	})
+
+	serviceName := "hello"
+	manager.SetService(meshId1, serviceName, "dave")
+
+	self, err := manager.GetSelf(meshId1)
+
+	if err != nil {
+		t.Fatalf(`error thrown %s:`, err.Error())
+	}
+
+	if _, ok := self.GetServices()[serviceName]; !ok {
+		t.Fatalf(`service not added`)
+	}
+
+	manager.RemoveService(meshId1, serviceName)
+	self, err = manager.GetSelf(meshId1)
+
+	if err != nil {
+		t.Fatalf(`error thrown %s:`, err.Error())
+	}
+
+	if _, ok := self.GetServices()[serviceName]; ok {
+		t.Fatalf(`service still exists`)
 	}
 }
