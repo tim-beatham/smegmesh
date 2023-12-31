@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"net/rpc"
 
 	"github.com/miekg/dns"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
@@ -18,7 +17,7 @@ const SockAddr = "/tmp/wgmesh_ipc.sock"
 const MeshRegularExpression = `(?P<meshId>.+)\.(?P<alias>.+)\.smeg\.`
 
 type DNSHandler struct {
-	client *rpc.Client
+	client *ipc.ClientIpc
 	server *dns.Server
 }
 
@@ -27,7 +26,7 @@ type DNSHandler struct {
 func (d *DNSHandler) queryMesh(meshId, alias string) net.IP {
 	var reply string
 
-	err := d.client.Call("IpcHandler.Query", &ipc.QueryMesh{
+	err := d.client.Query(ipc.QueryMesh{
 		MeshId: meshId,
 		Query:  fmt.Sprintf("[?alias == '%s'] | [0]", alias),
 	}, &reply)
@@ -97,7 +96,7 @@ func (h *DNSHandler) Close() error {
 }
 
 func NewDns(udpPort int) (*DNSHandler, error) {
-	client, err := rpc.DialHTTP("unix", SockAddr)
+	client, err := ipc.NewClientIpc()
 
 	if err != nil {
 		return nil, err

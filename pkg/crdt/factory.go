@@ -24,7 +24,7 @@ func (f *TwoPhaseMapFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) 
 			h := fnv.New64a()
 			h.Write([]byte(s))
 			return h.Sum64()
-		}, uint64(3*f.Config.KeepAliveTime)),
+		}, uint64(3*f.Config.HeartBeat)),
 	}, nil
 }
 

@@ -30,8 +30,8 @@ func (*MeshNodeStub) GetType() conf.NodeType {
 }
 
 // GetServices implements MeshNode.
-func (*MeshNodeStub) GetServices() map[string]string {
-	return make(map[string]string)
+func (m *MeshNodeStub) GetServices() map[string]string {
+	return m.services
 }
 
 // GetAlias implements MeshNode.
@@ -249,6 +249,7 @@ func (s *StubNodeFactory) Build(params *MeshNodeFactoryParams) MeshNode {
 		routes:       make([]Route, 0),
 		identifier:   "abc",
 		description:  "A Mesh Node Stub",
+		services:     make(map[string]string),
 	}
 }
 
@@ -271,32 +272,32 @@ type MeshManagerStub struct {
 
 // GetRouteManager implements MeshManager.
 func (*MeshManagerStub) GetRouteManager() RouteManager {
-	panic("unimplemented")
+	return nil
 }
 
 // GetNode implements MeshManager.
-func (*MeshManagerStub) GetNode(string, string) MeshNode {
-	panic("unimplemented")
+func (*MeshManagerStub) GetNode(meshId, nodeId string) MeshNode {
+	return nil
 }
 
 // RemoveService implements MeshManager.
-func (*MeshManagerStub) RemoveService(service string) error {
-	panic("unimplemented")
+func (*MeshManagerStub) RemoveService(meshId, service string) error {
+	return nil
 }
 
 // SetService implements MeshManager.
-func (*MeshManagerStub) SetService(service string, value string) error {
-	panic("unimplemented")
+func (*MeshManagerStub) SetService(meshId, service, value string) error {
+	return nil
 }
 
 // SetAlias implements MeshManager.
-func (*MeshManagerStub) SetAlias(alias string) error {
-	panic("unimplemented")
+func (*MeshManagerStub) SetAlias(meshId, alias string) error {
+	return nil
 }
 
 // Close implements MeshManager.
 func (*MeshManagerStub) Close() error {
-	panic("unimplemented")
+	return nil
 }
 
 // Prune implements MeshManager.
@@ -348,7 +349,7 @@ func (m *MeshManagerStub) ApplyConfig() error {
 	return nil
 }
 
-func (m *MeshManagerStub) SetDescription(description string) error {
+func (m *MeshManagerStub) SetDescription(meshId, description string) error {
 	return nil
 }
 

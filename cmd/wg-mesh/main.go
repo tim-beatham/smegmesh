@@ -22,25 +22,22 @@ type CreateMeshParams struct {
 	AdvertiseDefault bool
 }
 
-func createMesh(params *CreateMeshParams) string {
+func createMesh(client *ipc.ClientIpc, args *ipc.NewMeshArgs) {
 	var reply string
-	newMeshParams := ipc.NewMeshArgs{
-		WgArgs: params.WgArgs,
-	}
-
-	err := params.Client.Call("IpcHandler.CreateMesh", &newMeshParams, &reply)
+	err := client.CreateMesh(args, &reply)
 
 	if err != nil {
-		return err.Error()
+		fmt.Println(err.Error())
+		return
 	}
 
-	return reply
+	fmt.Println(reply)
 }
 
-func listMeshes(client *ipcRpc.Client) {
+func listMeshes(client *ipc.ClientIpc) {
 	reply := new(ipc.ListMeshReply)
 
-	err := client.Call("IpcHandler.ListMeshes", "", &reply)
+	err := client.ListMeshes(reply)
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
@@ -52,38 +49,22 @@ func listMeshes(client *ipcRpc.Client) {
 	}
 }
 
-type JoinMeshParams struct {
-	Client           *ipcRpc.Client
-	MeshId           string
-	IpAddress        string
-	Endpoint         string
-	WgArgs           ipc.WireGuardArgs
-	AdvertiseRoutes  bool
-	AdvertiseDefault bool
-}
-
-func joinMesh(params *JoinMeshParams) string {
+func joinMesh(client *ipc.ClientIpc, args ipc.JoinMeshArgs) {
 	var reply string
 
-	args := ipc.JoinMeshArgs{
-		MeshId:   params.MeshId,
-		IpAdress: params.IpAddress,
-		WgArgs:   params.WgArgs,
-	}
-
-	err := params.Client.Call("IpcHandler.JoinMesh", &args, &reply)
+	err := client.JoinMesh(args, &reply)
 
 	if err != nil {
-		return err.Error()
+		fmt.Println(err.Error())
 	}
 
-	return reply
+	fmt.Println(reply)
 }
 
-func leaveMesh(client *ipcRpc.Client, meshId string) {
+func leaveMesh(client *ipc.ClientIpc, meshId string) {
 	var reply string
 
-	err := client.Call("IpcHandler.LeaveMesh", &meshId, &reply)
+	err := client.LeaveMesh(meshId, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -93,10 +74,10 @@ func leaveMesh(client *ipcRpc.Client, meshId string) {
 	fmt.Println(reply)
 }
 
-func getGraph(client *ipcRpc.Client) {
+func getGraph(client *ipc.ClientIpc) {
 	listMeshesReply := new(ipc.ListMeshReply)
 
-	err := client.Call("IpcHandler.ListMeshes", "", &listMeshesReply)
+	err := client.ListMeshes(listMeshesReply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -108,7 +89,7 @@ func getGraph(client *ipcRpc.Client) {
 	for _, meshId := range listMeshesReply.Meshes {
 		var meshReply ipc.GetMeshReply
 
-		err := client.Call("IpcHandler.GetMesh", &meshId, &meshReply)
+		err := client.GetMesh(meshId, &meshReply)
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -129,10 +110,15 @@ func getGraph(client *ipcRpc.Client) {
 	fmt.Println(dot)
 }
 
-func queryMesh(client *ipcRpc.Client, meshId, query string) {
+func queryMesh(client *ipc.ClientIpc, meshId, query string) {
 	var reply string
 
-	err := client.Call("IpcHandler.Query", &ipc.QueryMesh{MeshId: meshId, Query: query}, &reply)
+	args := ipc.QueryMesh{
+		MeshId: meshId,
+		Query:  query,
+	}
+
+	err := client.Query(args, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -142,11 +128,13 @@ func queryMesh(client *ipcRpc.Client, meshId, query string) {
 	fmt.Println(reply)
 }
 
-// putDescription: puts updates the description about the node to the meshes
-func putDescription(client *ipcRpc.Client, description string) {
+func putDescription(client *ipc.ClientIpc, meshId, description string) {
 	var reply string
 
-	err := client.Call("IpcHandler.PutDescription", &description, &reply)
+	err := client.PutDescription(ipc.PutDescriptionArgs{
+		MeshId:      meshId,
+		Description: description,
+	}, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -157,10 +145,13 @@ func putDescription(client *ipcRpc.Client, description string) {
 }
 
 // putAlias: puts an alias for the node
-func putAlias(client *ipcRpc.Client, alias string) {
+func putAlias(client *ipc.ClientIpc, meshid, alias string) {
 	var reply string
 
-	err := client.Call("IpcHandler.PutAlias", &alias, &reply)
+	err := client.PutAlias(ipc.PutAliasArgs{
+		MeshId: meshid,
+		Alias:  alias,
+	}, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -170,15 +161,14 @@ func putAlias(client *ipcRpc.Client, alias string) {
 	fmt.Println(reply)
 }
 
-func setService(client *ipcRpc.Client, service, value string) {
+func setService(client *ipc.ClientIpc, meshId, service, value string) {
 	var reply string
 
-	serviceArgs := &ipc.PutServiceArgs{
+	err := client.PutService(ipc.PutServiceArgs{
+		MeshId:  meshId,
 		Service: service,
 		Value:   value,
-	}
-
-	err := client.Call("IpcHandler.PutService", serviceArgs, &reply)
+	}, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -188,10 +178,13 @@ func setService(client *ipcRpc.Client, service, value string) {
 	fmt.Println(reply)
 }
 
-func deleteService(client *ipcRpc.Client, service string) {
+func deleteService(client *ipc.ClientIpc, meshId, service string) {
 	var reply string
 
-	err := client.Call("IpcHandler.PutService", &service, &reply)
+	err := client.DeleteService(ipc.DeleteServiceArgs{
+		MeshId:  meshId,
+		Service: service,
+	}, &reply)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -226,7 +219,6 @@ func main() {
 	})
 
 	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Default: "peer",
 		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
 			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
 			" protocol",
@@ -259,7 +251,6 @@ func main() {
 	})
 
 	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Default: "peer",
 		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
 			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
 			" protocol",
@@ -302,6 +293,16 @@ func main() {
 		Help:     "Description of the node in the mesh",
 	})
 
+	var descriptionMeshId *string = putDescriptionCmd.String("m", "meshid", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh network to join",
+	})
+
+	var aliasMeshId *string = putAliasCmd.String("m", "meshid", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh network to join",
+	})
+
 	var alias *string = putAliasCmd.String("a", "alias", &argparse.Options{
 		Required: true,
 		Help:     "Alias of the node to set can be used in DNS to lookup an IP address",
@@ -316,9 +317,19 @@ func main() {
 		Help:     "Value of the service to advertise in the mesh network",
 	})
 
+	var serviceMeshId *string = setServiceCmd.String("m", "meshid", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh network to join",
+	})
+
 	var deleteServiceKey *string = deleteServiceCmd.String("s", "service", &argparse.Options{
 		Required: true,
 		Help:     "Key of the service to remove",
+	})
+
+	var deleteServiceMeshid *string = deleteServiceCmd.String("m", "meshid", &argparse.Options{
+		Required: true,
+		Help:     "MeshID of the mesh network to join",
 	})
 
 	err := parser.Parse(os.Args)
@@ -328,16 +339,13 @@ func main() {
 		return
 	}
 
-	client, err := ipcRpc.DialHTTP("unix", SockAddr)
+	client, err := ipc.NewClientIpc()
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		panic(err)
 	}
 
 	if newMeshCmd.Happened() {
-		fmt.Println(createMesh(&CreateMeshParams{
-			Client:   client,
-			Endpoint: *newMeshEndpoint,
+		args := &ipc.NewMeshArgs{
 			WgArgs: ipc.WireGuardArgs{
 				Endpoint:              *newMeshEndpoint,
 				Role:                  *newMeshRole,
@@ -346,7 +354,9 @@ func main() {
 				AdvertiseDefaultRoute: *newMeshAdvertiseDefaults,
 				AdvertiseRoutes:       *newMeshAdvertiseRoutes,
 			},
-		}))
+		}
+
+		createMesh(client, args)
 	}
 
 	if listMeshCmd.Happened() {
@@ -354,11 +364,9 @@ func main() {
 	}
 
 	if joinMeshCmd.Happened() {
-		fmt.Println(joinMesh(&JoinMeshParams{
-			Client:    client,
+		args := ipc.JoinMeshArgs{
 			IpAddress: *joinMeshIpAddress,
 			MeshId:    *joinMeshId,
-			Endpoint:  *joinMeshEndpoint,
 			WgArgs: ipc.WireGuardArgs{
 				Endpoint:              *joinMeshEndpoint,
 				Role:                  *joinMeshRole,
@@ -367,7 +375,8 @@ func main() {
 				AdvertiseDefaultRoute: *joinMeshAdvertiseDefaults,
 				AdvertiseRoutes:       *joinMeshAdvertiseRoutes,
 			},
-		}))
+		}
+		joinMesh(client, args)
 	}
 
 	if getGraphCmd.Happened() {
@@ -383,18 +392,18 @@ func main() {
 	}
 
 	if putDescriptionCmd.Happened() {
-		putDescription(client, *description)
+		putDescription(client, *descriptionMeshId, *description)
 	}
 
 	if putAliasCmd.Happened() {
-		putAlias(client, *alias)
+		putAlias(client, *aliasMeshId, *alias)
 	}
 
 	if setServiceCmd.Happened() {
-		setService(client, *serviceKey, *serviceValue)
+		setService(client, *serviceMeshId, *serviceKey, *serviceValue)
 	}
 
 	if deleteServiceCmd.Happened() {
-		deleteService(client, *deleteServiceKey)
+		deleteService(client, *deleteServiceMeshid, *deleteServiceKey)
 	}
 }

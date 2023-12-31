@@ -4,16 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	ipcRpc "net/rpc"
-
 	"github.com/gin-gonic/gin"
 	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/wgmesh/pkg/ipc"
 	logging "github.com/tim-beatham/wgmesh/pkg/log"
 	"github.com/tim-beatham/wgmesh/pkg/what8words"
 )
-
-const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 type ApiServer interface {
 	GetMeshes(c *gin.Context)
@@ -22,7 +18,7 @@ type ApiServer interface {
 
 type SmegServer struct {
 	router *gin.Engine
-	client *ipcRpc.Client
+	client *ipc.ClientIpc
 	words  *what8words.What8Words
 }
 
@@ -106,7 +102,7 @@ func (s *SmegServer) CreateMesh(c *gin.Context) {
 
 	var reply string
 
-	err := s.client.Call("IpcHandler.CreateMesh", &ipcRequest, &reply)
+	err := s.client.CreateMesh(&ipcRequest, &reply)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &gin.H{
@@ -132,8 +128,8 @@ func (s *SmegServer) JoinMesh(c *gin.Context) {
 	}
 
 	ipcRequest := ipc.JoinMeshArgs{
-		MeshId:   joinMesh.MeshId,
-		IpAdress: joinMesh.Bootstrap,
+		MeshId:    joinMesh.MeshId,
+		IpAddress: joinMesh.Bootstrap,
 		WgArgs: ipc.WireGuardArgs{
 			WgPort: joinMesh.WgPort,
 		},
@@ -141,7 +137,7 @@ func (s *SmegServer) JoinMesh(c *gin.Context) {
 
 	var reply string
 
-	err := s.client.Call("IpcHandler.JoinMesh", &ipcRequest, &reply)
+	err := s.client.JoinMesh(ipcRequest, &reply)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &gin.H{
@@ -164,7 +160,7 @@ func (s *SmegServer) GetMesh(c *gin.Context) {
 
 	getMeshReply := new(ipc.GetMeshReply)
 
-	err := s.client.Call("IpcHandler.GetMesh", &meshid, &getMeshReply)
+	err := s.client.GetMesh(meshid, getMeshReply)
 
 	if err != nil {
 		c.JSON(http.StatusNotFound,
@@ -182,7 +178,7 @@ func (s *SmegServer) GetMesh(c *gin.Context) {
 func (s *SmegServer) GetMeshes(c *gin.Context) {
 	listMeshesReply := new(ipc.ListMeshReply)
 
-	err := s.client.Call("IpcHandler.ListMeshes", "", &listMeshesReply)
+	err := s.client.ListMeshes(listMeshesReply)
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
@@ -195,7 +191,7 @@ func (s *SmegServer) GetMeshes(c *gin.Context) {
 	for _, mesh := range listMeshesReply.Meshes {
 		getMeshReply := new(ipc.GetMeshReply)
 
-		err := s.client.Call("IpcHandler.GetMesh", &mesh, &getMeshReply)
+		err := s.client.GetMesh(mesh, getMeshReply)
 
 		if err != nil {
 			logging.Log.WriteErrorf(err.Error())
@@ -215,7 +211,7 @@ func (s *SmegServer) Run(addr string) error {
 }
 
 func NewSmegServer(conf ApiServerConf) (ApiServer, error) {
-	client, err := ipcRpc.DialHTTP("unix", SockAddr)
+	client, err := ipc.NewClientIpc()
 
 	if err != nil {
 		return nil, err

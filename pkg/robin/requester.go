@@ -43,10 +43,6 @@ func getOverrideConfiguration(args *ipc.WireGuardArgs) conf.WgConfiguration {
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
-	if overrideConf.Role != nil && *overrideConf.Role == conf.CLIENT_ROLE {
-		return fmt.Errorf("cannot create a mesh with no public endpoint")
-	}
-
 	meshId, err := n.Server.GetMeshManager().CreateMesh(&mesh.CreateMeshParams{
 		Port: args.WgArgs.WgPort,
 		Conf: &overrideConf,
@@ -83,10 +79,14 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	return nil
 }
 
-func (n *IpcHandler) JoinMesh(args ipc.JoinMeshArgs, reply *string) error {
+func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
-	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAdress)
+	if n.Server.GetMeshManager().GetMesh(args.MeshId) != nil {
+		return fmt.Errorf("user is already apart of the mesh")
+	}
+
+	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAddress)
 
 	if err != nil {
 		return err
@@ -147,7 +147,6 @@ func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 	if err == nil {
 		*reply = fmt.Sprintf("Left Mesh %s", meshId)
 	}
-
 	return err
 }
 
@@ -193,30 +192,34 @@ func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 	return nil
 }
 
-func (n *IpcHandler) PutDescription(description string, reply *string) error {
-	err := n.Server.GetMeshManager().SetDescription(description)
+func (n *IpcHandler) PutDescription(args ipc.PutDescriptionArgs, reply *string) error {
+	err := n.Server.GetMeshManager().SetDescription(args.MeshId, args.Description)
 
 	if err != nil {
 		return err
 	}
 
-	*reply = fmt.Sprintf("Set description to %s", description)
+	*reply = fmt.Sprintf("set description to %s for %s", args.Description, args.MeshId)
 	return nil
 }
 
-func (n *IpcHandler) PutAlias(alias string, reply *string) error {
-	err := n.Server.GetMeshManager().SetAlias(alias)
+func (n *IpcHandler) PutAlias(args ipc.PutAliasArgs, reply *string) error {
+	if args.Alias == "" {
+		return fmt.Errorf("alias not provided")
+	}
+
+	err := n.Server.GetMeshManager().SetAlias(args.MeshId, args.Alias)
 
 	if err != nil {
 		return err
 	}
 
-	*reply = fmt.Sprintf("Set alias to %s", alias)
+	*reply = fmt.Sprintf("Set alias to %s", args.Alias)
 	return nil
 }
 
 func (n *IpcHandler) PutService(service ipc.PutServiceArgs, reply *string) error {
-	err := n.Server.GetMeshManager().SetService(service.Service, service.Value)
+	err := n.Server.GetMeshManager().SetService(service.MeshId, service.Service, service.Value)
 
 	if err != nil {
 		return err
@@ -226,8 +229,8 @@ func (n *IpcHandler) PutService(service ipc.PutServiceArgs, reply *string) error
 	return nil
 }
 
-func (n *IpcHandler) DeleteService(service string, reply *string) error {
-	err := n.Server.GetMeshManager().RemoveService(service)
+func (n *IpcHandler) DeleteService(service ipc.DeleteServiceArgs, reply *string) error {
+	err := n.Server.GetMeshManager().RemoveService(service.MeshId, service.Service)
 
 	if err != nil {
 		return err
