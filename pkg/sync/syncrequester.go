@@ -99,11 +99,11 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 	err = s.syncMesh(mesh, ctx, c)
 
 	if err != nil {
-		return s.handleErr(meshId, pubKey.String(), err)
+		s.handleErr(meshId, pubKey.String(), err)
 	}
 
 	logging.Log.WriteInfof("Synced with node: %s meshId: %s\n", endpoint, meshId)
-	return nil
+	return err
 }
 
 func (s *SyncRequesterImpl) syncMesh(mesh mesh.MeshProvider, ctx context.Context, client rpc.SyncServiceClient) error {

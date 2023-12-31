@@ -79,6 +79,8 @@ type DaemonConfiguration struct {
 	StubWg bool `yaml:"stubWg"`
 	// SyncRate specifies how long the minimum time should be between synchronisation
 	SyncRate int `yaml:"syncRate" validate:"required,gte=1"`
+	// PullTime specifies the interval between checking for configuration changes
+	PullTime int `yaml:"pullTime" validate:"required,gte=0"`
 	// KeepAliveTime: number of seconds before the leader of the mesh sends an update to
 	// send to every member in the mesh
 	KeepAliveTime int `yaml:"keepAliveTime" validate:"required,gte=1"`
