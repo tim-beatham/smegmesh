@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"github.com/akamensky/argparse"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	graph "github.com/tim-beatham/wgmesh/pkg/dot"
-	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	graph "github.com/tim-beatham/smegmesh/pkg/dot"
+	"github.com/tim-beatham/smegmesh/pkg/ipc"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
 )
 
 const SockAddr = "/tmp/wgmesh_ipc.sock"
@@ -22,7 +22,7 @@ type CreateMeshParams struct {
 	AdvertiseDefault bool
 }
 
-func createMesh(client *ipc.ClientIpc, args *ipc.NewMeshArgs) {
+func createMesh(client *ipc.SmegmeshIpc, args *ipc.NewMeshArgs) {
 	var reply string
 	err := client.CreateMesh(args, &reply)
 
@@ -34,7 +34,7 @@ func createMesh(client *ipc.ClientIpc, args *ipc.NewMeshArgs) {
 	fmt.Println(reply)
 }
 
-func listMeshes(client *ipc.ClientIpc) {
+func listMeshes(client *ipc.SmegmeshIpc) {
 	reply := new(ipc.ListMeshReply)
 
 	err := client.ListMeshes(reply)
@@ -49,7 +49,7 @@ func listMeshes(client *ipc.ClientIpc) {
 	}
 }
 
-func joinMesh(client *ipc.ClientIpc, args ipc.JoinMeshArgs) {
+func joinMesh(client *ipc.SmegmeshIpc, args ipc.JoinMeshArgs) {
 	var reply string
 
 	err := client.JoinMesh(args, &reply)
@@ -61,7 +61,7 @@ func joinMesh(client *ipc.ClientIpc, args ipc.JoinMeshArgs) {
 	fmt.Println(reply)
 }
 
-func leaveMesh(client *ipc.ClientIpc, meshId string) {
+func leaveMesh(client *ipc.SmegmeshIpc, meshId string) {
 	var reply string
 
 	err := client.LeaveMesh(meshId, &reply)
@@ -74,7 +74,7 @@ func leaveMesh(client *ipc.ClientIpc, meshId string) {
 	fmt.Println(reply)
 }
 
-func getGraph(client *ipc.ClientIpc) {
+func getGraph(client *ipc.SmegmeshIpc) {
 	listMeshesReply := new(ipc.ListMeshReply)
 
 	err := client.ListMeshes(listMeshesReply)
@@ -110,7 +110,7 @@ func getGraph(client *ipc.ClientIpc) {
 	fmt.Println(dot)
 }
 
-func queryMesh(client *ipc.ClientIpc, meshId, query string) {
+func queryMesh(client *ipc.SmegmeshIpc, meshId, query string) {
 	var reply string
 
 	args := ipc.QueryMesh{
@@ -128,7 +128,7 @@ func queryMesh(client *ipc.ClientIpc, meshId, query string) {
 	fmt.Println(reply)
 }
 
-func putDescription(client *ipc.ClientIpc, meshId, description string) {
+func putDescription(client *ipc.SmegmeshIpc, meshId, description string) {
 	var reply string
 
 	err := client.PutDescription(ipc.PutDescriptionArgs{
@@ -145,7 +145,7 @@ func putDescription(client *ipc.ClientIpc, meshId, description string) {
 }
 
 // putAlias: puts an alias for the node
-func putAlias(client *ipc.ClientIpc, meshid, alias string) {
+func putAlias(client *ipc.SmegmeshIpc, meshid, alias string) {
 	var reply string
 
 	err := client.PutAlias(ipc.PutAliasArgs{
@@ -161,7 +161,7 @@ func putAlias(client *ipc.ClientIpc, meshid, alias string) {
 	fmt.Println(reply)
 }
 
-func setService(client *ipc.ClientIpc, meshId, service, value string) {
+func setService(client *ipc.SmegmeshIpc, meshId, service, value string) {
 	var reply string
 
 	err := client.PutService(ipc.PutServiceArgs{
@@ -178,7 +178,7 @@ func setService(client *ipc.ClientIpc, meshId, service, value string) {
 	fmt.Println(reply)
 }
 
-func deleteService(client *ipc.ClientIpc, meshId, service string) {
+func deleteService(client *ipc.SmegmeshIpc, meshId, service string) {
 	var reply string
 
 	err := client.DeleteService(ipc.DeleteServiceArgs{
@@ -195,8 +195,8 @@ func deleteService(client *ipc.ClientIpc, meshId, service string) {
 }
 
 func main() {
-	parser := argparse.NewParser("wg-mesh",
-		"wg-mesh Manipulate WireGuard mesh networks")
+	parser := argparse.NewParser("smgctl",
+		"smegctl Manipulate WireGuard mesh networks")
 
 	newMeshCmd := parser.NewCommand("new-mesh", "Create a new mesh")
 	listMeshCmd := parser.NewCommand("list-meshes", "List meshes the node is connected to")

@@ -7,5 +7,5 @@ import (
 )
 
 type IPAllocator interface {
-	GetIP(key wgtypes.Key, meshId string) (net.IP, error)
+	GetIP(key wgtypes.Key, meshId string, collisionCount int) (net.IP, error)
 }

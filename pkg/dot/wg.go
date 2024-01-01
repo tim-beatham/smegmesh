@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
 )
 
 // MeshGraphConverter converts a mesh to a graph

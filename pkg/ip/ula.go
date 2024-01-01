@@ -39,7 +39,7 @@ func (u *ULABuilder) GetIPNet(meshId string) (*net.IPNet, error) {
 	return net, nil
 }
 
-func (u *ULABuilder) GetIP(key wgtypes.Key, meshId string) (net.IP, error) {
+func (u *ULABuilder) GetIP(key wgtypes.Key, meshId string, collisionCount int) (net.IP, error) {
 	ulaPrefix := getMeshPrefix(meshId)
 
 	c, err := NewCga(key, ulaPrefix)

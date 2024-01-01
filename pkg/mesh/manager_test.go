@@ -3,10 +3,10 @@ package mesh
 import (
 	"testing"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/ip"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	"github.com/tim-beatham/wgmesh/pkg/wg"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/ip"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/wg"
 )
 
 func getMeshConfiguration() *conf.DaemonConfiguration {

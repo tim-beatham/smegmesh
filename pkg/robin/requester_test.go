@@ -3,10 +3,10 @@ package robin
 import (
 	"testing"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/ipc"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
 )
 
 func getRequester() *IpcHandler {

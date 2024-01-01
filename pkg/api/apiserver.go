@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/what8words"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/ipc"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/what8words"
 )
 
 type ApiServer interface {
@@ -18,7 +18,7 @@ type ApiServer interface {
 
 type SmegServer struct {
 	router *gin.Engine
-	client *ipc.ClientIpc
+	client *ipc.SmegmeshIpc
 	words  *what8words.What8Words
 }
 

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/ip"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	"github.com/tim-beatham/wgmesh/pkg/route"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/ip"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/route"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

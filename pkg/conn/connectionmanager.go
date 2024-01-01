@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
 )
 
 // ConnectionManager defines an interface for maintaining peer connections

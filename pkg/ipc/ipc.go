@@ -8,7 +8,7 @@ import (
 	ipcRpc "net/rpc"
 	"os"
 
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
 )
 
 const SockAddr = "/tmp/wgmesh_sock"
@@ -94,63 +94,76 @@ type QueryMesh struct {
 	Query  string
 }
 
-type ClientIpc struct {
+type ClientIpc interface {
+	CreateMesh(args *NewMeshArgs, reply *string) error
+	ListMeshes(args *ListMeshReply, reply *string) error
+	JoinMesh(args JoinMeshArgs, reply *string) error
+	LeaveMesh(meshId string, reply *string) error
+	GetMesh(meshId string, reply *GetMeshReply) error
+	Query(query QueryMesh, reply *string) error
+	PutDescription(args PutDescriptionArgs, reply *string) error
+	PutAlias(args PutAliasArgs, reply *string) error
+	PutService(args PutServiceArgs, reply *string) error
+	DeleteService(args DeleteServiceArgs, reply *string) error
+}
+
+type SmegmeshIpc struct {
 	client *ipcRpc.Client
 }
 
-func NewClientIpc() (*ClientIpc, error) {
+func NewClientIpc() (*SmegmeshIpc, error) {
 	client, err := ipcRpc.DialHTTP("unix", SockAddr)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &ClientIpc{
+	return &SmegmeshIpc{
 		client: client,
 	}, nil
 }
 
-func (c *ClientIpc) CreateMesh(args *NewMeshArgs, reply *string) error {
+func (c *SmegmeshIpc) CreateMesh(args *NewMeshArgs, reply *string) error {
 	return c.client.Call("IpcHandler.CreateMesh", args, reply)
 }
 
-func (c *ClientIpc) ListMeshes(reply *ListMeshReply) error {
+func (c *SmegmeshIpc) ListMeshes(reply *ListMeshReply) error {
 	return c.client.Call("IpcHandler.ListMeshes", "", reply)
 }
 
-func (c *ClientIpc) JoinMesh(args JoinMeshArgs, reply *string) error {
+func (c *SmegmeshIpc) JoinMesh(args JoinMeshArgs, reply *string) error {
 	return c.client.Call("IpcHandler.JoinMesh", &args, reply)
 }
 
-func (c *ClientIpc) LeaveMesh(meshId string, reply *string) error {
+func (c *SmegmeshIpc) LeaveMesh(meshId string, reply *string) error {
 	return c.client.Call("IpcHandler.LeaveMesh", &meshId, reply)
 }
 
-func (c *ClientIpc) GetMesh(meshId string, reply *GetMeshReply) error {
+func (c *SmegmeshIpc) GetMesh(meshId string, reply *GetMeshReply) error {
 	return c.client.Call("IpcHandler.GetMesh", &meshId, reply)
 }
 
-func (c *ClientIpc) Query(query QueryMesh, reply *string) error {
+func (c *SmegmeshIpc) Query(query QueryMesh, reply *string) error {
 	return c.client.Call("IpcHandler.Query", &query, reply)
 }
 
-func (c *ClientIpc) PutDescription(args PutDescriptionArgs, reply *string) error {
+func (c *SmegmeshIpc) PutDescription(args PutDescriptionArgs, reply *string) error {
 	return c.client.Call("IpcHandler.PutDescription", &args, reply)
 }
 
-func (c *ClientIpc) PutAlias(args PutAliasArgs, reply *string) error {
+func (c *SmegmeshIpc) PutAlias(args PutAliasArgs, reply *string) error {
 	return c.client.Call("IpcHandler.PutAlias", &args, reply)
 }
 
-func (c *ClientIpc) PutService(args PutServiceArgs, reply *string) error {
+func (c *SmegmeshIpc) PutService(args PutServiceArgs, reply *string) error {
 	return c.client.Call("IpcHandler.PutService", &args, reply)
 }
 
-func (c *ClientIpc) DeleteService(args DeleteServiceArgs, reply *string) error {
+func (c *SmegmeshIpc) DeleteService(args DeleteServiceArgs, reply *string) error {
 	return c.client.Call("IpcHandler.DeleteService", &args, reply)
 }
 
-func (c *ClientIpc) Close() error {
+func (c *SmegmeshIpc) Close() error {
 	return c.Close()
 }
 

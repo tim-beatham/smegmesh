@@ -3,7 +3,7 @@ package crdt
 import (
 	"cmp"
 
-	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
 type TwoPhaseMap[K cmp.Ordered, D any] struct {

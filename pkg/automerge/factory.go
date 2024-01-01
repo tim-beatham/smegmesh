@@ -3,9 +3,9 @@ package automerge
 import (
 	"fmt"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
 )
 
 type CrdtProviderFactory struct{}

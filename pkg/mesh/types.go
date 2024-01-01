@@ -6,7 +6,7 @@ import (
 	"net"
 	"slices"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

@@ -2,7 +2,7 @@ package automerge
 
 import (
 	"github.com/automerge/automerge-go"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
 )
 
 type AutomergeSync struct {

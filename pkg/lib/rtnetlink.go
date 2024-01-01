@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/jsimonetti/rtnetlink"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
 	"golang.org/x/sys/unix"
 )
 
