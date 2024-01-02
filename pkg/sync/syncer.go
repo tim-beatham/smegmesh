@@ -106,7 +106,7 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 	for _, node := range gossipNodes {
 		correspondingPeer, err := correspondingMesh.GetNode(node)
 
-		if correspondingPeer == nil || err == nil {
+		if correspondingPeer == nil || err != nil {
 			logging.Log.WriteErrorf("node %s does not exist", node)
 			continue
 		}
