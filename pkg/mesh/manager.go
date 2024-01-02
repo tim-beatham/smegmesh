@@ -286,7 +286,7 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 
 	pubKey := s.HostParameters.PrivateKey.PublicKey()
 
-	collisionCount := 0
+	collisionCount := uint8(0)
 
 	var nodeIP *net.IPNet
 
