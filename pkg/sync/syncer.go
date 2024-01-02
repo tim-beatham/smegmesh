@@ -104,14 +104,14 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 
 	// Do this synchronously to conserve bandwidth
 	for _, node := range gossipNodes {
-		correspondingPeer := s.manager.GetNode(correspondingMesh.GetMeshId(), node)
+		correspondingPeer, err := correspondingMesh.GetNode(node)
 
-		if correspondingPeer == nil {
+		if correspondingPeer == nil || err == nil {
 			logging.Log.WriteErrorf("node %s does not exist", node)
 			continue
 		}
 
-		err := s.requester.SyncMesh(correspondingMesh.GetMeshId(), correspondingPeer)
+		err = s.requester.SyncMesh(correspondingMesh.GetMeshId(), correspondingPeer)
 
 		if err == nil || err == io.EOF {
 			succeeded = true
