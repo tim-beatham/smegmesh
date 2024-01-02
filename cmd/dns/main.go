@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	smegdns "github.com/tim-beatham/wgmesh/pkg/dns"
+	smegdns "github.com/tim-beatham/smegmesh/pkg/dns"
 )
 
 func main() {
