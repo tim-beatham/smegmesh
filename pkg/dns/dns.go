@@ -6,18 +6,16 @@ import (
 	"net"
 
 	"github.com/miekg/dns"
-	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/query"
+	"github.com/tim-beatham/smegmesh/pkg/ipc"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/query"
 )
-
-const SockAddr = "/tmp/wgmesh_ipc.sock"
 
 const MeshRegularExpression = `(?P<meshId>.+)\.(?P<alias>.+)\.smeg\.`
 
 type DNSHandler struct {
-	client *ipc.ClientIpc
+	client *ipc.SmegmeshIpc
 	server *dns.Server
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
 func NewGmap() *GMap[string, bool] {

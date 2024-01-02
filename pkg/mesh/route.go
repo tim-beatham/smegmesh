@@ -3,8 +3,8 @@ package mesh
 import (
 	"net"
 
-	"github.com/tim-beatham/wgmesh/pkg/ip"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/ip"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
 type RouteManager interface {

@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

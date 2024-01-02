@@ -1,4 +1,4 @@
-module github.com/tim-beatham/wgmesh
+module github.com/tim-beatham/smegmesh
 
 go 1.21.3
 
@@ -11,11 +11,11 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/jsimonetti/rtnetlink v1.3.5
+	github.com/lithammer/shortuuid v3.0.0+incompatible
 	github.com/miekg/dns v1.1.57
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.14.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
-	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.58.1
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1

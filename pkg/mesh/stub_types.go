@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

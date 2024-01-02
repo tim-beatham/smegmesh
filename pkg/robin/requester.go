@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/rpc"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/ipc"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/rpc"
 )
 
 type IpcHandler struct {

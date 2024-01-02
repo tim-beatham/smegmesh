@@ -1,7 +1,7 @@
 package route
 
 import (
-	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
 	"golang.org/x/sys/unix"
 )
 

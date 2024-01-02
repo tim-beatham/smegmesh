@@ -4,11 +4,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/conn"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/query"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/conn"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/query"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

@@ -1,16 +1,16 @@
 package ctrlserver
 
 import (
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/conn"
-	"github.com/tim-beatham/wgmesh/pkg/crdt"
-	"github.com/tim-beatham/wgmesh/pkg/ip"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/query"
-	"github.com/tim-beatham/wgmesh/pkg/rpc"
-	"github.com/tim-beatham/wgmesh/pkg/wg"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/conn"
+	"github.com/tim-beatham/smegmesh/pkg/crdt"
+	"github.com/tim-beatham/smegmesh/pkg/ip"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/query"
+	"github.com/tim-beatham/smegmesh/pkg/rpc"
+	"github.com/tim-beatham/smegmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 

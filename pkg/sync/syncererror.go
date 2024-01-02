@@ -1,9 +1,9 @@
 package sync
 
 import (
-	"github.com/tim-beatham/wgmesh/pkg/conn"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/conn"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

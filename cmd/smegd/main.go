@@ -6,14 +6,14 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	ctrlserver "github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/ipc"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/robin"
-	"github.com/tim-beatham/wgmesh/pkg/sync"
-	timer "github.com/tim-beatham/wgmesh/pkg/timers"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	ctrlserver "github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/ipc"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/robin"
+	"github.com/tim-beatham/smegmesh/pkg/sync"
+	timer "github.com/tim-beatham/smegmesh/pkg/timers"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 

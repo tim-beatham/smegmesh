@@ -6,9 +6,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/rpc"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/rpc"
 )
 
 type SyncServiceImpl struct {

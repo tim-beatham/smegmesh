@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/tim-beatham/wgmesh/pkg/api"
+	"github.com/tim-beatham/smegmesh/pkg/api"
 )
 
 func main() {

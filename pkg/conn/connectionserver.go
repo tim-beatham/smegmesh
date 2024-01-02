@@ -8,9 +8,9 @@ import (
 	"net"
 	"os"
 
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/rpc"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

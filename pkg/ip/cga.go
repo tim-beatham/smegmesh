@@ -34,7 +34,7 @@ type CgaParameters struct {
 	flag           byte
 }
 
-func NewCga(key wgtypes.Key, subnetPrefix [2 * InterfaceIdLen]byte) (*CgaParameters, error) {
+func NewCga(key wgtypes.Key, collisionCount uint8, subnetPrefix [2 * InterfaceIdLen]byte) (*CgaParameters, error) {
 	var params CgaParameters
 
 	_, err := rand.Read(params.Modifier[:])
@@ -45,6 +45,7 @@ func NewCga(key wgtypes.Key, subnetPrefix [2 * InterfaceIdLen]byte) (*CgaParamet
 
 	params.PublicKey = key
 	params.SubnetPrefix = subnetPrefix
+	params.CollisionCount = collisionCount
 	return &params, nil
 }
 
@@ -78,7 +79,6 @@ func (c *CgaParameters) generateHash1() []byte {
 	byteVal[hash1Length-1] = c.CollisionCount
 
 	hash := sha1.Sum(byteVal[:])
-
 	return hash[:Hash1Prefix]
 }
 
@@ -90,9 +90,6 @@ func clearBit(num, pos int) byte {
 }
 
 func (c *CgaParameters) generateInterface() []byte {
-	// TODO: On duplicate address detection increment collision.
-	// Also incorporate SEC
-
 	hash1 := c.generateHash1()
 
 	var interfaceId []byte = make([]byte, InterfaceIdLen)

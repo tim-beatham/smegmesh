@@ -1,8 +1,8 @@
 package sync
 
 import (
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
 // Run implements SyncScheduler.

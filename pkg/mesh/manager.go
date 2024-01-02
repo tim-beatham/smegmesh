@@ -3,13 +3,14 @@ package mesh
 import (
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 
-	"github.com/tim-beatham/wgmesh/pkg/cmd"
-	"github.com/tim-beatham/wgmesh/pkg/conf"
-	"github.com/tim-beatham/wgmesh/pkg/ip"
-	"github.com/tim-beatham/wgmesh/pkg/lib"
-	"github.com/tim-beatham/wgmesh/pkg/wg"
+	"github.com/tim-beatham/smegmesh/pkg/cmd"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/ip"
+	"github.com/tim-beatham/smegmesh/pkg/lib"
+	"github.com/tim-beatham/smegmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -285,10 +286,36 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 
 	pubKey := s.HostParameters.PrivateKey.PublicKey()
 
-	nodeIP, err := s.ipAllocator.GetIP(pubKey, params.MeshId)
+	collisionCount := uint8(0)
 
-	if err != nil {
-		return err
+	var nodeIP net.IP
+
+	// Perform Duplicate Address Detection with the nodes
+	// that are already in the network
+	for {
+		generatedIP, err := s.ipAllocator.GetIP(pubKey, params.MeshId, collisionCount)
+
+		if err != nil {
+			return err
+		}
+
+		snapshot, err := mesh.GetMesh()
+
+		if err != nil {
+			return err
+		}
+
+		proposition := func(node MeshNode) bool {
+			ipNet := node.GetWgHost()
+			return ipNet.IP.Equal(nodeIP)
+		}
+
+		if lib.Contains(lib.MapValues(snapshot.GetNodes()), proposition) {
+			collisionCount++
+		} else {
+			nodeIP = generatedIP
+			break
+		}
 	}
 
 	node := s.nodeFactory.Build(&MeshNodeFactoryParams{

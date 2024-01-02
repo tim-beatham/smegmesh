@@ -6,10 +6,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/tim-beatham/wgmesh/pkg/ctrlserver"
-	logging "github.com/tim-beatham/wgmesh/pkg/log"
-	"github.com/tim-beatham/wgmesh/pkg/mesh"
-	"github.com/tim-beatham/wgmesh/pkg/rpc"
+	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
+	"github.com/tim-beatham/smegmesh/pkg/mesh"
+	"github.com/tim-beatham/smegmesh/pkg/rpc"
 )
 
 // SyncRequester: coordinates the syncing of meshes
