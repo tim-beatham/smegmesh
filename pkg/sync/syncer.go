@@ -191,6 +191,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 
 		go sync()
 	}
+	wg.Wait()
 
 	logging.Log.WriteInfof("updating the WireGuard configuration")
 	err := s.manager.ApplyConfig()
