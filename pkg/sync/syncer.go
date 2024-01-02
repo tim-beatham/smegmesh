@@ -38,11 +38,10 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 
 	// Self can be nil if the node is removed
 	selfID := s.manager.GetPublicKey()
-	self, _ := correspondingMesh.GetNode(selfID.String())
+	self, err := correspondingMesh.GetNode(selfID.String())
 
-	// Mesh has been removed
-	if self == nil {
-		return fmt.Errorf("mesh %s does not exist", correspondingMesh.GetMeshId())
+	if err != nil {
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	correspondingMesh.Prune()
@@ -51,7 +50,8 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 		logging.Log.WriteInfof("meshes %s has changes", correspondingMesh.GetMeshId())
 	}
 
-	if self.GetType() == conf.PEER_ROLE && !correspondingMesh.HasChanges() && s.infectionCount == 0 {
+	// If removed sync with other nodes to gossip the node is removed
+	if self != nil && self.GetType() == conf.PEER_ROLE && !correspondingMesh.HasChanges() && s.infectionCount == 0 {
 		logging.Log.WriteInfof("no changes for %s", correspondingMesh.GetMeshId())
 
 		// If not synchronised in certain time pull from random neighbour
@@ -63,16 +63,19 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 	}
 
 	before := time.Now()
-	s.manager.GetRouteManager().UpdateRoutes()
+	err = s.manager.GetRouteManager().UpdateRoutes()
+
+	if err != nil {
+		logging.Log.WriteErrorf(err.Error())
+	}
 
 	publicKey := s.manager.GetPublicKey()
 	nodeNames := correspondingMesh.GetPeers()
 
-	if self != nil {
-		nodeNames = lib.Filter(nodeNames, func(s string) bool {
-			return s != mesh.NodeID(self)
-		})
-	}
+	nodeNames = lib.Filter(nodeNames, func(s string) bool {
+		// Filter our only public key out so we dont sync with ourself
+		return s != publicKey.String()
+	})
 
 	var gossipNodes []string
 

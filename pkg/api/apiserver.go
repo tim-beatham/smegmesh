@@ -235,9 +235,19 @@ func NewSmegServer(conf ApiServerConf) (ApiServer, error) {
 		words:  words,
 	}
 
-	router.GET("/meshes", smegServer.GetMeshes)
-	router.GET("/mesh/:meshid", smegServer.GetMesh)
-	router.POST("/mesh/create", smegServer.CreateMesh)
-	router.POST("/mesh/join", smegServer.JoinMesh)
+	v1 := router.Group("/api/v1")
+	{
+		meshes := v1.Group("/meshes")
+		{
+			meshes.GET("/", smegServer.GetMeshes)
+		}
+		mesh := v1.Group("/mesh")
+		{
+			mesh.GET("/:meshid", smegServer.GetMesh)
+			mesh.POST("/create", smegServer.CreateMesh)
+			mesh.POST("/join", smegServer.JoinMesh)
+		}
+	}
+
 	return smegServer, nil
 }
