@@ -288,12 +288,12 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 
 	collisionCount := uint8(0)
 
-	var nodeIP *net.IPNet
+	var nodeIP net.IP
 
 	// Perform Duplicate Address Detection with the nodes
 	// that are already in the network
 	for {
-		nodeIP, err := s.ipAllocator.GetIP(pubKey, params.MeshId, collisionCount)
+		generatedIP, err := s.ipAllocator.GetIP(pubKey, params.MeshId, collisionCount)
 
 		if err != nil {
 			return err
@@ -313,13 +313,14 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		if lib.Contains(lib.MapValues(snapshot.GetNodes()), proposition) {
 			collisionCount++
 		} else {
+			nodeIP = generatedIP
 			break
 		}
 	}
 
 	node := s.nodeFactory.Build(&MeshNodeFactoryParams{
 		PublicKey:  &pubKey,
-		NodeIP:     nodeIP.IP,
+		NodeIP:     nodeIP,
 		WgPort:     params.WgPort,
 		Endpoint:   params.Endpoint,
 		MeshConfig: mesh.GetConfiguration(),
