@@ -107,7 +107,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 			logging.Log.WriteErrorf(err.Error())
 		}
 
-		return err
+		return nil
 	}, 1)
 
 	heartbeatTimer := lib.NewTimer(func() error {

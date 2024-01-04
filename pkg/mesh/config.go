@@ -234,8 +234,8 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 
 	routesForMesh := lib.Map(lib.MapValues(params.routes), func(rns []routeNode) []routeNode {
 		return lib.Filter(rns, func(rn routeNode) bool {
-			_, ipNet, _ := net.ParseCIDR(rn.gateway)
-			return meshNet.Contains(ipNet.IP) || ipNet.Contains(meshNet.IP)
+			node, err := params.mesh.GetNode(rn.gateway)
+			return node != nil && err == nil
 		})
 	})
 
