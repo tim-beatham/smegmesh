@@ -17,20 +17,24 @@ type Querier interface {
 	Query(meshId string, queryParams string) ([]byte, error)
 }
 
+// JmesQuerier: queries the datstore in JMESPath syntax
 type JmesQuerier struct {
 	manager mesh.MeshManager
 }
 
+// QueryError: query error if something went wrong
 type QueryError struct {
 	msg string
 }
 
+// QuerRoute: represents a route in the query
 type QueryRoute struct {
 	Destination string `json:"destination"`
 	HopCount    int    `json:"hopCount"`
 	Path        string `json:"path"`
 }
 
+// QueryNode: represents a single node in the query
 type QueryNode struct {
 	HostEndpoint string            `json:"hostEndpoint"`
 	PublicKey    string            `json:"publicKey"`
@@ -48,7 +52,7 @@ func (m *QueryError) Error() string {
 	return m.msg
 }
 
-// Query: queries the data
+// Query: queries the the datastore at the given meshid
 func (j *JmesQuerier) Query(meshId, queryParams string) ([]byte, error) {
 	mesh, ok := j.manager.GetMeshes()[meshId]
 
@@ -74,6 +78,7 @@ func (j *JmesQuerier) Query(meshId, queryParams string) ([]byte, error) {
 	return bytes, err
 }
 
+// MeshNodeToQuerynode: convert the mesh node into a query abstraction
 func MeshNodeToQueryNode(node mesh.MeshNode) *QueryNode {
 	queryNode := new(QueryNode)
 	queryNode.HostEndpoint = node.GetHostEndpoint()

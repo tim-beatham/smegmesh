@@ -7,7 +7,9 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
+// RouteManager: manager that leaks routes between meshes
 type RouteManager interface {
+	// UpdateRoutes: leak all routes in each mesh
 	UpdateRoutes() error
 }
 

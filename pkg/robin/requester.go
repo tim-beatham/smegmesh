@@ -14,10 +14,12 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/rpc"
 )
 
+// IpcHandler: represents a handler for ipc calls
 type IpcHandler struct {
 	Server ctrlserver.CtrlServer
 }
 
+// getOverrideConfiguration: override any specific WireGuard configuration
 func getOverrideConfiguration(args *ipc.WireGuardArgs) conf.WgConfiguration {
 	overrideConf := conf.WgConfiguration{}
 
@@ -40,6 +42,7 @@ func getOverrideConfiguration(args *ipc.WireGuardArgs) conf.WgConfiguration {
 	return overrideConf
 }
 
+// CreateMesh: create a new mesh network
 func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
@@ -66,6 +69,7 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	return err
 }
 
+// ListMeshes: list mesh networks
 func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	meshNames := make([]string, len(n.Server.GetMeshManager().GetMeshes()))
 
@@ -79,6 +83,7 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 	return nil
 }
 
+// JoinMesh: join a mesh network
 func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
@@ -140,7 +145,7 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	return nil
 }
 
-// LeaveMesh leaves a mesh network
+// LeaveMesh: leaves a mesh network
 func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 	err := n.Server.GetMeshManager().LeaveMesh(meshId)
 
@@ -150,6 +155,7 @@ func (n *IpcHandler) LeaveMesh(meshId string, reply *string) error {
 	return err
 }
 
+// GetMesh: get a mesh network at the given meshid
 func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	theMesh := n.Server.GetMeshManager().GetMesh(meshId)
 
@@ -181,6 +187,7 @@ func (n *IpcHandler) GetMesh(meshId string, reply *ipc.GetMeshReply) error {
 	return nil
 }
 
+// Query: perform a jmespath query
 func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 	queryResponse, err := n.Server.GetQuerier().Query(params.MeshId, params.Query)
 
@@ -192,6 +199,7 @@ func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 	return nil
 }
 
+// PutDescription: change your description in the mesh
 func (n *IpcHandler) PutDescription(args ipc.PutDescriptionArgs, reply *string) error {
 	err := n.Server.GetMeshManager().SetDescription(args.MeshId, args.Description)
 
@@ -203,6 +211,7 @@ func (n *IpcHandler) PutDescription(args ipc.PutDescriptionArgs, reply *string) 
 	return nil
 }
 
+// PutAlias: put your aliasin the mesh
 func (n *IpcHandler) PutAlias(args ipc.PutAliasArgs, reply *string) error {
 	if args.Alias == "" {
 		return fmt.Errorf("alias not provided")
@@ -218,6 +227,7 @@ func (n *IpcHandler) PutAlias(args ipc.PutAliasArgs, reply *string) error {
 	return nil
 }
 
+// PutService: place a service in the mesh
 func (n *IpcHandler) PutService(service ipc.PutServiceArgs, reply *string) error {
 	err := n.Server.GetMeshManager().SetService(service.MeshId, service.Service, service.Value)
 
@@ -229,6 +239,7 @@ func (n *IpcHandler) PutService(service ipc.PutServiceArgs, reply *string) error
 	return nil
 }
 
+// DeleteService: withtract a service in the mesh
 func (n *IpcHandler) DeleteService(service ipc.DeleteServiceArgs, reply *string) error {
 	err := n.Server.GetMeshManager().RemoveService(service.MeshId, service.Service)
 
@@ -240,6 +251,7 @@ func (n *IpcHandler) DeleteService(service ipc.DeleteServiceArgs, reply *string)
 	return nil
 }
 
+// RobinIpcParams: parameters required to construct a new mesh network
 type RobinIpcParams struct {
 	CtrlServer ctrlserver.CtrlServer
 }
