@@ -120,7 +120,12 @@ func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wg
 // getRoutes: finds the routes with the least hop distance. If more than one route exists
 // consistently hash to evenly spread the distribution of traffic
 func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) (map[string][]routeNode, error) {
-	mesh, _ := meshProvider.GetMesh()
+	mesh, err := meshProvider.GetMesh()
+
+	if err != nil {
+		return nil, err
+	}
+
 	routes := make(map[string][]routeNode)
 
 	peers := lib.Filter(lib.MapValues(mesh.GetNodes()), func(p MeshNode) bool {

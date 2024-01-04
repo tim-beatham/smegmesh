@@ -22,7 +22,7 @@ type Route struct {
 	// Destination the route is advertising
 	Destination string
 	// Path to the destination
-	Path        []string
+	Path []string
 }
 
 // GetDestination implements mesh.Route.
@@ -316,7 +316,7 @@ func (m *TwoPhaseStoreMeshManager) AddRoutes(nodeId string, routes ...mesh.Route
 		}
 	}
 
-	// Only add nodes on changes. Otherwise the node will advertise new 
+	// Only add nodes on changes. Otherwise the node will advertise new
 	// information whenever they get new routes
 	if changes {
 		m.store.Put(nodeId, node)
@@ -466,7 +466,7 @@ func (m *TwoPhaseStoreMeshManager) getRoutes(targetNode string) (map[string]Rout
 	return node.Routes, nil
 }
 
-// GetRoutes: Get all unique routes the target node is advertising. 
+// GetRoutes: Get all unique routes the target node is advertising.
 // on conflicts the route with the least hop count is chosen
 func (m *TwoPhaseStoreMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, error) {
 	node, err := m.GetNode(targetNode)
@@ -521,7 +521,7 @@ func (m *TwoPhaseStoreMeshManager) RemoveNode(nodeId string) error {
 	return nil
 }
 
-// GetConfiguration gets the WireGuard configuration to use for this 
+// GetConfiguration gets the WireGuard configuration to use for this
 // network
 func (m *TwoPhaseStoreMeshManager) GetConfiguration() *conf.WgConfiguration {
 	return m.Conf

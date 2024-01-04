@@ -63,11 +63,6 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 	}
 
 	before := time.Now()
-	err := s.meshManager.GetRouteManager().UpdateRoutes()
-
-	if err != nil {
-		logging.Log.WriteErrorf(err.Error())
-	}
 
 	publicKey := s.meshManager.GetPublicKey()
 	nodeNames := correspondingMesh.GetPeers()
@@ -231,12 +226,19 @@ func (s *SyncerImpl) SyncMeshes() error {
 	if hasChanges {
 		logging.Log.WriteInfof("updating the WireGuard configuration")
 		err = s.meshManager.ApplyConfig()
+
+		if err != nil {
+			logging.Log.WriteErrorf("failed to update config %s", err.Error())
+		}
+
+		err = s.meshManager.GetRouteManager().UpdateRoutes()
+
+		if err != nil {
+			logging.Log.WriteErrorf("update routes failed %s", err.Error())
+		}
 	}
 
-	if err != nil {
-		logging.Log.WriteInfof("failed to update config %w", err)
-	}
-	return nil
+	return err
 }
 
 type NewSyncerParams struct {
