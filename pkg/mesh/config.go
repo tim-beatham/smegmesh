@@ -1,6 +1,7 @@
 package mesh
 
 import (
+	"fmt"
 	"net"
 	"slices"
 	"strings"
@@ -233,8 +234,8 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 
 	routesForMesh := lib.Map(lib.MapValues(params.routes), func(rns []routeNode) []routeNode {
 		return lib.Filter(rns, func(rn routeNode) bool {
-			ip, _, _ := net.ParseCIDR(rn.gateway)
-			return meshNet.Contains(ip)
+			_, ipNet, _ := net.ParseCIDR(rn.gateway)
+			return meshNet.Contains(ipNet.IP) || ipNet.Contains(meshNet.IP)
 		})
 	})
 
@@ -251,6 +252,10 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 
 	if err != nil {
 		return nil, err
+	}
+
+	if len(params.peers) == 0 {
+		return nil, fmt.Errorf("no peers in the mesh")
 	}
 
 	peer := m.getCorrespondingPeer(params.peers, self)
