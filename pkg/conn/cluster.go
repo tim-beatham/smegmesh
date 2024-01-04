@@ -23,9 +23,10 @@ func binarySearch(global []string, selfId string, groupSize int) (int, int) {
 
 	lower := 0
 	higher := len(global) - 1
-	mid := (lower + higher) / 2
 
 	for (higher+1)-lower > groupSize {
+		mid := (lower + higher) / 2
+
 		if global[mid] < selfId {
 			lower = mid + 1
 		} else if global[mid] > selfId {
@@ -33,8 +34,6 @@ func binarySearch(global []string, selfId string, groupSize int) (int, int) {
 		} else {
 			break
 		}
-
-		mid = (lower + higher) / 2
 	}
 
 	return lower, int(math.Min(float64(lower+groupSize), float64(len(global))))
