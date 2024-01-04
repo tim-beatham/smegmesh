@@ -28,6 +28,7 @@ type SyncerImpl struct {
 	cluster        conn.ConnCluster
 	conf           *conf.DaemonConfiguration
 	lastSync       map[string]int64
+	lock           sync.RWMutex
 }
 
 // Sync: Sync with random nodes
@@ -134,7 +135,9 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 
 	correspondingMesh.SaveChanges()
 
+	s.lock.Lock()
 	s.lastSync[correspondingMesh.GetMeshId()] = time.Now().Unix()
+	s.lock.Unlock()
 	return nil
 }
 

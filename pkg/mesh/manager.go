@@ -10,6 +10,7 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/conf"
 	"github.com/tim-beatham/smegmesh/pkg/ip"
 	"github.com/tim-beatham/smegmesh/pkg/lib"
+	logging "github.com/tim-beatham/smegmesh/pkg/log"
 	"github.com/tim-beatham/smegmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -355,7 +356,7 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	err := mesh.RemoveNode(s.HostParameters.GetPublicKey())
 
 	if err != nil {
-		return err
+		logging.Log.WriteErrorf(err.Error())
 	}
 
 	if s.OnDelete != nil {
