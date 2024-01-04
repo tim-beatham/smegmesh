@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	ipcRPC "net/rpc"
 	"os"
 
 	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
@@ -75,7 +76,7 @@ type DeleteServiceArgs struct {
 // PutAliasArgs: args to assign an alias to a node
 type PutAliasArgs struct {
 	// Alias: represents the alias of the node
-	Alias  string
+	Alias string
 	// MeshId: represents the meshID of the node
 	MeshId string
 }
@@ -85,9 +86,8 @@ type PutDescriptionArgs struct {
 	// Description: descriptio to add to the network
 	Description string
 	// MeshID to add to the mesh network
-	MeshId      string
+	MeshId string
 }
-
 
 // GetMeshReply: ipc reply to get the mesh network
 type GetMeshReply struct {
@@ -104,7 +104,7 @@ type QueryMesh struct {
 	// MeshId: id of the mesh to query
 	MeshId string
 	// JMESPath: query string to query
-	Query  string
+	Query string
 }
 
 // ClientIpc: Framework to invoke ipc calls to the daemon
@@ -132,11 +132,11 @@ type ClientIpc interface {
 }
 
 type SmegmeshIpc struct {
-	client *ipc.Client
+	client *ipcRPC.Client
 }
 
 func NewClientIpc() (*SmegmeshIpc, error) {
-	client, err := ipcRpc.DialHTTP("unix", SockAddr)
+	client, err := ipcRPC.DialHTTP("unix", SockAddr)
 
 	if err != nil {
 		return nil, err

@@ -240,10 +240,10 @@ func NewSubGraph(name string, label string, graphType GraphType) *Cluster {
 // NewGraph: create a new root graph
 func NewGraph(label string, graphType GraphType) *RootGraph {
 	return &RootGraph{
-		Type: graphType, 
-		Label: label, 
-		clusters: map[string]*Cluster{}, 
-		nodes: make(map[string]*Node), 
-		edges: make(map[string]Edge)
+		Type:     graphType,
+		Label:    label,
+		clusters: map[string]*Cluster{},
+		nodes:    make(map[string]*Node),
+		edges:    make(map[string]Edge),
 	}
 }
