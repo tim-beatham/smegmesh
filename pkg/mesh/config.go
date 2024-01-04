@@ -238,7 +238,7 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 		})
 	})
 
-	routesForMesh = lib.Filter(routesForMesh, func (rns []routeNode)  {
+	routesForMesh = lib.Filter(routesForMesh, func(rns []routeNode) {
 		return len(rns) != 0
 	})
 
@@ -456,7 +456,7 @@ func (m *WgMeshConfigApplyer) getAllRoutes() (map[string][]routeNode, error) {
 	allRoutes := make(map[string][]routeNode)
 
 	for _, mesh := range m.meshManager.GetMeshes() {
-		routes, err := m.getRoutes(mesh)2
+		routes, err := m.getRoutes(mesh)
 
 		if err != nil {
 			return nil, err
