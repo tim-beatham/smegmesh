@@ -238,7 +238,7 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 		})
 	})
 
-	routesForMesh = lib.Filter(routesForMesh, func(rns []routeNode) {
+	routesForMesh = lib.Filter(routesForMesh, func(rns []routeNode) bool {
 		return len(rns) != 0
 	})
 
