@@ -6,7 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
+	"github.com/tim-beatham/smegmesh/pkg/conn"
 	logging "github.com/tim-beatham/smegmesh/pkg/log"
 	"github.com/tim-beatham/smegmesh/pkg/mesh"
 	"github.com/tim-beatham/smegmesh/pkg/rpc"
@@ -19,13 +20,15 @@ type SyncRequester interface {
 }
 
 type SyncRequesterImpl struct {
-	server    *ctrlserver.MeshCtrlServer
-	errorHdlr SyncErrorHandler
+	manager           mesh.MeshManager
+	connectionManager conn.ConnectionManager
+	configuration     *conf.DaemonConfiguration
+	errorHdlr         SyncErrorHandler
 }
 
 // GetMesh: Retrieves the local state of the mesh at the endpoint
 func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endPoint string) error {
-	peerConnection, err := s.server.ConnectionManager.GetConnection(endPoint)
+	peerConnection, err := s.connectionManager.GetConnection(endPoint)
 
 	if err != nil {
 		return err
@@ -48,7 +51,7 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endP
 		return err
 	}
 
-	err = s.server.MeshManager.AddMesh(&mesh.AddMeshParams{
+	err = s.manager.AddMesh(&mesh.AddMeshParams{
 		MeshId:    meshId,
 		WgPort:    port,
 		MeshBytes: reply.Mesh,
@@ -56,13 +59,13 @@ func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endP
 	return err
 }
 
+// handleErr: handleGrpc errors
 func (s *SyncRequesterImpl) handleErr(meshId, pubKey string, err error) error {
 	ok := s.errorHdlr.Handle(meshId, pubKey, err)
 
 	if ok {
 		return nil
 	}
-
 	return err
 }
 
@@ -71,7 +74,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 	endpoint := meshNode.GetHostEndpoint()
 	pubKey, _ := meshNode.GetPublicKey()
 
-	peerConnection, err := s.server.ConnectionManager.GetConnection(endpoint)
+	peerConnection, err := s.connectionManager.GetConnection(endpoint)
 
 	if err != nil {
 		return err
@@ -83,7 +86,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 		return err
 	}
 
-	mesh := s.server.MeshManager.GetMesh(meshId)
+	mesh := s.manager.GetMesh(meshId)
 
 	if mesh == nil {
 		return errors.New("mesh does not exist")
@@ -91,7 +94,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 
 	c := rpc.NewSyncServiceClient(client)
 
-	syncTimeOut := float64(s.server.Conf.SyncTime) * float64(time.Second)
+	syncTimeOut := float64(s.configuration.SyncTime) * float64(time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(syncTimeOut))
 	defer cancel()
@@ -102,7 +105,7 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 		s.handleErr(meshId, pubKey.String(), err)
 	}
 
-	logging.Log.WriteInfof("Synced with node: %s meshId: %s\n", endpoint, meshId)
+	logging.Log.WriteInfof("synced with node: %s meshId: %s\n", endpoint, meshId)
 	return err
 }
 
@@ -127,7 +130,7 @@ func (s *SyncRequesterImpl) syncMesh(mesh mesh.MeshProvider, ctx context.Context
 		in, err := stream.Recv()
 
 		if err != nil && err != io.EOF {
-			logging.Log.WriteInfof("Stream recv error: %s\n", err.Error())
+			logging.Log.WriteInfof("stream recv error: %s\n", err.Error())
 			return err
 		}
 
@@ -136,7 +139,7 @@ func (s *SyncRequesterImpl) syncMesh(mesh mesh.MeshProvider, ctx context.Context
 		}
 
 		if err != nil {
-			logging.Log.WriteInfof("Syncer recv error: %s\n", err.Error())
+			logging.Log.WriteInfof("syncer recv error: %s\n", err.Error())
 			return err
 		}
 
@@ -150,7 +153,17 @@ func (s *SyncRequesterImpl) syncMesh(mesh mesh.MeshProvider, ctx context.Context
 	return nil
 }
 
-func NewSyncRequester(s *ctrlserver.MeshCtrlServer) SyncRequester {
-	errorHdlr := NewSyncErrorHandler(s.MeshManager, s.ConnectionManager)
-	return &SyncRequesterImpl{server: s, errorHdlr: errorHdlr}
+type NewSyncRequesterParams struct {
+	MeshManager       mesh.MeshManager
+	ConnectionManager conn.ConnectionManager
+	Configuration     *conf.DaemonConfiguration
+}
+
+func NewSyncRequester(params NewSyncRequesterParams) SyncRequester {
+	errorHdlr := NewSyncErrorHandler(params.MeshManager, params.ConnectionManager)
+	return &SyncRequesterImpl{manager: params.MeshManager,
+		connectionManager: params.ConnectionManager,
+		configuration:     params.Configuration,
+		errorHdlr:         errorHdlr,
+	}
 }

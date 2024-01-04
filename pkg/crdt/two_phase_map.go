@@ -6,6 +6,7 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
+// TwoPhaseMap: comprises of two grow-only maps
 type TwoPhaseMap[K cmp.Ordered, D any] struct {
 	addMap    *GMap[K, D]
 	removeMap *GMap[K, bool]
@@ -23,7 +24,7 @@ func (m *TwoPhaseMap[K, D]) Contains(key K) bool {
 	return m.contains(m.Clock.hashFunc(key))
 }
 
-// Contains checks whether the value exists in the map
+// contains: checks whether the key exists in the map
 func (m *TwoPhaseMap[K, D]) contains(key uint64) bool {
 	if !m.addMap.contains(key) {
 		return false
@@ -40,6 +41,7 @@ func (m *TwoPhaseMap[K, D]) contains(key uint64) bool {
 	return addValue.Vector >= removeValue.Vector
 }
 
+// Get: get the value corresponding with the given key
 func (m *TwoPhaseMap[K, D]) Get(key K) D {
 	var result D
 
@@ -60,18 +62,19 @@ func (m *TwoPhaseMap[K, D]) get(key uint64) D {
 	return m.addMap.get(key).Contents
 }
 
-// Put places the key K in the map
+// Put: places the key K in the map with the associated data D
 func (m *TwoPhaseMap[K, D]) Put(key K, data D) {
 	msgSequence := m.Clock.IncrementClock()
 	m.Clock.Put(key, msgSequence)
 	m.addMap.Put(key, data)
 }
 
+// Mark: marks the status of the node as undetermiend
 func (m *TwoPhaseMap[K, D]) Mark(key K) {
 	m.addMap.Mark(key)
 }
 
-// Remove removes the value from the map
+// Remove: removes the value from the map
 func (m *TwoPhaseMap[K, D]) Remove(key K) {
 	m.removeMap.Put(key, true)
 }
@@ -92,6 +95,7 @@ func (m *TwoPhaseMap[K, D]) keys() []uint64 {
 	return keys
 }
 
+// AsList: convert the map to a list
 func (m *TwoPhaseMap[K, D]) AsList() []D {
 	theList := make([]D, 0)
 
@@ -104,6 +108,8 @@ func (m *TwoPhaseMap[K, D]) AsList() []D {
 	return theList
 }
 
+// Snapshot: convert the map into an immutable snapshot.
+// contains the contents of the add and remove map
 func (m *TwoPhaseMap[K, D]) Snapshot() *TwoPhaseMapSnapshot[K, D] {
 	return &TwoPhaseMapSnapshot[K, D]{
 		Add:    m.addMap.Save(),
@@ -111,6 +117,8 @@ func (m *TwoPhaseMap[K, D]) Snapshot() *TwoPhaseMapSnapshot[K, D] {
 	}
 }
 
+// SnapshotFromState: create a snapshot of the intersection of values provided
+// in the given state
 func (m *TwoPhaseMap[K, D]) SnapShotFromState(state *TwoPhaseMapState[K]) *TwoPhaseMapSnapshot[K, D] {
 	addKeys := lib.MapKeys(state.AddContents)
 	removeKeys := lib.MapKeys(state.RemoveContents)
@@ -121,12 +129,18 @@ func (m *TwoPhaseMap[K, D]) SnapShotFromState(state *TwoPhaseMapState[K]) *TwoPh
 	}
 }
 
+// TwoPhaseMapState: encapsulates the state of the map
+// without specifying the data that is stored
 type TwoPhaseMapState[K cmp.Ordered] struct {
+	// Vectors: the vector ID of each process
 	Vectors        map[uint64]uint64
+	// AddContents: the contents of the add map
 	AddContents    map[uint64]uint64
+	// RemoveContents: the contents of the remove map
 	RemoveContents map[uint64]uint64
 }
 
+// IsMarked: returns true if the given value is marked in an undetermined state
 func (m *TwoPhaseMap[K, D]) IsMarked(key K) bool {
 	return m.addMap.IsMarked(key)
 }
@@ -151,6 +165,8 @@ func (m *TwoPhaseMap[K, D]) GenerateMessage() *TwoPhaseMapState[K] {
 	}
 }
 
+// Difference: compute the set difference between the two states.
+// highestStale represents the highest vector clock that has been marked as stale
 func (m *TwoPhaseMapState[K]) Difference(highestStale uint64, state *TwoPhaseMapState[K]) *TwoPhaseMapState[K] {
 	mapState := &TwoPhaseMapState[K]{
 		AddContents:    make(map[uint64]uint64),
@@ -176,6 +192,7 @@ func (m *TwoPhaseMapState[K]) Difference(highestStale uint64, state *TwoPhaseMap
 	return mapState
 }
 
+// Merge: merge a snapshot into the map
 func (m *TwoPhaseMap[K, D]) Merge(snapshot TwoPhaseMapSnapshot[K, D]) {
 	for key, value := range snapshot.Add {
 		// Gravestone is local only to that node.
@@ -190,6 +207,7 @@ func (m *TwoPhaseMap[K, D]) Merge(snapshot TwoPhaseMapSnapshot[K, D]) {
 	}
 }
 
+// Prune: garbage collect all stale entries in the map
 func (m *TwoPhaseMap[K, D]) Prune() {
 	m.addMap.Prune()
 	m.removeMap.Prune()

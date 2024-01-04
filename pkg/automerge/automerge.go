@@ -1,3 +1,5 @@
+// automerge: package is depracated and unused. Please refer to crdt
+// for crdt operations in the mesh
 package automerge
 
 import (
@@ -17,18 +19,28 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// CrdtMeshManager manages nodes in the crdt mesh
+// CrdtMeshManager manage the CRDT datastore
 type CrdtMeshManager struct {
-	MeshId        string
-	IfName        string
-	Client        *wgctrl.Client
-	doc           *automerge.Doc
-	LastHash      automerge.ChangeHash
-	conf          *conf.WgConfiguration
-	cache         *MeshCrdt
+	// MeshID of the mesh the datastore represents
+	MeshId string
+	// IfName: corresponding ifName
+	IfName string
+	// Client: corresponding wireguard control client
+	Client *wgctrl.Client
+	// doc: autommerge document
+	doc *automerge.Doc
+	// LastHash: last hash that the changes were made to
+	LastHash automerge.ChangeHash
+	// conf: WireGuard configuration
+	conf *conf.WgConfiguration
+	// cache: stored cache of the list automerge document
+	// so that the store does not have to be repopulated each time
+	cache *MeshCrdt
+	// lastCachehash: hash of when the document was last changed
 	lastCacheHash automerge.ChangeHash
 }
 
+// AddNode as a node to the datastore
 func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	crdt, ok := node.(*MeshNodeCrdt)
 
@@ -47,6 +59,7 @@ func (c *CrdtMeshManager) AddNode(node mesh.MeshNode) {
 	}
 }
 
+// isPeer: returns true if the given node has type peer
 func (c *CrdtMeshManager) isPeer(nodeId string) bool {
 	node, err := c.doc.Path("nodes").Map().Get(nodeId)
 
@@ -64,7 +77,8 @@ func (c *CrdtMeshManager) isPeer(nodeId string) bool {
 }
 
 // isAlive: checks that the node's configuration has been updated
-// since the rquired keep alive time
+// since the rquired keep alive time. Depracated no longer works
+// due to changes in approach
 func (c *CrdtMeshManager) isAlive(nodeId string) bool {
 	node, err := c.doc.Path("nodes").Map().Get(nodeId)
 
@@ -78,10 +92,11 @@ func (c *CrdtMeshManager) isAlive(nodeId string) bool {
 		return false
 	}
 
-	return true
 	// return (time.Now().Unix() - keepAliveTime) < int64(c.conf.DeadTime)
+	return true
 }
 
+// GetPeers: get all the peers in the mesh
 func (c *CrdtMeshManager) GetPeers() []string {
 	keys, _ := c.doc.Path("nodes").Map().Keys()
 
@@ -92,7 +107,7 @@ func (c *CrdtMeshManager) GetPeers() []string {
 	return keys
 }
 
-// GetMesh(): Converts the document into a struct
+// GetMesh: Converts the document into a mesh network
 func (c *CrdtMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
 	changes, err := c.doc.Changes(c.lastCacheHash)
 
@@ -114,7 +129,7 @@ func (c *CrdtMeshManager) GetMesh() (mesh.MeshSnapshot, error) {
 	return c.cache, nil
 }
 
-// GetMeshId returns the meshid of the mesh
+// GetMeshId: returns the meshid of the mesh
 func (c *CrdtMeshManager) GetMeshId() string {
 	return c.MeshId
 }
@@ -135,6 +150,8 @@ func (c *CrdtMeshManager) Load(bytes []byte) error {
 	return nil
 }
 
+// NewCrdtNodeManagerParams: params to instantiate a new automerge
+// datastore
 type NewCrdtNodeMangerParams struct {
 	MeshId  string
 	DevName string
@@ -143,7 +160,7 @@ type NewCrdtNodeMangerParams struct {
 	Client  *wgctrl.Client
 }
 
-// NewCrdtNodeManager: Create a new crdt node manager
+// NewCrdtNodeManager: Create a new automerge crdt data store
 func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, error) {
 	var manager CrdtMeshManager
 	manager.MeshId = params.MeshId
@@ -155,12 +172,13 @@ func NewCrdtNodeManager(params *NewCrdtNodeMangerParams) (*CrdtMeshManager, erro
 	return &manager, nil
 }
 
-// NodeExists: returns true if the node exists. Returns false
+// NodeExists: returns true if the node exists other returns false
 func (m *CrdtMeshManager) NodeExists(key string) bool {
 	node, err := m.doc.Path("nodes").Map().Get(key)
 	return node.Kind() == automerge.KindMap && err == nil
 }
 
+// GetNode: gets a node from the mesh network.
 func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {
 	node, err := m.doc.Path("nodes").Map().Get(endpoint)
 
@@ -181,10 +199,12 @@ func (m *CrdtMeshManager) GetNode(endpoint string) (mesh.MeshNode, error) {
 	return meshNode, nil
 }
 
+// Length: returns the number of nodes in the store
 func (m *CrdtMeshManager) Length() int {
 	return m.doc.Path("nodes").Map().Len()
 }
 
+// GetDevice: get the underlying WireGuard device
 func (m *CrdtMeshManager) GetDevice() (*wgtypes.Device, error) {
 	dev, err := m.Client.Device(m.IfName)
 
@@ -195,7 +215,7 @@ func (m *CrdtMeshManager) GetDevice() (*wgtypes.Device, error) {
 	return dev, nil
 }
 
-// HasChanges returns true if we have changes since the last time we synced
+// HasChanges: returns true if there are changes since last time synchronised
 func (m *CrdtMeshManager) HasChanges() bool {
 	changes, err := m.doc.Changes(m.LastHash)
 
@@ -209,6 +229,7 @@ func (m *CrdtMeshManager) HasChanges() bool {
 	return len(changes) > 0
 }
 
+// SaveChanges: save changes to the datastore
 func (m *CrdtMeshManager) SaveChanges() {
 	hashes := m.doc.Heads()
 	hash := hashes[len(hashes)-1]
@@ -217,6 +238,7 @@ func (m *CrdtMeshManager) SaveChanges() {
 	m.LastHash = hash
 }
 
+// UpdateTimeStamp: updates the timestamp of the document
 func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -237,6 +259,7 @@ func (m *CrdtMeshManager) UpdateTimeStamp(nodeId string) error {
 	return err
 }
 
+// SetDescription: set the description of the given node
 func (m *CrdtMeshManager) SetDescription(nodeId string, description string) error {
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -257,6 +280,7 @@ func (m *CrdtMeshManager) SetDescription(nodeId string, description string) erro
 	return err
 }
 
+// SetAlias: set the alias of the given node
 func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -277,6 +301,7 @@ func (m *CrdtMeshManager) SetAlias(nodeId string, alias string) error {
 	return err
 }
 
+// AddService: add a service to the given node
 func (m *CrdtMeshManager) AddService(nodeId, key, value string) error {
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -298,6 +323,7 @@ func (m *CrdtMeshManager) AddService(nodeId, key, value string) error {
 	return err
 }
 
+// RemoveService: remove a service from a node
 func (m *CrdtMeshManager) RemoveService(nodeId, key string) error {
 	node, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -378,6 +404,7 @@ func (m *CrdtMeshManager) AddRoutes(nodeId string, routes ...mesh.Route) error {
 	return nil
 }
 
+// getRoutes: get the routes that the given node is directly advertising
 func (m *CrdtMeshManager) getRoutes(nodeId string) ([]Route, error) {
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -404,6 +431,8 @@ func (m *CrdtMeshManager) getRoutes(nodeId string) ([]Route, error) {
 	return lib.MapValues(routes), err
 }
 
+// GetRoutes: get all the routes that the node can see. The routes that the node
+// can say may not be direct but cann also be indirect
 func (m *CrdtMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, error) {
 	node, err := m.GetNode(targetNode)
 
@@ -447,12 +476,13 @@ func (m *CrdtMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, e
 	return routes, nil
 }
 
+// RemoveNode: removes a node from the datastore
 func (m *CrdtMeshManager) RemoveNode(nodeId string) error {
 	err := m.doc.Path("nodes").Map().Delete(nodeId)
 	return err
 }
 
-// DeleteRoutes deletes the specified routes
+// RemoveRoutes: withdraw all the routes the nodeID is advertising
 func (m *CrdtMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Route) error {
 	nodeVal, err := m.doc.Path("nodes").Map().Get(nodeId)
 
@@ -486,30 +516,37 @@ func (m *CrdtMeshManager) GetConfiguration() *conf.WgConfiguration {
 func (m *CrdtMeshManager) Mark(nodeId string) {
 }
 
+// GetSyncer: get the bi-directionally syncer to synchronise the document
 func (m *CrdtMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewAutomergeSync(m)
 }
 
+// Prune: prune all dead nodes
 func (m *CrdtMeshManager) Prune() error {
 	return nil
 }
 
+// Compare: compare two mesh node for equality
 func (m1 *MeshNodeCrdt) Compare(m2 *MeshNodeCrdt) int {
 	return strings.Compare(m1.PublicKey, m2.PublicKey)
 }
 
+// GetHostEndpoint: get the ctrl endpoint of the host
 func (m *MeshNodeCrdt) GetHostEndpoint() string {
 	return m.HostEndpoint
 }
 
+// GetPublicKey: get the public key of the node
 func (m *MeshNodeCrdt) GetPublicKey() (wgtypes.Key, error) {
 	return wgtypes.ParseKey(m.PublicKey)
 }
 
+// GetWgEndpoint: get the outer WireGuard endpoint
 func (m *MeshNodeCrdt) GetWgEndpoint() string {
 	return m.WgEndpoint
 }
 
+// GetWgHost: get the WireGuard IP address of the host
 func (m *MeshNodeCrdt) GetWgHost() *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(m.WgHost)
 
@@ -520,10 +557,12 @@ func (m *MeshNodeCrdt) GetWgHost() *net.IPNet {
 	return ipnet
 }
 
+// GetTimeStamp: get timestamp if when the node was last updated
 func (m *MeshNodeCrdt) GetTimeStamp() int64 {
 	return m.Timestamp
 }
 
+// GetRoutes: get all the routes advertised by the node
 func (m *MeshNodeCrdt) GetRoutes() []mesh.Route {
 	return lib.Map(lib.MapValues(m.Routes), func(r Route) mesh.Route {
 		return &Route{
@@ -533,10 +572,12 @@ func (m *MeshNodeCrdt) GetRoutes() []mesh.Route {
 	})
 }
 
+// GetDescription: get the description of the node
 func (m *MeshNodeCrdt) GetDescription() string {
 	return m.Description
 }
 
+// GetIdentifier: get the iderntifier section of the ipv6 address
 func (m *MeshNodeCrdt) GetIdentifier() string {
 	ipv6 := m.WgHost[:len(m.WgHost)-4]
 
@@ -545,10 +586,12 @@ func (m *MeshNodeCrdt) GetIdentifier() string {
 	return strings.Join(constituents, ":")
 }
 
+// GetAlias: get the alias of the node
 func (m *MeshNodeCrdt) GetAlias() string {
 	return m.Alias
 }
 
+// GetServices: get all the services the node is advertising
 func (m *MeshNodeCrdt) GetServices() map[string]string {
 	services := make(map[string]string)
 
@@ -565,6 +608,7 @@ func (n *MeshNodeCrdt) GetType() conf.NodeType {
 	return conf.NodeType(n.Type)
 }
 
+// GetNodes: get all the nodes in the network
 func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 	nodes := make(map[string]mesh.MeshNode)
 
@@ -586,15 +630,18 @@ func (m *MeshCrdt) GetNodes() map[string]mesh.MeshNode {
 	return nodes
 }
 
+// GetDestination: get destination of the route
 func (r *Route) GetDestination() *net.IPNet {
 	_, ipnet, _ := net.ParseCIDR(r.Destination)
 	return ipnet
 }
 
+// GetHopCount: get the number of hops to the destination
 func (r *Route) GetHopCount() int {
 	return len(r.Path)
 }
 
+// GetPath: get the total path which includes the number of hops
 func (r *Route) GetPath() []string {
 	return r.Path
 }

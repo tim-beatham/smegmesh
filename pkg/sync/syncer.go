@@ -16,34 +16,33 @@ import (
 
 // Syncer: picks random nodes from the meshs
 type Syncer interface {
-	Sync(theMesh mesh.MeshProvider) error
+	Sync(theMesh mesh.MeshProvider) (bool, error)
 	SyncMeshes() error
 }
 
+// SyncerImpl: implementation of a syncer to sync meshes
 type SyncerImpl struct {
-	manager        mesh.MeshManager
+	meshManager    mesh.MeshManager
 	requester      SyncRequester
 	infectionCount int
 	syncCount      int
 	cluster        conn.ConnCluster
-	conf           *conf.DaemonConfiguration
+	configuration  *conf.DaemonConfiguration
 	lastSync       map[string]int64
-	lock           sync.RWMutex
+	lastPoll       map[string]int64
+	lastSyncLock   sync.RWMutex
+	lastPollLock   sync.RWMutex
 }
 
-// Sync: Sync with random nodes
-func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
+// Sync: Sync with random nodes. Returns true if there was changes false otherwise
+func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 	if correspondingMesh == nil {
-		return fmt.Errorf("mesh provided was nil cannot sync nil mesh")
+		return false, fmt.Errorf("mesh provided was nil cannot sync nil mesh")
 	}
 
 	// Self can be nil if the node is removed
-	selfID := s.manager.GetPublicKey()
-	self, err := correspondingMesh.GetNode(selfID.String())
-
-	if err != nil {
-		logging.Log.WriteErrorf(err.Error())
-	}
+	selfID := s.meshManager.GetPublicKey()
+	self, _ := correspondingMesh.GetNode(selfID.String())
 
 	correspondingMesh.Prune()
 
@@ -56,21 +55,21 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 		logging.Log.WriteInfof("no changes for %s", correspondingMesh.GetMeshId())
 
 		// If not synchronised in certain time pull from random neighbour
-		if s.conf.PullTime != 0 && time.Now().Unix()-s.lastSync[correspondingMesh.GetMeshId()] > int64(s.conf.PullTime) {
+		if s.configuration.PullTime != 0 && time.Now().Unix()-s.lastSync[correspondingMesh.GetMeshId()] > int64(s.configuration.PullTime) {
 			return s.Pull(self, correspondingMesh)
 		}
 
-		return nil
+		return false, nil
 	}
 
 	before := time.Now()
-	err = s.manager.GetRouteManager().UpdateRoutes()
+	err := s.meshManager.GetRouteManager().UpdateRoutes()
 
 	if err != nil {
 		logging.Log.WriteErrorf(err.Error())
 	}
 
-	publicKey := s.manager.GetPublicKey()
+	publicKey := s.meshManager.GetPublicKey()
 	nodeNames := correspondingMesh.GetPeers()
 
 	nodeNames = lib.Filter(nodeNames, func(s string) bool {
@@ -85,7 +84,7 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 		neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
 
 		if len(neighbours) == 0 {
-			return nil
+			return false, nil
 		}
 
 		// Peer with 2 nodes so that there is redundnacy in
@@ -94,9 +93,9 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 		gossipNodes = neighbours[:redundancyLength]
 	} else {
 		neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
-		gossipNodes = lib.RandomSubsetOfLength(neighbours, s.conf.BranchRate)
+		gossipNodes = lib.RandomSubsetOfLength(neighbours, s.configuration.BranchRate)
 
-		if len(nodeNames) > s.conf.ClusterSize && rand.Float64() < s.conf.InterClusterChance {
+		if len(nodeNames) > s.configuration.ClusterSize && rand.Float64() < s.configuration.InterClusterChance {
 			gossipNodes[len(gossipNodes)-1] = s.cluster.GetInterCluster(nodeNames, publicKey.String())
 		}
 	}
@@ -127,23 +126,24 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) error {
 	logging.Log.WriteInfof("sync time: %v", time.Since(before))
 	logging.Log.WriteInfof("number of syncs: %d", s.syncCount)
 
-	s.infectionCount = ((s.conf.InfectionCount + s.infectionCount - 1) % s.conf.InfectionCount)
+	s.infectionCount = ((s.configuration.InfectionCount + s.infectionCount - 1) % s.configuration.InfectionCount)
 
 	if !succeeded {
 		s.infectionCount++
 	}
 
+	changes := correspondingMesh.HasChanges()
 	correspondingMesh.SaveChanges()
 
-	s.lock.Lock()
+	s.lastSyncLock.Lock()
 	s.lastSync[correspondingMesh.GetMeshId()] = time.Now().Unix()
-	s.lock.Unlock()
-	return nil
+	s.lastSyncLock.Unlock()
+	return changes, nil
 }
 
 // Pull one node in the cluster, if there has not been message dissemination
 // in a certain period of time pull a random node within the cluster
-func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) error {
+func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) (bool, error) {
 	peers := mesh.GetPeers()
 	pubKey, _ := self.GetPublicKey()
 
@@ -152,7 +152,7 @@ func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) error {
 
 	if len(neighbour) == 0 {
 		logging.Log.WriteInfof("no neighbours")
-		return nil
+		return false, nil
 	}
 
 	logging.Log.WriteInfof("pulling from node %s", neighbour[0])
@@ -160,7 +160,7 @@ func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) error {
 	pullNode, err := mesh.GetNode(neighbour[0])
 
 	if err != nil || pullNode == nil {
-		return fmt.Errorf("node %s does not exist in the mesh", neighbour[0])
+		return false, fmt.Errorf("node %s does not exist in the mesh", neighbour[0])
 	}
 
 	err = s.requester.SyncMesh(mesh.GetMeshId(), pullNode)
@@ -168,36 +168,70 @@ func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) error {
 	if err == nil || err == io.EOF {
 		s.lastSync[mesh.GetMeshId()] = time.Now().Unix()
 	} else {
-		return err
+		return false, err
 	}
 
 	s.syncCount++
-	return nil
+
+	changes := mesh.HasChanges()
+	return changes, nil
 }
 
 // SyncMeshes: Sync all meshes
 func (s *SyncerImpl) SyncMeshes() error {
 	var wg sync.WaitGroup
 
-	for _, mesh := range s.manager.GetMeshes() {
+	meshes := s.meshManager.GetMeshes()
+
+	s.lastPollLock.Lock()
+	meshesToSync := lib.Filter(lib.MapValues(meshes), func(mesh mesh.MeshProvider) bool {
+		return time.Now().Unix()-s.lastPoll[mesh.GetMeshId()] >= int64(s.configuration.SyncTime)
+	})
+	s.lastPollLock.Unlock()
+
+	changes := make(chan bool, len(meshesToSync))
+
+	for i := 0; i < len(meshesToSync); {
 		wg.Add(1)
 
-		sync := func() {
+		sync := func(index int) {
 			defer wg.Done()
 
-			err := s.Sync(mesh)
+			var hasChanges bool = false
+
+			mesh := meshesToSync[index]
+
+			hasChanges, err := s.Sync(mesh)
+			changes <- hasChanges
 
 			if err != nil {
 				logging.Log.WriteErrorf(err.Error())
 			}
+
+			s.lastPollLock.Lock()
+			s.lastPoll[mesh.GetMeshId()] = time.Now().Unix()
+			s.lastPollLock.Unlock()
 		}
 
-		go sync()
+		go sync(i)
+		i++
 	}
 	wg.Wait()
 
-	logging.Log.WriteInfof("updating the WireGuard configuration")
-	err := s.manager.ApplyConfig()
+	hasChanges := false
+
+	for i := 0; i < len(changes); i++ {
+		if <-changes {
+			hasChanges = true
+		}
+	}
+
+	var err error
+
+	if hasChanges {
+		logging.Log.WriteInfof("updating the WireGuard configuration")
+		err = s.meshManager.ApplyConfig()
+	}
 
 	if err != nil {
 		logging.Log.WriteInfof("failed to update config %w", err)
@@ -205,14 +239,28 @@ func (s *SyncerImpl) SyncMeshes() error {
 	return nil
 }
 
-func NewSyncer(m mesh.MeshManager, conf *conf.DaemonConfiguration, r SyncRequester) Syncer {
-	cluster, _ := conn.NewConnCluster(conf.ClusterSize)
+type NewSyncerParams struct {
+	MeshManager       mesh.MeshManager
+	ConnectionManager conn.ConnectionManager
+	Configuration     *conf.DaemonConfiguration
+	Requester         SyncRequester
+}
+
+func NewSyncer(params *NewSyncerParams) Syncer {
+	cluster, _ := conn.NewConnCluster(params.Configuration.ClusterSize)
+	syncRequester := NewSyncRequester(NewSyncRequesterParams{
+		MeshManager:       params.MeshManager,
+		ConnectionManager: params.ConnectionManager,
+		Configuration:     params.Configuration,
+	})
+
 	return &SyncerImpl{
-		manager:        m,
-		conf:           conf,
-		requester:      r,
+		meshManager:    params.MeshManager,
+		configuration:  params.Configuration,
+		requester:      syncRequester,
 		infectionCount: 0,
 		syncCount:      0,
 		cluster:        cluster,
-		lastSync:       make(map[string]int64)}
+		lastSync:       make(map[string]int64),
+		lastPoll:       make(map[string]int64)}
 }

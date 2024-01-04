@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
+// CmdRunner: run cmd commands when instantiating a network
 type CmdRunner interface {
 	RunCommands(commands ...string) error
 }
 
+// UnixCmdRunner: Run UNIX commands
 type UnixCmdRunner struct{}
 
 // RunCommand: runs the unix command. It splits the command into fields
@@ -20,6 +22,7 @@ func RunCommand(cmd string) error {
 	return c.Run()
 }
 
+// RunCommands: run a series of commands
 func (l *UnixCmdRunner) RunCommands(commands ...string) error {
 	for _, cmd := range commands {
 		err := RunCommand(cmd)

@@ -8,8 +8,11 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/mesh"
 )
 
+// CrdtProviderFactory: abstracts the instantiation of an automerge
+// datastore
 type CrdtProviderFactory struct{}
 
+// CreateMesh: create a new mesh datastore
 func (f *CrdtProviderFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) (mesh.MeshProvider, error) {
 	return NewCrdtNodeManager(&NewCrdtNodeMangerParams{
 		MeshId:  params.MeshId,
@@ -19,11 +22,12 @@ func (f *CrdtProviderFactory) CreateMesh(params *mesh.MeshProviderFactoryParams)
 	})
 }
 
+// MeshNodeFactory: abstracts the instnatiation of a node
 type MeshNodeFactory struct {
 	Config conf.DaemonConfiguration
 }
 
-// Build builds the mesh node that represents the host machine to add
+// Build: builds the mesh node that represents the host machine to add
 // to the  mesh
 func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNode {
 	hostName := f.getAddress(params)
@@ -48,7 +52,7 @@ func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNod
 	}
 }
 
-// getAddress returns the routable address of the machine.
+// getAddress: returns the routable address of the machine.
 func (f *MeshNodeFactory) getAddress(params *mesh.MeshNodeFactoryParams) string {
 	var hostName string = ""
 

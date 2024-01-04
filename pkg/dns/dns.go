@@ -1,3 +1,4 @@
+// smegdns: example of how to implement dns in the mesh
 package smegdns
 
 import (
@@ -45,6 +46,7 @@ func (d *DNSHandler) queryMesh(meshId, alias string) net.IP {
 	return ip
 }
 
+// handleQuery: handles a DNS query
 func (d *DNSHandler) handleQuery(m *dns.Msg) {
 	for _, q := range m.Question {
 		switch q.Qtype {
@@ -72,6 +74,7 @@ func (d *DNSHandler) handleQuery(m *dns.Msg) {
 	}
 }
 
+// handleDNS query: handle a DNS request
 func (h *DNSHandler) handleDnsRequest(w dns.ResponseWriter, r *dns.Msg) {
 	msg := new(dns.Msg)
 	msg.SetReply(r)

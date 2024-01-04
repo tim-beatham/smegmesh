@@ -18,6 +18,7 @@ type PeerConnection interface {
 	GetClient() (*grpc.ClientConn, error)
 }
 
+// PeerConenctionFactory: create a new connection to a peer
 type PeerConnectionFactory = func(clientConfig *tls.Config, server string) (PeerConnection, error)
 
 // WgCtrlConnection implements PeerConnection.

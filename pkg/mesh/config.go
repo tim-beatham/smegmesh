@@ -1,7 +1,6 @@
 package mesh
 
 import (
-	"fmt"
 	"net"
 	"slices"
 	"strings"
@@ -16,12 +15,13 @@ import (
 
 // MeshConfigApplyer abstracts applying the mesh configuration
 type MeshConfigApplyer interface {
+	// ApplyConfig: apply the configurtation
 	ApplyConfig() error
-	RemovePeers(meshId string) error
+	// SetMeshManager: sets the associated manager
 	SetMeshManager(manager MeshManager)
 }
 
-// WgMeshConfigApplyer applies WireGuard configuration
+// WgMeshConfigApplyer: applies WireGuard configuration
 type WgMeshConfigApplyer struct {
 	meshManager    MeshManager
 	routeInstaller route.RouteInstaller
@@ -196,6 +196,7 @@ func (m *WgMeshConfigApplyer) getCorrespondingPeer(peers []MeshNode, client Mesh
 	return peer
 }
 
+// getPeerCfgsToRemove: remove peer configurations that are no longer in the mesh
 func (m *WgMeshConfigApplyer) getPeerCfgsToRemove(dev *wgtypes.Device, newPeers []wgtypes.PeerConfig) []wgtypes.PeerConfig {
 	peers := dev.Peers
 	peers = lib.Filter(peers, func(p1 wgtypes.Peer) bool {
@@ -220,6 +221,7 @@ type GetConfigParams struct {
 	routes  map[string][]routeNode
 }
 
+// getClientConfig: if the node is a client get their configuration
 func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes.Config, error) {
 	ula := &ip.ULABuilder{}
 	meshNet, _ := ula.GetIPNet(params.mesh.GetMeshId())
@@ -281,6 +283,8 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 	return &cfg, err
 }
 
+// getRoutesToInstall: work out if the given node is advertising routes that should be installed into the
+// RIB
 func (m *WgMeshConfigApplyer) getRoutesToInstall(wgNode *wgtypes.PeerConfig, mesh MeshProvider, node MeshNode) []lib.Route {
 	routes := make([]lib.Route, 0)
 
@@ -301,6 +305,7 @@ func (m *WgMeshConfigApplyer) getRoutesToInstall(wgNode *wgtypes.PeerConfig, mes
 	return routes
 }
 
+// getPeerConfig: creates the WireGuard configuration for a peer
 func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.Config, error) {
 	peerToClients := make(map[string][]net.IPNet)
 	installedRoutes := make([]lib.Route, 0)
@@ -374,6 +379,7 @@ func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.C
 	return &cfg, err
 }
 
+// updateWgConf: update the WireGuard configuration
 func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider, routes map[string][]routeNode) error {
 	snap, err := mesh.GetMesh()
 
@@ -435,6 +441,8 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider, routes map[string]
 	return nil
 }
 
+// getAllRoutes: works out all the routes to install out of all the routes in the
+// set of networks the node is a part of
 func (m *WgMeshConfigApplyer) getAllRoutes() (map[string][]routeNode, error) {
 	allRoutes := make(map[string][]routeNode)
 
@@ -464,6 +472,7 @@ func (m *WgMeshConfigApplyer) getAllRoutes() (map[string][]routeNode, error) {
 	return allRoutes, nil
 }
 
+// ApplyConfig: apply the WireGuard configuration
 func (m *WgMeshConfigApplyer) ApplyConfig() error {
 	allRoutes, err := m.getAllRoutes()
 
@@ -478,27 +487,6 @@ func (m *WgMeshConfigApplyer) ApplyConfig() error {
 			return err
 		}
 	}
-
-	return nil
-}
-
-func (m *WgMeshConfigApplyer) RemovePeers(meshId string) error {
-	mesh := m.meshManager.GetMesh(meshId)
-
-	if mesh == nil {
-		return fmt.Errorf("mesh %s does not exist", meshId)
-	}
-
-	dev, err := mesh.GetDevice()
-
-	if err != nil {
-		return err
-	}
-
-	m.meshManager.GetClient().ConfigureDevice(dev.Name, wgtypes.Config{
-		Peers:        make([]wgtypes.PeerConfig, 0),
-		ReplacePeers: true,
-	})
 
 	return nil
 }

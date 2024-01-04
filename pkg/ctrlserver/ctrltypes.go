@@ -13,12 +13,14 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// MeshRoute: represents a route in the mesh that is
+// available to client applications
 type MeshRoute struct {
 	Destination string
 	Path        []string
 }
 
-// Represents the WireGuard configuration attached to the node
+// WireGuardStats: Represents the WireGuard configuration attached to the node
 type WireGuardStats struct {
 	AllowedIPs                  []string
 	TransmitBytes               int64
@@ -26,7 +28,8 @@ type WireGuardStats struct {
 	PersistentKeepAliveInterval time.Duration
 }
 
-// Represents a WireGuard MeshNode
+// MeshNode: represents a node in the WireGuard mesh that can be
+// sent to ip chandlers
 type MeshNode struct {
 	HostEndpoint string
 	WgEndpoint   string
@@ -40,12 +43,13 @@ type MeshNode struct {
 	Stats        WireGuardStats
 }
 
-// Represents a WireGuard Mesh
+// Mesh: Represents a WireGuard Mesh network that can be sent
+// along ipc to client frameworks
 type Mesh struct {
-	SharedKey *wgtypes.Key
 	Nodes     map[string]MeshNode
 }
 
+// CtrlServer: Encapsulates th ctrlserver
 type CtrlServer interface {
 	GetConfiguration() *conf.DaemonConfiguration
 	GetClient() *wgctrl.Client
@@ -55,7 +59,7 @@ type CtrlServer interface {
 	GetConnectionManager() conn.ConnectionManager
 }
 
-// Represents a ctrlserver to be used in WireGuard
+// MeshCtrlServer: Represents a ctrlserver to be used in WireGuard
 type MeshCtrlServer struct {
 	Client            *wgctrl.Client
 	MeshManager       mesh.MeshManager
@@ -63,6 +67,7 @@ type MeshCtrlServer struct {
 	ConnectionServer  *conn.ConnectionServer
 	Conf              *conf.DaemonConfiguration
 	Querier           query.Querier
+	timers            []*lib.Timer
 }
 
 // NewCtrlNode create an instance of a ctrl node to send over an

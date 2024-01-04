@@ -1,8 +1,7 @@
 package ip
 
-/*
- * Use a WireGuard public key to generate a unique interface ID
- */
+// Generates a CGA see RFC 3972
+// https://datatracker.ietf.org/doc/html/rfc3972
 
 import (
 	"crypto/rand"
@@ -22,15 +21,19 @@ const (
 	InterfaceIdLen = 8
 )
 
-/*
- * Cga parameters used to generate an IPV6 interface ID
- */
+// CGAParameters: parameters used to create a new cryotpgraphically generated
+// address
 type CgaParameters struct {
 	Modifier       [ModifierLength]byte
+	// SubnetPrefix: prefix of the subnetwork
 	SubnetPrefix   [2 * InterfaceIdLen]byte
+	// CollisionCount: total number of times we have atempted to generate a porefix
 	CollisionCount uint8
+	// PublicKey: WireGuard public key of our interface
 	PublicKey      wgtypes.Key
+	// interfaceId: the generated interfaceId
 	interfaceId    [2 * InterfaceIdLen]byte
+	// flag: represents whether or not an IP address has been generated
 	flag           byte
 }
 
@@ -47,22 +50,6 @@ func NewCga(key wgtypes.Key, collisionCount uint8, subnetPrefix [2 * InterfaceId
 	params.SubnetPrefix = subnetPrefix
 	params.CollisionCount = collisionCount
 	return &params, nil
-}
-
-func (c *CgaParameters) generateHash2() []byte {
-	var byteVal [hash2Length]byte
-
-	for i := 0; i < ModifierLength; i++ {
-		byteVal[i] = c.Modifier[i]
-	}
-
-	for i := 0; i < wgtypes.KeyLen; i++ {
-		byteVal[ModifierLength+ZeroLength+i] = c.PublicKey[i]
-	}
-
-	hash := sha1.Sum(byteVal[:])
-
-	return hash[:Hash2Prefix]
 }
 
 func (c *CgaParameters) generateHash1() []byte {
@@ -98,7 +85,6 @@ func (c *CgaParameters) generateInterface() []byte {
 
 	interfaceId[0] = clearBit(int(interfaceId[0]), 6)
 	interfaceId[0] = clearBit(int(interfaceId[1]), 7)
-
 	return interfaceId
 }
 

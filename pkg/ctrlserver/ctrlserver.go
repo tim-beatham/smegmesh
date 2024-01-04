@@ -10,6 +10,7 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/mesh"
 	"github.com/tim-beatham/smegmesh/pkg/query"
 	"github.com/tim-beatham/smegmesh/pkg/rpc"
+	"github.com/tim-beatham/smegmesh/pkg/sync"
 	"github.com/tim-beatham/smegmesh/pkg/wg"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
@@ -21,7 +22,6 @@ type NewCtrlServerParams struct {
 	CtrlProvider rpc.MeshCtrlServerServer
 	SyncProvider rpc.SyncServiceServer
 	Querier      query.Querier
-	OnDelete     func(mesh.MeshProvider)
 }
 
 // Create a new instance of the MeshCtrlServer or error if the
@@ -38,7 +38,11 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	ipAllocator := &ip.ULABuilder{}
 	interfaceManipulator := wg.NewWgInterfaceManipulator(params.Client)
 
+	ctrlServer.timers = make([]*lib.Timer, 0)
+
 	configApplyer := mesh.NewWgMeshConfigApplyer()
+
+	var syncer sync.Syncer
 
 	meshManagerParams := &mesh.NewMeshManagerParams{
 		Conf:                 *params.Conf,
@@ -49,7 +53,13 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		IPAllocator:          ipAllocator,
 		InterfaceManipulator: interfaceManipulator,
 		ConfigApplyer:        configApplyer,
-		OnDelete:             params.OnDelete,
+		OnDelete: func(mesh mesh.MeshProvider) {
+			_, err := syncer.Sync(mesh)
+
+			if err != nil {
+				logging.Log.WriteErrorf(err.Error())
+			}
+		},
 	}
 
 	ctrlServer.MeshManager = mesh.NewMeshManager(meshManagerParams)
@@ -83,8 +93,36 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		return nil, err
 	}
 
+	syncer = sync.NewSyncer(&sync.NewSyncerParams{
+		MeshManager:       ctrlServer.MeshManager,
+		ConnectionManager: ctrlServer.ConnectionManager,
+		Configuration:     params.Conf,
+	})
+
+	// Check any syncs every 1 second
+	syncTimer := lib.NewTimer(func() error {
+		err = syncer.SyncMeshes()
+
+		if err != nil {
+			logging.Log.WriteErrorf(err.Error())
+		}
+
+		return nil
+	}, 1)
+
+	heartbeatTimer := lib.NewTimer(func() error {
+		logging.Log.WriteInfof("checking heartbeat")
+		return ctrlServer.MeshManager.UpdateTimeStamp()
+	}, params.Conf.HeartBeat)
+
+	ctrlServer.timers = append(ctrlServer.timers, syncTimer, heartbeatTimer)
+
 	ctrlServer.Querier = query.NewJmesQuerier(ctrlServer.MeshManager)
 	ctrlServer.ConnectionServer = connServer
+
+	for _, timer := range ctrlServer.timers {
+		go timer.Run()
+	}
 
 	return ctrlServer, nil
 }
@@ -121,6 +159,14 @@ func (s *MeshCtrlServer) Close() error {
 
 	if err := s.ConnectionServer.Close(); err != nil {
 		logging.Log.WriteErrorf(err.Error())
+	}
+
+	for _, timer := range s.timers {
+		err := timer.Stop()
+
+		if err != nil {
+			logging.Log.WriteErrorf(err.Error())
+		}
 	}
 
 	return nil

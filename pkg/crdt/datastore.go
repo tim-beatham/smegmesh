@@ -17,8 +17,11 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// Route: represents a route within the data store
 type Route struct {
+	// Destination the route is advertising
 	Destination string
+	// Path to the destination
 	Path        []string
 }
 
@@ -248,7 +251,8 @@ func (m *TwoPhaseStoreMeshManager) SaveChanges() {
 	m.LastClock = clockValue
 }
 
-// UpdateTimeStamp: update the timestamp of the given node
+// UpdateTimeStamp: update the timestamp of the given node, causes a configuration refresh if the node
+// is the leader causing all nodes to update their vector clocks
 func (m *TwoPhaseStoreMeshManager) UpdateTimeStamp(nodeId string) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -312,6 +316,8 @@ func (m *TwoPhaseStoreMeshManager) AddRoutes(nodeId string, routes ...mesh.Route
 		}
 	}
 
+	// Only add nodes on changes. Otherwise the node will advertise new 
+	// information whenever they get new routes
 	if changes {
 		m.store.Put(nodeId, node)
 	}
@@ -319,7 +325,7 @@ func (m *TwoPhaseStoreMeshManager) AddRoutes(nodeId string, routes ...mesh.Route
 	return nil
 }
 
-// DeleteRoutes: deletes the routes from the node
+// RemoveRoute: deletes the routes from the given node
 func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Route) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -345,12 +351,12 @@ func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Ro
 	return nil
 }
 
-// GetSyncer: returns the automerge syncer for sync
+// GetSyncer: returns the bi-directionally synchroniser to merge documents
 func (m *TwoPhaseStoreMeshManager) GetSyncer() mesh.MeshSyncer {
 	return NewTwoPhaseSyncer(m)
 }
 
-// GetNode get a particular not within the mesh
+// GetNode: get a particular not within the mesh network
 func (m *TwoPhaseStoreMeshManager) GetNode(nodeId string) (mesh.MeshNode, error) {
 	if !m.store.Contains(nodeId) {
 		return nil, fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -378,7 +384,7 @@ func (m *TwoPhaseStoreMeshManager) SetDescription(nodeId string, description str
 	return nil
 }
 
-// SetAlias: set the alias of the nodeId
+// SetAlias: set the alias of the given node
 func (m *TwoPhaseStoreMeshManager) SetAlias(nodeId string, alias string) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -391,7 +397,7 @@ func (m *TwoPhaseStoreMeshManager) SetAlias(nodeId string, alias string) error {
 	return nil
 }
 
-// AddService: adds the service to the given node
+// AddService: adds a service to the given node
 func (m *TwoPhaseStoreMeshManager) AddService(nodeId string, key string, value string) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -403,7 +409,7 @@ func (m *TwoPhaseStoreMeshManager) AddService(nodeId string, key string, value s
 	return nil
 }
 
-// RemoveService: removes the service form the node. throws an error if the service does not exist
+// RemoveService: removes the service form a node, throws an error if the service does not exist
 func (m *TwoPhaseStoreMeshManager) RemoveService(nodeId string, key string) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -420,7 +426,8 @@ func (m *TwoPhaseStoreMeshManager) RemoveService(nodeId string, key string) erro
 	return nil
 }
 
-// Prune: prunes all nodes that have not updated their timestamp in
+// Prune: prunes all nodes that have not updated their vector clock in a given amount
+// of time
 func (m *TwoPhaseStoreMeshManager) Prune() error {
 	m.store.Prune()
 	return nil
@@ -449,6 +456,7 @@ func (m *TwoPhaseStoreMeshManager) GetPeers() []string {
 	})
 }
 
+// getRoutes: get all routes the target node is advertising
 func (m *TwoPhaseStoreMeshManager) getRoutes(targetNode string) (map[string]Route, error) {
 	if !m.store.Contains(targetNode) {
 		return nil, fmt.Errorf("getRoute: cannot get route %s does not exist", targetNode)
@@ -458,7 +466,8 @@ func (m *TwoPhaseStoreMeshManager) getRoutes(targetNode string) (map[string]Rout
 	return node.Routes, nil
 }
 
-// GetRoutes(): Get all unique routes. Where the route with the least hop count is chosen
+// GetRoutes: Get all unique routes the target node is advertising. 
+// on conflicts the route with the least hop count is chosen
 func (m *TwoPhaseStoreMeshManager) GetRoutes(targetNode string) (map[string]mesh.Route, error) {
 	node, err := m.GetNode(targetNode)
 
@@ -502,7 +511,7 @@ func (m *TwoPhaseStoreMeshManager) GetRoutes(targetNode string) (map[string]mesh
 	return routes, nil
 }
 
-// RemoveNode(): remove the node from the mesh
+// RemoveNode: remove the node from the mesh
 func (m *TwoPhaseStoreMeshManager) RemoveNode(nodeId string) error {
 	if !m.store.Contains(nodeId) {
 		return fmt.Errorf("datastore: %s does not exist in the mesh", nodeId)
@@ -512,7 +521,8 @@ func (m *TwoPhaseStoreMeshManager) RemoveNode(nodeId string) error {
 	return nil
 }
 
-// GetConfiguration implements mesh.MeshProvider.
+// GetConfiguration gets the WireGuard configuration to use for this 
+// network
 func (m *TwoPhaseStoreMeshManager) GetConfiguration() *conf.WgConfiguration {
 	return m.Conf
 }

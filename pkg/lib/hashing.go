@@ -36,11 +36,13 @@ func ConsistentHash[V any, K any](values []V, client K, bucketFunc func(V) int, 
 
 	ourKey := keyFunc(client)
 
-	for _, record := range vs {
-		if ourKey < record.value {
-			return record.record
-		}
+	idx := sort.Search(len(vs), func(i int) bool {
+		return vs[i].value >= ourKey
+	})
+
+	if idx == len(vs) {
+		return vs[0].record
 	}
 
-	return vs[0].record
+	return vs[idx].record
 }

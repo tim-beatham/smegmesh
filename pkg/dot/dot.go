@@ -29,6 +29,7 @@ type Graph interface {
 	GetType() GraphType
 }
 
+// Cluster: represents a subgraph in the graphs
 type Cluster struct {
 	Type  GraphType
 	Name  string
@@ -37,6 +38,7 @@ type Cluster struct {
 	edges map[string]Edge
 }
 
+// RootGraph: Represents the top level graph
 type RootGraph struct {
 	Type     GraphType
 	Label    string
@@ -45,6 +47,7 @@ type RootGraph struct {
 	edges    map[string]Edge
 }
 
+// Node: represents a graphviz not
 type Node struct {
 	Name  string
 	Label string
@@ -52,10 +55,12 @@ type Node struct {
 	Size  int
 }
 
+// Edge: represents an edge between adjacent nodes
 type Edge interface {
 	Dottable
 }
 
+// DirectEdge: contains a directed edge between any two nodes
 type DirectedEdge struct {
 	Name  string
 	Label string
@@ -63,6 +68,8 @@ type DirectedEdge struct {
 	To    string
 }
 
+// UndirectedEdge: contains an undirected edge between any two
+// nodes
 type UndirectedEdge struct {
 	Name  string
 	Label string
@@ -75,11 +82,7 @@ type Dottable interface {
 	GetDOT() (string, error)
 }
 
-func NewGraph(label string, graphType GraphType) *RootGraph {
-	return &RootGraph{Type: graphType, Label: label, clusters: map[string]*Cluster{}, nodes: make(map[string]*Node), edges: make(map[string]Edge)}
-}
-
-// PutNode: puts a node in the graph
+// PutNode: puts a node in the root graph
 func (g *RootGraph) PutNode(name, label string, size int, shape Shape) error {
 	_, exists := g.nodes[name]
 
@@ -92,6 +95,7 @@ func (g *RootGraph) PutNode(name, label string, size int, shape Shape) error {
 	return nil
 }
 
+// PutCluster: puts a cluster in the root graph
 func (g *RootGraph) PutCluster(graph *Cluster) {
 	g.clusters[graph.Label] = graph
 }
@@ -113,6 +117,7 @@ func writeContituents[D Dottable](result *strings.Builder, elements ...D) error 
 	return nil
 }
 
+// GetDOT: convert the root graph into dot format
 func (g *RootGraph) GetDOT() (string, error) {
 	var result strings.Builder
 
@@ -138,7 +143,7 @@ func (g *RootGraph) GetDOT() (string, error) {
 	return result.String(), nil
 }
 
-// GetType implements Graph.
+// GetType: get the graph type. DIRECTED|UNDIRECTED
 func (r *RootGraph) GetType() GraphType {
 	return r.Type
 }
@@ -152,7 +157,7 @@ func constructEdge(graph Graph, name, label, from, to string) Edge {
 	}
 }
 
-// AddEdge: adds an edge between two nodes in the graph
+// AddEdge: adds an edge between two nodes in the root graph
 func (g *RootGraph) AddEdge(name string, label string, from string, to string) error {
 	g.edges[name] = constructEdge(g, name, label, from, to)
 	return nil
@@ -166,15 +171,18 @@ func (n *Node) hash() int {
 	return (int(h.Sum32()) % numColours) + 1
 }
 
+// GetDOT: convert the node into DOT format
 func (n *Node) GetDOT() (string, error) {
 	return fmt.Sprintf("node[label=\"%s\",shape=%s, style=\"filled\", fillcolor=%d, width=%d, height=%d, fixedsize=true] \"%s\";\n",
 		n.Label, n.Shape, n.hash(), n.Size, n.Size, n.Name), nil
 }
 
+// GetDOT: Convert a directed edge into dot format
 func (e *DirectedEdge) GetDOT() (string, error) {
 	return fmt.Sprintf("\"%s\" -> \"%s\" [label=\"%s\"];\n", e.From, e.To, e.Label), nil
 }
 
+// GetDOT: convert an undirected edge into dot format
 func (e *UndirectedEdge) GetDOT() (string, error) {
 	return fmt.Sprintf("\"%s\" -- \"%s\" [label=\"%s\"];\n", e.From, e.To, e.Label), nil
 }
@@ -198,6 +206,7 @@ func (g *Cluster) PutNode(name, label string, size int, shape Shape) error {
 	return nil
 }
 
+// GetDOT: convert the cluster into dot format
 func (g *Cluster) GetDOT() (string, error) {
 	var builder strings.Builder
 
@@ -212,10 +221,12 @@ func (g *Cluster) GetDOT() (string, error) {
 	return builder.String(), nil
 }
 
+// GetType: get the type of the subgraph (directed|undirected)
 func (g *Cluster) GetType() GraphType {
 	return g.Type
 }
 
+// NewSubGraph: instantiate a new subgraph
 func NewSubGraph(name string, label string, graphType GraphType) *Cluster {
 	return &Cluster{
 		Label: name,
@@ -223,5 +234,16 @@ func NewSubGraph(name string, label string, graphType GraphType) *Cluster {
 		Name:  name,
 		nodes: make(map[string]*Node),
 		edges: make(map[string]Edge),
+	}
+}
+
+// NewGraph: create a new root graph
+func NewGraph(label string, graphType GraphType) *RootGraph {
+	return &RootGraph{
+		Type: graphType, 
+		Label: label, 
+		clusters: map[string]*Cluster{}, 
+		nodes: make(map[string]*Node), 
+		edges: make(map[string]Edge)
 	}
 }

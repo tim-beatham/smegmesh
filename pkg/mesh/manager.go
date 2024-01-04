@@ -16,6 +16,8 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// MeshManager: abstracts maanging meshes, including installing the WireGuard configuration
+// to the device, and adding and removing nodes
 type MeshManager interface {
 	CreateMesh(params *CreateMeshParams) (string, error)
 	AddMesh(params *AddMeshParams) error
@@ -39,12 +41,10 @@ type MeshManager interface {
 }
 
 type MeshManagerImpl struct {
-	lock         sync.RWMutex
-	Meshes       map[string]MeshProvider
-	RouteManager RouteManager
-	Client       *wgctrl.Client
-	// HostParameters contains information that uniquely locates
-	// the node in the mesh network.
+	meshLock             sync.RWMutex
+	meshes               map[string]MeshProvider
+	RouteManager         RouteManager
+	Client               *wgctrl.Client
 	HostParameters       *HostParameters
 	conf                 *conf.DaemonConfiguration
 	meshProviderFactory  MeshProviderFactory
@@ -57,12 +57,11 @@ type MeshManagerImpl struct {
 	OnDelete             func(MeshProvider)
 }
 
-// GetRouteManager implements MeshManager.
 func (m *MeshManagerImpl) GetRouteManager() RouteManager {
 	return m.RouteManager
 }
 
-// RemoveService implements MeshManager.
+// RemoveService: remove a service from the given mesh.
 func (m *MeshManagerImpl) RemoveService(meshId, service string) error {
 	mesh := m.GetMesh(meshId)
 
@@ -77,7 +76,7 @@ func (m *MeshManagerImpl) RemoveService(meshId, service string) error {
 	return mesh.RemoveService(m.HostParameters.GetPublicKey(), service)
 }
 
-// SetService implements MeshManager.
+// SetService: add a service to the given mesh
 func (m *MeshManagerImpl) SetService(meshId, service, value string) error {
 	mesh := m.GetMesh(meshId)
 
@@ -92,8 +91,9 @@ func (m *MeshManagerImpl) SetService(meshId, service, value string) error {
 	return mesh.AddService(m.HostParameters.GetPublicKey(), service, value)
 }
 
+// GetNode: gets the node with given id in the mesh network
 func (m *MeshManagerImpl) GetNode(meshid, nodeId string) MeshNode {
-	mesh, ok := m.Meshes[meshid]
+	mesh, ok := m.meshes[meshid]
 
 	if !ok {
 		return nil
@@ -176,9 +176,9 @@ func (m *MeshManagerImpl) CreateMesh(args *CreateMeshParams) (string, error) {
 		return "", fmt.Errorf("error creating mesh: %w", err)
 	}
 
-	m.lock.Lock()
-	m.Meshes[meshId] = nodeManager
-	m.lock.Unlock()
+	m.meshLock.Lock()
+	m.meshes[meshId] = nodeManager
+	m.meshLock.Unlock()
 
 	m.cmdRunner.RunCommands(m.conf.BaseConfiguration.PostUp...)
 
@@ -192,7 +192,7 @@ type AddMeshParams struct {
 	Conf      *conf.WgConfiguration
 }
 
-// AddMesh: Add the mesh to the list of meshes
+// AddMesh: Add a new mesh network to the list of addresses
 func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 	var ifName string
 	var err error
@@ -235,20 +235,20 @@ func (m *MeshManagerImpl) AddMesh(params *AddMeshParams) error {
 		return err
 	}
 
-	m.lock.Lock()
-	m.Meshes[params.MeshId] = meshProvider
-	m.lock.Unlock()
+	m.meshLock.Lock()
+	m.meshes[params.MeshId] = meshProvider
+	m.meshLock.Unlock()
 	return nil
 }
 
-// HasChanges returns true if the mesh has changes
+// HasChanges: returns true if the mesh has changes
 func (m *MeshManagerImpl) HasChanges(meshId string) bool {
-	return m.Meshes[meshId].HasChanges()
+	return m.meshes[meshId].HasChanges()
 }
 
-// GetMesh returns the mesh with the given meshid
+// GetMesh: returns the mesh with the given meshid
 func (m *MeshManagerImpl) GetMesh(meshId string) MeshProvider {
-	theMesh := m.Meshes[meshId]
+	theMesh := m.meshes[meshId]
 	return theMesh
 }
 
@@ -258,6 +258,8 @@ func (s *MeshManagerImpl) GetPublicKey() *wgtypes.Key {
 	return &key
 }
 
+// AddSelfParams: parameters required to add yourself to a mesh
+// network
 type AddSelfParams struct {
 	// MeshId is the ID of the mesh to add this instance to
 	MeshId string
@@ -267,7 +269,7 @@ type AddSelfParams struct {
 	Endpoint string
 }
 
-// AddSelf adds this host to the mesh
+// AddSelf: adds this host to the mesh
 func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 	mesh := s.GetMesh(params.MeshId)
 
@@ -341,11 +343,11 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 		}
 	}
 
-	s.Meshes[params.MeshId].AddNode(node)
+	s.meshes[params.MeshId].AddNode(node)
 	return nil
 }
 
-// LeaveMesh leaves the mesh network
+// LeaveMesh: leaves the mesh network
 func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	mesh := s.GetMesh(meshId)
 
@@ -363,9 +365,9 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 		s.OnDelete(mesh)
 	}
 
-	s.lock.Lock()
-	delete(s.Meshes, meshId)
-	s.lock.Unlock()
+	s.meshLock.Lock()
+	delete(s.meshes, meshId)
+	s.meshLock.Unlock()
 
 	s.cmdRunner.RunCommands(s.conf.BaseConfiguration.PreDown...)
 
@@ -388,7 +390,7 @@ func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 }
 
 func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
-	meshInstance, ok := s.Meshes[meshId]
+	meshInstance, ok := s.meshes[meshId]
 
 	if !ok {
 		return nil, fmt.Errorf("mesh %s does not exist", meshId)
@@ -403,11 +405,12 @@ func (s *MeshManagerImpl) GetSelf(meshId string) (MeshNode, error) {
 	return node, nil
 }
 
+// ApplyConfig: applies the WireGuard configuration
+// adds routes to the RIB and so forth.
 func (s *MeshManagerImpl) ApplyConfig() error {
 	if s.conf.StubWg {
 		return nil
 	}
-
 	return s.configApplyer.ApplyConfig()
 }
 
@@ -425,7 +428,7 @@ func (s *MeshManagerImpl) SetDescription(meshId, description string) error {
 	return mesh.SetDescription(s.HostParameters.GetPublicKey(), description)
 }
 
-// SetAlias implements MeshManager.
+// SetAlias sets the alias of the node for the given meshid
 func (s *MeshManagerImpl) SetAlias(meshId, alias string) error {
 	mesh := s.GetMesh(meshId)
 
@@ -440,7 +443,8 @@ func (s *MeshManagerImpl) SetAlias(meshId, alias string) error {
 	return mesh.SetAlias(s.HostParameters.GetPublicKey(), alias)
 }
 
-// UpdateTimeStamp updates the timestamp of this node in all meshes
+// UpdateTimeStamp: updates the timestamp of this node in all meshes
+// essentially performs heartbeat if the node is the leader
 func (s *MeshManagerImpl) UpdateTimeStamp() error {
 	meshes := s.GetMeshes()
 	for _, mesh := range meshes {
@@ -460,26 +464,27 @@ func (s *MeshManagerImpl) GetClient() *wgctrl.Client {
 	return s.Client
 }
 
+// GetMeshes: get all meshes the node is part of
 func (s *MeshManagerImpl) GetMeshes() map[string]MeshProvider {
 	meshes := make(map[string]MeshProvider)
 
-	s.lock.RLock()
+	s.meshLock.RLock()
 
-	for id, mesh := range s.Meshes {
+	for id, mesh := range s.meshes {
 		meshes[id] = mesh
 	}
 
-	s.lock.RUnlock()
+	s.meshLock.RUnlock()
 	return meshes
 }
 
-// Close the mesh manager
+// Close: close the mesh manager
 func (s *MeshManagerImpl) Close() error {
 	if s.conf.StubWg {
 		return nil
 	}
 
-	for _, mesh := range s.Meshes {
+	for _, mesh := range s.meshes {
 		dev, err := mesh.GetDevice()
 
 		if err != nil {
@@ -496,7 +501,7 @@ func (s *MeshManagerImpl) Close() error {
 	return nil
 }
 
-// NewMeshManagerParams params required to create an instance of a mesh manager
+// NewMeshManagerParams: params required to create an instance of a mesh manager
 type NewMeshManagerParams struct {
 	Conf                 conf.DaemonConfiguration
 	Client               *wgctrl.Client
@@ -511,7 +516,7 @@ type NewMeshManagerParams struct {
 	OnDelete             func(MeshProvider)
 }
 
-// Creates a new instance of a mesh manager with the given parameters
+// NewMeshManager: Creates a new instance of a mesh manager with the given parameters
 func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	privateKey, _ := wgtypes.GeneratePrivateKey()
 	hostParams := HostParameters{
@@ -519,7 +524,7 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 	}
 
 	m := &MeshManagerImpl{
-		Meshes:              make(map[string]MeshProvider),
+		meshes:              make(map[string]MeshProvider),
 		HostParameters:      &hostParams,
 		meshProviderFactory: params.MeshProvider,
 		nodeFactory:         params.NodeFactory,
