@@ -1,14 +1,9 @@
 version: '3'
 networks:
   net-1:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 10.89.0.0/17 
 services:
   wg-1:
-    image: wg-mesh-base:latest
+    image: localhost/smegmesh-base:latest
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -17,9 +12,11 @@ services:
       - net-1
     volumes:
       - ./shared:/shared
-    command: "wgmeshd /shared/configuration.yaml"
+    command: "smegd /shared/configuration.yaml"
+    sysctls:
+      - net.ipv6.conf.all.forwarding=1
   wg-2:
-    image: wg-mesh-base:latest
+    image: localhost/smegmesh-base:latest
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -28,9 +25,11 @@ services:
       - net-1
     volumes:
       - ./shared:/shared
-    command: "wgmeshd /shared/configuration.yaml"
+    command: "smegd /shared/configuration.yaml"
+    sysctls:
+      - net.ipv6.conf.all.forwarding=1
   wg-3:
-    image: wg-mesh-base:latest
+    image: localhost/smegmesh-base:latest
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -39,4 +38,6 @@ services:
       - net-1
     volumes:
       - ./shared:/shared
-    command: "wgmeshd /shared/configuration.yaml" 
+    command: "smegd /shared/configuration.yaml"
+    sysctls:
+      - net.ipv6.conf.all.forwarding=1
