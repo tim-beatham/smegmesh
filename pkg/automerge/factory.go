@@ -63,7 +63,7 @@ func (f *MeshNodeFactory) getAddress(params *mesh.MeshNodeFactoryParams) string 
 	} else {
 		ipFunc := lib.GetPublicIP
 
-		if *params.MeshConfig.IPDiscovery == conf.DNS_IP_DISCOVERY {
+		if *params.MeshConfig.IPDiscovery == conf.OUTGOING_IP_DISCOVERY {
 			ipFunc = lib.GetOutboundIP
 		}
 

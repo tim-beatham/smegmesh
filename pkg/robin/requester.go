@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/tim-beatham/smegmesh/pkg/conf"
@@ -141,7 +140,7 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 		return err
 	}
 
-	*reply = strconv.FormatBool(true)
+	*reply = fmt.Sprintf("Successfully Joined: %s", args.MeshId)
 	return nil
 }
 
@@ -235,7 +234,7 @@ func (n *IpcHandler) PutService(service ipc.PutServiceArgs, reply *string) error
 		return err
 	}
 
-	*reply = "success"
+	*reply = fmt.Sprintf("Set service %s in %s to %s", service.Service, service.MeshId, service.Value)
 	return nil
 }
 
@@ -247,7 +246,7 @@ func (n *IpcHandler) DeleteService(service ipc.DeleteServiceArgs, reply *string)
 		return err
 	}
 
-	*reply = "success"
+	*reply = fmt.Sprintf("Removed service %s from %s", service.Service, service.MeshId)
 	return nil
 }
 

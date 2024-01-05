@@ -175,7 +175,6 @@ func (m *WgMeshConfigApplyer) getRoutes(meshProvider MeshProvider) (map[string][
 					rn.gateway = peerPub.String()
 					rn.route = &RouteStub{
 						Destination: rn.route.GetDestination(),
-						HopCount:    rn.route.GetHopCount() + 1,
 						Path:        append(rn.route.GetPath(), peer.GetWgHost().IP.String()),
 					}
 				}
@@ -283,10 +282,14 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 	installedRoutes := make([]lib.Route, 0)
 
 	for _, route := range peerCfgs[0].AllowedIPs {
-		installedRoutes = append(installedRoutes, lib.Route{
-			Gateway:     peer.GetWgHost().IP,
-			Destination: route,
-		})
+		// Don't install routes that we are directly apart
+		// Dont install default route wgctrl handles this for us
+		if !meshNet.Contains(route.IP) {
+			installedRoutes = append(installedRoutes, lib.Route{
+				Gateway:     peer.GetWgHost().IP,
+				Destination: route,
+			})
+		}
 	}
 
 	cfg := wgtypes.Config{
@@ -306,9 +309,8 @@ func (m *WgMeshConfigApplyer) getRoutesToInstall(wgNode *wgtypes.PeerConfig, mes
 		ula := &ip.ULABuilder{}
 		ipNet, _ := ula.GetIPNet(mesh.GetMeshId())
 
-		_, defaultRoute, _ := net.ParseCIDR("::/0")
-
-		if !ipNet.Contains(route.IP) && !ipNet.IP.Equal(defaultRoute.IP) {
+		// Check there is no overlap in network and its not the default route
+		if !ipNet.Contains(route.IP) {
 			routes = append(routes, lib.Route{
 				Gateway:     node.GetWgHost().IP,
 				Destination: route,

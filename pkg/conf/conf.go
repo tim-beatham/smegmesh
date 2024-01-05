@@ -8,14 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type WgMeshConfigurationError struct {
-	msg string
-}
-
-func (m *WgMeshConfigurationError) Error() string {
-	return m.msg
-}
-
+// NodeType types of the node either peer or client
 type NodeType string
 
 const (
@@ -23,11 +16,23 @@ const (
 	CLIENT_ROLE NodeType = "client"
 )
 
+// IPDiscovery: what IPDiscovery service to use
 type IPDiscovery string
 
 const (
+	// Public IP use an IP service to discover your IP
 	PUBLIC_IP_DISCOVERY IPDiscovery = "public"
-	DNS_IP_DISCOVERY    IPDiscovery = "dns"
+	// Outgonig: Use your labelled packet IP
+	OUTGOING_IP_DISCOVERY IPDiscovery = "outgoing"
+)
+
+// Loglevel: what log level to use either error info or warning
+type LogLevel string
+
+const (
+	ERROR   LogLevel = "error"
+	WARNING LogLevel = "warning"
+	INFO    LogLevel = "info"
 )
 
 // WgConfiguration contains per-mesh WireGuard configuration. Contains poitner types only so we can
@@ -35,7 +40,7 @@ const (
 type WgConfiguration struct {
 	// IPDIscovery: how to discover your IP if not specified. Use your outgoing IP or use a public
 	// service for IPDiscoverability
-	IPDiscovery *IPDiscovery `yaml:"ipDiscovery" validate:"required,eq=public|eq=dns"`
+	IPDiscovery *IPDiscovery `yaml:"ipDiscovery" validate:"required,eq=public|eq=outgoing"`
 	// AdvertiseRoutes: specifies whether the node can act as a router routing packets between meshes
 	AdvertiseRoutes *bool `yaml:"advertiseRoute" validate:"required"`
 	// AdvertiseDefaultRoute: specifies whether or not this route should advertise a default route
@@ -76,24 +81,26 @@ type DaemonConfiguration struct {
 	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
 	StubWg bool `yaml:"stubWg"`
-	// SyncTime specifies how long the minimum time should be between synchronisation
-	SyncTime int `yaml:"syncTime" validate:"required,gte=1"`
-	// PullTime specifies the interval between checking for configuration changes
-	PullTime int `yaml:"pullTime" validate:"gte=0"`
-	// HeartBeat: number of seconds before the leader of the mesh sends an update to
+	// SyncInterval specifies how long the minimum time should be between synchronisation
+	SyncInterval int `yaml:"syncInterval" validate:"required,gte=1"`
+	// PullInterval specifies the interval between checking for configuration changes
+	PullInterval int `yaml:"pullInterval" validate:"gte=0"`
+	// Heartbeat: number of seconds before the leader of the mesh sends an update to
 	// send to every member in the mesh
-	HeartBeat int `yaml:"heartBeatTime" validate:"required,gte=1"`
+	Heartbeat int `yaml:"heartbeatInterval" validate:"required,gte=1"`
 	// ClusterSize specifies how many neighbours you should synchronise with per round
 	ClusterSize int `yaml:"clusterSize" validate:"gte=1"`
 	// InterClusterChance specifies the probabilityof inter-cluster communication in a sync round
 	InterClusterChance float64 `yaml:"interClusterChance" validate:"gt=0"`
-	// BranchRate specifies the number of nodes to synchronise with when a node has
+	// Branch specifies the number of nodes to synchronise with when a node has
 	// new changes to send to the mesh
-	BranchRate int `yaml:"branchRate" validate:"required,gte=1"`
+	Branch int `yaml:"branch" validate:"required,gte=1"`
 	// InfectionCount: number of time to sync before an update can no longer be 'caught'
 	InfectionCount int `yaml:"infectionCount" validate:"required,gte=1"`
 	// BaseConfiguration base WireGuard configuration to use, this is used when none is provided
 	BaseConfiguration WgConfiguration `yaml:"baseConfiguration" validate:"required"`
+	// LogLevel specifies the log level to output, defaults is warning
+	LogLevel LogLevel `yaml:"logLevel" validate:"eq=info|eq=warning|eq=error"`
 }
 
 // ValdiateMeshConfiguration: validates the mesh configuration
@@ -121,9 +128,18 @@ func ValidateMeshConfiguration(conf *WgConfiguration) error {
 }
 
 // ValidateDaemonConfiguration: validates the dameon configuration that is used.
-func ValidateDaemonConfiguration(c *DaemonConfiguration) error {
+func ValidateDaemonConfiguration(conf *DaemonConfiguration) error {
+	if conf.BaseConfiguration.KeepAliveWg == nil {
+		var keepAlive int = 0
+		conf.BaseConfiguration.KeepAliveWg = &keepAlive
+	}
+
+	if conf.LogLevel == "" {
+		conf.LogLevel = WARNING
+	}
+
 	validate := validator.New(validator.WithRequiredStructEnabled())
-	err := validate.Struct(c)
+	err := validate.Struct(conf)
 	return err
 }
 
@@ -141,11 +157,6 @@ func ParseDaemonConfiguration(filePath string) (*DaemonConfiguration, error) {
 
 	if err != nil {
 		return nil, err
-	}
-
-	if conf.BaseConfiguration.KeepAliveWg == nil {
-		var keepAlive int = 0
-		conf.BaseConfiguration.KeepAliveWg = &keepAlive
 	}
 
 	return &conf, ValidateDaemonConfiguration(&conf)

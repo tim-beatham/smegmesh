@@ -268,7 +268,7 @@ func (m *TwoPhaseStoreMeshManager) UpdateTimeStamp(nodeId string) error {
 
 	peerToUpdate := peers[0]
 
-	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.DaemonConf.HeartBeat) {
+	if uint64(time.Now().Unix())-m.store.Clock.GetTimestamp(peerToUpdate) > 3*uint64(m.DaemonConf.Heartbeat) {
 		m.store.Mark(peerToUpdate)
 
 		if len(peers) < 2 {
@@ -341,6 +341,7 @@ func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Ro
 
 	for _, route := range routes {
 		changes = true
+		logging.Log.WriteInfof("deleting: %s", route.GetDestination().String())
 		delete(node.Routes, route.GetDestination().String())
 	}
 

@@ -55,7 +55,7 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 		logging.Log.WriteInfof("no changes for %s", correspondingMesh.GetMeshId())
 
 		// If not synchronised in certain time pull from random neighbour
-		if s.configuration.PullTime != 0 && time.Now().Unix()-s.lastSync[correspondingMesh.GetMeshId()] > int64(s.configuration.PullTime) {
+		if s.configuration.PullInterval != 0 && time.Now().Unix()-s.lastSync[correspondingMesh.GetMeshId()] > int64(s.configuration.PullInterval) {
 			return s.Pull(self, correspondingMesh)
 		}
 
@@ -88,7 +88,7 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 		gossipNodes = neighbours[:redundancyLength]
 	} else {
 		neighbours := s.cluster.GetNeighbours(nodeNames, publicKey.String())
-		gossipNodes = lib.RandomSubsetOfLength(neighbours, s.configuration.BranchRate)
+		gossipNodes = lib.RandomSubsetOfLength(neighbours, s.configuration.Branch)
 
 		if len(nodeNames) > s.configuration.ClusterSize && rand.Float64() < s.configuration.InterClusterChance {
 			gossipNodes[len(gossipNodes)-1] = s.cluster.GetInterCluster(nodeNames, publicKey.String())
@@ -97,25 +97,36 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 
 	var succeeded bool = false
 
-	// Do this synchronously to conserve bandwidth
-	for _, node := range gossipNodes {
-		correspondingPeer, err := correspondingMesh.GetNode(node)
+	var wait sync.WaitGroup
 
-		if correspondingPeer == nil || err != nil {
-			logging.Log.WriteErrorf("node %s does not exist", node)
-			continue
+	for index, node := range gossipNodes {
+		wait.Add(1)
+
+		syncNode := func(i int) {
+			correspondingPeer, err := correspondingMesh.GetNode(node)
+
+			defer wait.Done()
+
+			if correspondingPeer == nil || err != nil {
+				logging.Log.WriteErrorf("node %s does not exist", node)
+				return
+			}
+
+			err = s.requester.SyncMesh(correspondingMesh, correspondingPeer)
+
+			if err == nil || err == io.EOF {
+				succeeded = true
+			}
+
+			if err != nil {
+				logging.Log.WriteErrorf(err.Error())
+			}
 		}
 
-		err = s.requester.SyncMesh(correspondingMesh.GetMeshId(), correspondingPeer)
-
-		if err == nil || err == io.EOF {
-			succeeded = true
-		}
-
-		if err != nil {
-			logging.Log.WriteErrorf(err.Error())
-		}
+		go syncNode(index)
 	}
+
+	wait.Wait()
 
 	s.syncCount++
 	logging.Log.WriteInfof("sync time: %v", time.Since(before))
@@ -158,7 +169,7 @@ func (s *SyncerImpl) Pull(self mesh.MeshNode, mesh mesh.MeshProvider) (bool, err
 		return false, fmt.Errorf("node %s does not exist in the mesh", neighbour[0])
 	}
 
-	err = s.requester.SyncMesh(mesh.GetMeshId(), pullNode)
+	err = s.requester.SyncMesh(mesh, pullNode)
 
 	if err == nil || err == io.EOF {
 		s.lastSync[mesh.GetMeshId()] = time.Now().Unix()
@@ -180,7 +191,7 @@ func (s *SyncerImpl) SyncMeshes() error {
 
 	s.lastPollLock.Lock()
 	meshesToSync := lib.Filter(lib.MapValues(meshes), func(mesh mesh.MeshProvider) bool {
-		return time.Now().Unix()-s.lastPoll[mesh.GetMeshId()] >= int64(s.configuration.SyncTime)
+		return time.Now().Unix()-s.lastPoll[mesh.GetMeshId()] >= int64(s.configuration.SyncInterval)
 	})
 	s.lastPollLock.Unlock()
 

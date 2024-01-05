@@ -2,7 +2,6 @@ package sync
 
 import (
 	"context"
-	"errors"
 	"io"
 	"time"
 
@@ -15,8 +14,7 @@ import (
 
 // SyncRequester: coordinates the syncing of meshes
 type SyncRequester interface {
-	GetMesh(meshId string, ifName string, port int, endPoint string) error
-	SyncMesh(meshid string, meshNode mesh.MeshNode) error
+	SyncMesh(mesh mesh.MeshProvider, meshNode mesh.MeshNode) error
 }
 
 type SyncRequesterImpl struct {
@@ -26,42 +24,9 @@ type SyncRequesterImpl struct {
 	errorHdlr         SyncErrorHandler
 }
 
-// GetMesh: Retrieves the local state of the mesh at the endpoint
-func (s *SyncRequesterImpl) GetMesh(meshId string, ifName string, port int, endPoint string) error {
-	peerConnection, err := s.connectionManager.GetConnection(endPoint)
-
-	if err != nil {
-		return err
-	}
-
-	client, err := peerConnection.GetClient()
-
-	if err != nil {
-		return err
-	}
-
-	c := rpc.NewSyncServiceClient(client)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	reply, err := c.GetConf(ctx, &rpc.GetConfRequest{MeshId: meshId})
-
-	if err != nil {
-		return err
-	}
-
-	err = s.manager.AddMesh(&mesh.AddMeshParams{
-		MeshId:    meshId,
-		WgPort:    port,
-		MeshBytes: reply.Mesh,
-	})
-	return err
-}
-
 // handleErr: handleGrpc errors
-func (s *SyncRequesterImpl) handleErr(meshId, pubKey string, err error) error {
-	ok := s.errorHdlr.Handle(meshId, pubKey, err)
+func (s *SyncRequesterImpl) handleErr(mesh mesh.MeshProvider, pubKey string, err error) error {
+	ok := s.errorHdlr.Handle(mesh, pubKey, err)
 
 	if ok {
 		return nil
@@ -70,7 +35,7 @@ func (s *SyncRequesterImpl) handleErr(meshId, pubKey string, err error) error {
 }
 
 // SyncMesh: Proactively send a sync request to the other mesh
-func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) error {
+func (s *SyncRequesterImpl) SyncMesh(mesh mesh.MeshProvider, meshNode mesh.MeshNode) error {
 	endpoint := meshNode.GetHostEndpoint()
 	pubKey, _ := meshNode.GetPublicKey()
 
@@ -86,15 +51,9 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 		return err
 	}
 
-	mesh := s.manager.GetMesh(meshId)
-
-	if mesh == nil {
-		return errors.New("mesh does not exist")
-	}
-
 	c := rpc.NewSyncServiceClient(client)
 
-	syncTimeOut := float64(s.configuration.SyncTime) * float64(time.Second)
+	syncTimeOut := float64(s.configuration.SyncInterval) * float64(time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(syncTimeOut))
 	defer cancel()
@@ -102,10 +61,10 @@ func (s *SyncRequesterImpl) SyncMesh(meshId string, meshNode mesh.MeshNode) erro
 	err = s.syncMesh(mesh, ctx, c)
 
 	if err != nil {
-		s.handleErr(meshId, pubKey.String(), err)
+		s.handleErr(mesh, pubKey.String(), err)
 	}
 
-	logging.Log.WriteInfof("synced with node: %s meshId: %s\n", endpoint, meshId)
+	logging.Log.WriteInfof("synced with node: %s meshId: %s\n", endpoint, mesh.GetMeshId())
 	return err
 }
 

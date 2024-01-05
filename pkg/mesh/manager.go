@@ -347,7 +347,7 @@ func (s *MeshManagerImpl) AddSelf(params *AddSelfParams) error {
 	return nil
 }
 
-// LeaveMesh: leaves the mesh network
+// LeaveMesh: leaves the mesh network and force a synchronsiation
 func (s *MeshManagerImpl) LeaveMesh(meshId string) error {
 	mesh := s.GetMesh(meshId)
 
@@ -468,6 +468,9 @@ func (s *MeshManagerImpl) GetClient() *wgctrl.Client {
 func (s *MeshManagerImpl) GetMeshes() map[string]MeshProvider {
 	meshes := make(map[string]MeshProvider)
 
+	// GetMesh: copies the map of meshes to a new map
+	// to prevent a whole range of concurrency issues
+	// due to iteration and modification
 	s.meshLock.RLock()
 
 	for id, mesh := range s.meshes {

@@ -21,12 +21,6 @@ type Route interface {
 }
 
 func RouteEqual(r1 Route, r2 Route) bool {
-	return r1.GetDestination().IP.Equal(r2.GetDestination().IP) &&
-		r1.GetHopCount() == r2.GetHopCount() &&
-		slices.Equal(r1.GetPath(), r2.GetPath())
-}
-
-func RouteEquals(r1, r2 Route) bool {
 	return r1.GetDestination().String() == r2.GetDestination().String() &&
 		r1.GetHopCount() == r2.GetHopCount() &&
 		slices.Equal(r1.GetPath(), r2.GetPath())
@@ -34,7 +28,6 @@ func RouteEquals(r1, r2 Route) bool {
 
 type RouteStub struct {
 	Destination *net.IPNet
-	HopCount    int
 	Path        []string
 }
 
@@ -43,7 +36,7 @@ func (r *RouteStub) GetDestination() *net.IPNet {
 }
 
 func (r *RouteStub) GetHopCount() int {
-	return r.HopCount
+	return len(r.Path)
 }
 
 func (r *RouteStub) GetPath() []string {

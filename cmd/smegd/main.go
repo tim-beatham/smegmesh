@@ -16,16 +16,19 @@ import (
 )
 
 func main() {
+
 	if len(os.Args) != 2 {
 		logging.Log.WriteErrorf("Did not provide configuration")
 		return
 	}
 
-	conf, err := conf.ParseDaemonConfiguration(os.Args[1])
+	configuration, err := conf.ParseDaemonConfiguration(os.Args[1])
 	if err != nil {
 		logging.Log.WriteErrorf("Could not parse configuration: %s", err.Error())
 		return
 	}
+
+	logging.SetLogger(logging.NewLogrusLogger(configuration.LogLevel))
 
 	client, err := wgctrl.New()
 
@@ -34,7 +37,7 @@ func main() {
 		return
 	}
 
-	if conf.Profile {
+	if configuration.Profile {
 		go func() {
 			http.ListenAndServe("localhost:6060", nil)
 		}()
@@ -45,7 +48,7 @@ func main() {
 	var syncProvider sync.SyncServiceImpl
 
 	ctrlServerParams := ctrlserver.NewCtrlServerParams{
-		Conf:         conf,
+		Conf:         configuration,
 		CtrlProvider: &robinRpc,
 		SyncProvider: &syncProvider,
 		Client:       client,

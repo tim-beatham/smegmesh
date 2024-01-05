@@ -113,7 +113,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	heartbeatTimer := lib.NewTimer(func() error {
 		logging.Log.WriteInfof("checking heartbeat")
 		return ctrlServer.MeshManager.UpdateTimeStamp()
-	}, params.Conf.HeartBeat)
+	}, params.Conf.Heartbeat)
 
 	ctrlServer.timers = append(ctrlServer.timers, syncTimer, heartbeatTimer)
 

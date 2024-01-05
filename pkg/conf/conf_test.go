@@ -21,12 +21,12 @@ func getExampleConfiguration() *DaemonConfiguration {
 		Timeout:              5,
 		Profile:              false,
 		StubWg:               false,
-		SyncTime:             2,
-		HeartBeat:            2,
+		SyncInterval:         2,
+		Heartbeat:            2,
 		ClusterSize:          64,
 		InterClusterChance:   0.15,
-		BranchRate:           3,
-		PullTime:             0,
+		Branch:               3,
+		PullInterval:         0,
 		InfectionCount:       2,
 		BaseConfiguration: WgConfiguration{
 			IPDiscovery:           &discovery,
@@ -154,7 +154,7 @@ func TestRoleTypeNotSpecified(t *testing.T) {
 
 func TestBranchRateZero(t *testing.T) {
 	conf := getExampleConfiguration()
-	conf.BranchRate = 0
+	conf.Branch = 0
 
 	err := ValidateDaemonConfiguration(conf)
 
@@ -165,7 +165,7 @@ func TestBranchRateZero(t *testing.T) {
 
 func TestsyncTimeZero(t *testing.T) {
 	conf := getExampleConfiguration()
-	conf.SyncTime = 0
+	conf.SyncInterval = 0
 
 	err := ValidateDaemonConfiguration(conf)
 
@@ -176,7 +176,7 @@ func TestsyncTimeZero(t *testing.T) {
 
 func TestKeepAliveTimeZero(t *testing.T) {
 	conf := getExampleConfiguration()
-	conf.HeartBeat = 0
+	conf.Heartbeat = 0
 	err := ValidateDaemonConfiguration(conf)
 
 	if err == nil {
@@ -218,7 +218,7 @@ func TestInfectionCountOne(t *testing.T) {
 
 func TestPullTimeNegative(t *testing.T) {
 	conf := getExampleConfiguration()
-	conf.PullTime = -1
+	conf.PullInterval = -1
 
 	err := ValidateDaemonConfiguration(conf)
 
