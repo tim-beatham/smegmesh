@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/tim-beatham/smegmesh/pkg/conf"
@@ -51,7 +52,7 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	})
 
 	if err != nil {
-		return err
+		return errors.New("could not create mesh")
 	}
 
 	err = n.Server.GetMeshManager().AddSelf(&mesh.AddSelfParams{
@@ -61,7 +62,7 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	})
 
 	if err != nil {
-		return err
+		return errors.New("could not create mesh")
 	}
 
 	*reply = meshId
@@ -78,6 +79,7 @@ func (n *IpcHandler) ListMeshes(_ string, reply *ipc.ListMeshReply) error {
 		i++
 	}
 
+	slices.Sort(meshNames)
 	*reply = ipc.ListMeshReply{Meshes: meshNames}
 	return nil
 }
@@ -93,19 +95,19 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAddress)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not join mesh %s", args.MeshId)
 	}
 
 	client, err := peerConnection.GetClient()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not join mesh %s", args.MeshId)
 	}
 
 	c := rpc.NewMeshCtrlServerClient(client)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not join mesh %s", args.MeshId)
 	}
 
 	configuration := n.Server.GetConfiguration()
@@ -116,7 +118,7 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	meshReply, err := c.GetMesh(ctx, &rpc.GetMeshRequest{MeshId: args.MeshId})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not join mesh %s", args.MeshId)
 	}
 
 	err = n.Server.GetMeshManager().AddMesh(&mesh.AddMeshParams{
@@ -127,7 +129,7 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not join mesh %s", args.MeshId)
 	}
 
 	err = n.Server.GetMeshManager().AddSelf(&mesh.AddSelfParams{
@@ -137,7 +139,7 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not join mesh %s", args.MeshId)
 	}
 
 	*reply = fmt.Sprintf("Successfully Joined: %s", args.MeshId)
@@ -219,7 +221,7 @@ func (n *IpcHandler) PutAlias(args ipc.PutAliasArgs, reply *string) error {
 	err := n.Server.GetMeshManager().SetAlias(args.MeshId, args.Alias)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not set alias: %s", args.Alias)
 	}
 
 	*reply = fmt.Sprintf("Set alias to %s", args.Alias)
