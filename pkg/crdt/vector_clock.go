@@ -8,6 +8,9 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
+// VectorBucket: represents a vector clock in the bucket
+// recording both the time changes were last seen
+// and when the lastUpdate epoch was recorded
 type VectorBucket struct {
 	// clock current value of the node's clock
 	clock uint64
@@ -15,8 +18,9 @@ type VectorBucket struct {
 	lastUpdate uint64
 }
 
-// Vector clock defines an abstract data type
-// for a vector clock implementation
+// VectorClock: defines an abstract data type
+// for a vector clock implementation. Including a mechanism to
+// garbage collect stale entries
 type VectorClock[K cmp.Ordered] struct {
 	vectors   map[uint64]*VectorBucket
 	lock      sync.RWMutex
@@ -62,6 +66,7 @@ func (m *VectorClock[K]) GetHash() uint64 {
 	return hash
 }
 
+// Merge: merge two clocks together
 func (m *VectorClock[K]) Merge(vectors map[uint64]uint64) {
 	for key, value := range vectors {
 		m.put(key, value)
@@ -97,6 +102,7 @@ func (m *VectorClock[K]) GetStaleCount() uint64 {
 	return staleCount
 }
 
+// Prune: prunes all stale entries in the vector clock
 func (m *VectorClock[K]) Prune() {
 	stale := m.getStale()
 
@@ -109,6 +115,8 @@ func (m *VectorClock[K]) Prune() {
 	m.lock.Unlock()
 }
 
+// GetTimeStamp: get the last time the node was updated in UNIX
+// epoch time
 func (m *VectorClock[K]) GetTimestamp(processId K) uint64 {
 	m.lock.RLock()
 
@@ -118,6 +126,8 @@ func (m *VectorClock[K]) GetTimestamp(processId K) uint64 {
 	return lastUpdate
 }
 
+// Put: places the key with vector clock in the clock of the given 
+// process
 func (m *VectorClock[K]) Put(key K, value uint64) {
 	m.put(m.hashFunc(key), value)
 }
@@ -133,7 +143,8 @@ func (m *VectorClock[K]) put(key uint64, value uint64) {
 	}
 
 	// Make sure that entries that were garbage collected don't get
-	// addded back
+	// highestStale represents the highest vector clock that has been
+	// invalidated
 	if value > clockValue && value > m.highestStale {
 		newBucket := VectorBucket{
 			clock:      value,
@@ -145,6 +156,7 @@ func (m *VectorClock[K]) put(key uint64, value uint64) {
 	m.lock.Unlock()
 }
 
+// GetClock: serialize the vector clock into an immutable map
 func (m *VectorClock[K]) GetClock() map[uint64]uint64 {
 	clock := make(map[uint64]uint64)
 

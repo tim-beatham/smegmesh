@@ -7,7 +7,9 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/lib"
 )
 
+// RouteManager: manager that leaks routes between meshes
 type RouteManager interface {
+	// UpdateRoutes: leak all routes in each mesh
 	UpdateRoutes() error
 }
 
@@ -18,6 +20,11 @@ type RouteManagerImpl struct {
 func (r *RouteManagerImpl) UpdateRoutes() error {
 	meshes := r.meshManager.GetMeshes()
 	routes := make(map[string][]Route)
+
+	for _, mesh := range meshes {
+		// Make empty routes so that routes are retracted
+		routes[mesh.GetMeshId()] = make([]Route, 0)
+	}
 
 	for _, mesh1 := range meshes {
 		if !*mesh1.GetConfiguration().AdvertiseRoutes {
@@ -39,7 +46,6 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 
 			defaultRoute := &RouteStub{
 				Destination: ipv6Default,
-				HopCount:    0,
 				Path:        []string{mesh1.GetMeshId()},
 			}
 
@@ -68,7 +74,6 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 
 			routeValues = append(routeValues, &RouteStub{
 				Destination: mesh1IpNet,
-				HopCount:    0,
 				Path:        []string{mesh1.GetMeshId()},
 			})
 
@@ -99,15 +104,12 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 		}
 
 		toRemove := make([]Route, 0)
-		prevRoutes, err := mesh.GetRoutes(NodeID(self))
 
-		if err != nil {
-			return err
-		}
+		prevRoutes := self.GetRoutes()
 
 		for _, route := range prevRoutes {
 			if !lib.Contains(meshRoutes, func(r Route) bool {
-				return RouteEquals(r, route)
+				return RouteEqual(r, route)
 			}) {
 				toRemove = append(toRemove, route)
 			}

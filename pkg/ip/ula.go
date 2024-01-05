@@ -8,6 +8,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// ULABuilder: Create a new ULA in WireGuard
 type ULABuilder struct{}
 
 func getMeshPrefix(meshId string) [16]byte {

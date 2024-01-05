@@ -7,17 +7,21 @@ import (
 	"slices"
 )
 
-// ConnCluster splits nodes into clusters where nodes in a cluster communicate
+// ConnCluster: splits nodes into clusters where nodes in a cluster communicate
 // frequently and nodes outside of a cluster communicate infrequently
 type ConnCluster interface {
+	// Getneighbours: get neighbours of the cluster the node is in
 	GetNeighbours(global []string, selfId string) []string
+	// GetInterCluster: get the cluster to communicate with
 	GetInterCluster(global []string, selfId string) string
 }
 
+// ConnnClusterImpl: implementation of the connection cluster
 type ConnClusterImpl struct {
 	clusterSize int
 }
 
+// perform binary search to attain a size of a group
 func binarySearch(global []string, selfId string, groupSize int) (int, int) {
 	slices.Sort(global)
 
@@ -39,7 +43,7 @@ func binarySearch(global []string, selfId string, groupSize int) (int, int) {
 	return lower, int(math.Min(float64(lower+groupSize), float64(len(global))))
 }
 
-// GetNeighbours return the neighbours 'nearest' to you. In this implementation the
+// GetNeighbours: return the neighbours 'nearest' to you. In this implementation the
 // neighbours aren't actually the ones nearest to you but just the ones nearest
 // to you alphabetically. Perform binary search to get the total group
 func (i *ConnClusterImpl) GetNeighbours(global []string, selfId string) []string {
@@ -50,7 +54,7 @@ func (i *ConnClusterImpl) GetNeighbours(global []string, selfId string) []string
 	return global[lower:higher]
 }
 
-// GetInterCluster get nodes not in your cluster. Every round there is a given chance
+// GetInterCluster: get nodes not in your cluster. Every round there is a given chance
 // you will communicate with a random node that is not in your cluster.
 func (i *ConnClusterImpl) GetInterCluster(global []string, selfId string) string {
 	// Doesn't matter if not in it. Get index of where the node 'should' be
@@ -65,6 +69,7 @@ func (i *ConnClusterImpl) GetInterCluster(global []string, selfId string) string
 	return global[neighbourIndex]
 }
 
+// NewConnCluster: instantiate a new connection cluster of a given group size.
 func NewConnCluster(clusterSize int) (ConnCluster, error) {
 	log2Cluster := math.Log2(float64(clusterSize))
 

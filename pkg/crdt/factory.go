@@ -9,10 +9,13 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/mesh"
 )
 
+// TwoPhaseMapFactory: instantiate a new twophasemap
+// datastore
 type TwoPhaseMapFactory struct {
 	Config *conf.DaemonConfiguration
 }
 
+// CreateMesh: create a new mesh network
 func (f *TwoPhaseMapFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) (mesh.MeshProvider, error) {
 	return &TwoPhaseStoreMeshManager{
 		MeshId:     params.MeshId,
@@ -24,14 +27,16 @@ func (f *TwoPhaseMapFactory) CreateMesh(params *mesh.MeshProviderFactoryParams) 
 			h := fnv.New64a()
 			h.Write([]byte(s))
 			return h.Sum64()
-		}, uint64(3*f.Config.HeartBeat)),
+		}, uint64(3*f.Config.Heartbeat)),
 	}, nil
 }
 
+// MeshNodeFactory: create a new node in the mesh network
 type MeshNodeFactory struct {
 	Config conf.DaemonConfiguration
 }
 
+// Build: build a new mesh network
 func (f *MeshNodeFactory) Build(params *mesh.MeshNodeFactoryParams) mesh.MeshNode {
 	hostName := f.getAddress(params)
 
@@ -66,7 +71,7 @@ func (f *MeshNodeFactory) getAddress(params *mesh.MeshNodeFactoryParams) string 
 	} else {
 		ipFunc := lib.GetPublicIP
 
-		if *params.MeshConfig.IPDiscovery == conf.DNS_IP_DISCOVERY {
+		if *params.MeshConfig.IPDiscovery == conf.OUTGOING_IP_DISCOVERY {
 			ipFunc = lib.GetOutboundIP
 		}
 

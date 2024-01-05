@@ -5,6 +5,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// RouteInstaller: install the routes to the given interface
 type RouteInstaller interface {
 	InstallRoutes(devName string, routes ...lib.Route) error
 }
@@ -18,6 +19,8 @@ func (r *RouteInstallerImpl) InstallRoutes(devName string, routes ...lib.Route) 
 	if err != nil {
 		return err
 	}
+
+	defer rtnl.Close()
 
 	err = rtnl.DeleteRoutes(devName, unix.AF_INET6, routes...)
 

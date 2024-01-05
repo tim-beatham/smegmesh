@@ -5,13 +5,13 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	ipcRpc "net/rpc"
+	ipcRPC "net/rpc"
 	"os"
 
 	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
 )
 
-const SockAddr = "/tmp/wgmesh_sock"
+const SockAddr = "/tmp/smeg.sock"
 
 type MeshIpc interface {
 	CreateMesh(args *NewMeshArgs, reply *string) error
@@ -60,59 +60,83 @@ type JoinMeshArgs struct {
 	WgArgs WireGuardArgs
 }
 
+// PutServiceArgs: args to place a service into the data store
 type PutServiceArgs struct {
 	Service string
 	Value   string
 	MeshId  string
 }
 
+// DeleteServiceArgs: args to remove a service from the data store
 type DeleteServiceArgs struct {
 	Service string
 	MeshId  string
 }
 
+// PutAliasArgs: args to assign an alias to a node
 type PutAliasArgs struct {
-	Alias  string
+	// Alias: represents the alias of the node
+	Alias string
+	// MeshId: represents the meshID of the node
 	MeshId string
 }
 
+// PutDescriptionArgs: args to assign a description to a node
 type PutDescriptionArgs struct {
+	// Description: descriptio to add to the network
 	Description string
-	MeshId      string
+	// MeshID to add to the mesh network
+	MeshId string
 }
 
+// GetMeshReply: ipc reply to get the mesh network
 type GetMeshReply struct {
 	Nodes []ctrlserver.MeshNode
 }
 
+// ListMeshReply: ipc reply of the networks the node is part of
 type ListMeshReply struct {
 	Meshes []string
 }
 
+// Querymesh: ipc args to query a mesh network
 type QueryMesh struct {
+	// MeshId: id of the mesh to query
 	MeshId string
-	Query  string
+	// JMESPath: query string to query
+	Query string
 }
 
+// ClientIpc: Framework to invoke ipc calls to the daemon
 type ClientIpc interface {
+	// CreateMesh: create a mesh network, return an error if the operation failed
 	CreateMesh(args *NewMeshArgs, reply *string) error
+	// ListMesh: list mesh network the node is a part of, return an error if the operation failed
 	ListMeshes(args *ListMeshReply, reply *string) error
+	// JoinMesh: join a mesh network return an error if the operation failed
 	JoinMesh(args JoinMeshArgs, reply *string) error
+	// LeaveMesh: leave a mesh network, return an error if the operation failed
 	LeaveMesh(meshId string, reply *string) error
+	// GetMesh: get the given mesh network, return an error if the operation failed
 	GetMesh(meshId string, reply *GetMeshReply) error
+	// Query: query the given mesh network
 	Query(query QueryMesh, reply *string) error
+	// PutDescription: assign a description to yourself
 	PutDescription(args PutDescriptionArgs, reply *string) error
+	// PutAlias: assign an alias to yourself
 	PutAlias(args PutAliasArgs, reply *string) error
+	// PutService: assign a service to yourself
 	PutService(args PutServiceArgs, reply *string) error
+	// DeleteService: retract a service
 	DeleteService(args DeleteServiceArgs, reply *string) error
 }
 
 type SmegmeshIpc struct {
-	client *ipcRpc.Client
+	client *ipcRPC.Client
 }
 
 func NewClientIpc() (*SmegmeshIpc, error) {
-	client, err := ipcRpc.DialHTTP("unix", SockAddr)
+	client, err := ipcRPC.DialHTTP("unix", SockAddr)
 
 	if err != nil {
 		return nil, err
@@ -164,7 +188,7 @@ func (c *SmegmeshIpc) DeleteService(args DeleteServiceArgs, reply *string) error
 }
 
 func (c *SmegmeshIpc) Close() error {
-	return c.Close()
+	return c.client.Close()
 }
 
 func RunIpcHandler(server MeshIpc) error {

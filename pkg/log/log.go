@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"github.com/tim-beatham/smegmesh/pkg/conf"
 )
 
 var (
@@ -39,17 +40,29 @@ func (l *LogrusLogger) Writer() io.Writer {
 	return l.logger.Writer()
 }
 
-func NewLogrusLogger() *LogrusLogger {
+func NewLogrusLogger(confLevel conf.LogLevel) *LogrusLogger {
+
+	var level logrus.Level
+
+	switch confLevel {
+	case conf.ERROR:
+		level = logrus.ErrorLevel
+	case conf.WARNING:
+		level = logrus.WarnLevel
+	case conf.INFO:
+		level = logrus.InfoLevel
+	}
+
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.InfoLevel)
+	logger.SetLevel(level)
 
 	return &LogrusLogger{logger: logger}
 }
 
 func init() {
-	SetLogger(NewLogrusLogger())
+	SetLogger(NewLogrusLogger(conf.INFO))
 }
 
 func SetLogger(l Logger) {

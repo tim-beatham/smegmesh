@@ -10,23 +10,17 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Maximum MTU to assin to WireGuard
+// This isn't configurable
+const WIREGUARD_MTU = 1420
+
+// RtNetlinkConfig: represents an rtnetlkink configuration instance
 type RtNetlinkConfig struct {
+	// conn: connection to the rtnetlink API
 	conn *rtnetlink.Conn
 }
 
-func NewRtNetlinkConfig() (*RtNetlinkConfig, error) {
-	conn, err := rtnetlink.Dial(nil)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &RtNetlinkConfig{conn: conn}, nil
-}
-
-const WIREGUARD_MTU = 1420
-
-// Create a netlink interface if it does not exist. ifName is the name of the netlink interface
+// CreateLink: Create a netlink interface if it does not exist. ifName is the name of the netlink interface
 func (c *RtNetlinkConfig) CreateLink(ifName string) error {
 	_, err := net.InterfaceByName(ifName)
 
@@ -51,7 +45,7 @@ func (c *RtNetlinkConfig) CreateLink(ifName string) error {
 	return nil
 }
 
-// Delete link delete the specified interface
+// DeleteLink: delete the specified interface
 func (c *RtNetlinkConfig) DeleteLink(ifName string) error {
 	iface, err := net.InterfaceByName(ifName)
 
@@ -68,7 +62,7 @@ func (c *RtNetlinkConfig) DeleteLink(ifName string) error {
 	return nil
 }
 
-// AddAddress adds an address to the given interface.
+// AddAddress: adds an address to the given interface.
 func (c *RtNetlinkConfig) AddAddress(ifName string, address string) error {
 	iface, err := net.InterfaceByName(ifName)
 
@@ -177,7 +171,7 @@ func (c *RtNetlinkConfig) AddRoute(ifName string, route Route) error {
 	return nil
 }
 
-// DeleteRoute deletes routes with the gateway and destination
+// DeleteRoute: deletes routes with the gateway and destination
 func (c *RtNetlinkConfig) DeleteRoute(ifName string, route Route) error {
 	iface, err := net.InterfaceByName(ifName)
 
@@ -219,6 +213,7 @@ func (c *RtNetlinkConfig) DeleteRoute(ifName string, route Route) error {
 	return nil
 }
 
+// route: represents a rout to add to the RIB
 type Route struct {
 	Gateway     net.IP
 	Destination net.IPNet
@@ -232,7 +227,7 @@ func (r1 Route) equal(r2 Route) bool {
 		(mask1Ones == 0 && mask2Ones == 0 || r1.Destination.IP.Equal(r2.Destination.IP))
 }
 
-// DeleteRoutes deletes all routes not in exclude
+// DeleteRoutes: deletes all routes not in exclude on the given interface
 func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...Route) error {
 	routes, err := c.listRoutes(ifName, family)
 
@@ -282,7 +277,7 @@ func (c *RtNetlinkConfig) DeleteRoutes(ifName string, family uint8, exclude ...R
 	return nil
 }
 
-// listRoutes lists all routes on the interface
+// listRoutes: lists all routes on the interface
 func (c *RtNetlinkConfig) listRoutes(ifName string, family uint8) ([]rtnetlink.RouteMessage, error) {
 	iface, err := net.InterfaceByName(ifName)
 
@@ -304,6 +299,18 @@ func (c *RtNetlinkConfig) listRoutes(ifName string, family uint8) ([]rtnetlink.R
 	return routes, nil
 }
 
+// Close: close the Rtnetlink API
 func (c *RtNetlinkConfig) Close() error {
 	return c.conn.Close()
+}
+
+// newRtNetlinkConfig: connect to the RtnetlinkAPI
+func NewRtNetlinkConfig() (*RtNetlinkConfig, error) {
+	conn, err := rtnetlink.Dial(nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &RtNetlinkConfig{conn: conn}, nil
 }

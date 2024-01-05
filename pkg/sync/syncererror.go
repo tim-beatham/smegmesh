@@ -10,7 +10,7 @@ import (
 
 // SyncErrorHandler: Handles errors when attempting to sync
 type SyncErrorHandler interface {
-	Handle(meshId string, endpoint string, err error) bool
+	Handle(mesh mesh.MeshProvider, endpoint string, err error) bool
 }
 
 // SyncErrorHandlerImpl Is an implementation of the SyncErrorHandler
@@ -19,8 +19,7 @@ type SyncErrorHandlerImpl struct {
 	connManager conn.ConnectionManager
 }
 
-func (s *SyncErrorHandlerImpl) handleFailed(meshId string, nodeId string) bool {
-	mesh := s.meshManager.GetMesh(meshId)
+func (s *SyncErrorHandlerImpl) handleFailed(mesh mesh.MeshProvider, nodeId string) bool {
 	mesh.Mark(nodeId)
 	node, err := mesh.GetNode(nodeId)
 
@@ -30,13 +29,7 @@ func (s *SyncErrorHandlerImpl) handleFailed(meshId string, nodeId string) bool {
 	return true
 }
 
-func (s *SyncErrorHandlerImpl) handleDeadlineExceeded(meshId string, nodeId string) bool {
-	mesh := s.meshManager.GetMesh(meshId)
-
-	if mesh == nil {
-		return true
-	}
-
+func (s *SyncErrorHandlerImpl) handleDeadlineExceeded(mesh mesh.MeshProvider, nodeId string) bool {
 	node, err := mesh.GetNode(nodeId)
 
 	if err != nil {
@@ -47,16 +40,16 @@ func (s *SyncErrorHandlerImpl) handleDeadlineExceeded(meshId string, nodeId stri
 	return true
 }
 
-func (s *SyncErrorHandlerImpl) Handle(meshId string, nodeId string, err error) bool {
+func (s *SyncErrorHandlerImpl) Handle(mesh mesh.MeshProvider, nodeId string, err error) bool {
 	errStatus, _ := status.FromError(err)
 
 	logging.Log.WriteInfof("Handled gRPC error: %s", errStatus.Message())
 
 	switch errStatus.Code() {
 	case codes.Unavailable, codes.Unknown, codes.Internal, codes.NotFound:
-		return s.handleFailed(meshId, nodeId)
+		return s.handleFailed(mesh, nodeId)
 	case codes.DeadlineExceeded:
-		return s.handleDeadlineExceeded(meshId, nodeId)
+		return s.handleDeadlineExceeded(mesh, nodeId)
 	}
 
 	return false

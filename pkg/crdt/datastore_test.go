@@ -21,7 +21,7 @@ func setUpTests() *TestParams {
 	advertiseRoutes := false
 	advertiseDefaultRoute := false
 	role := conf.PEER_ROLE
-	discovery := conf.DNS_IP_DISCOVERY
+	discovery := conf.OUTGOING_IP_DISCOVERY
 
 	factory := &TwoPhaseMapFactory{
 		Config: &conf.DaemonConfiguration{
@@ -32,11 +32,11 @@ func setUpTests() *TestParams {
 			GrpcPort:             0,
 			Timeout:              20,
 			Profile:              false,
-			SyncTime:             2,
-			HeartBeat:            10,
+			SyncInterval:         2,
+			Heartbeat:            10,
 			ClusterSize:          32,
 			InterClusterChance:   0.15,
-			BranchRate:           3,
+			Branch:               3,
 			InfectionCount:       3,
 			BaseConfiguration: conf.WgConfiguration{
 				IPDiscovery:           &discovery,
@@ -215,7 +215,6 @@ func TestAddRoutesAddsARouteToTheGivenMesh(t *testing.T) {
 
 	testParams.manager.AddRoutes(testParams.publicKey.String(), &mesh.RouteStub{
 		Destination: destination,
-		HopCount:    0,
 		Path:        make([]string, 0),
 	})
 
@@ -238,7 +237,6 @@ func TestRemoveRoutesWithdrawsRoutesFromTheMesh(t *testing.T) {
 	_, destination, _ := net.ParseCIDR("0353:1da7:7f33:acc0:7a3f:6e55:912b:bc1f/64")
 	route := &mesh.RouteStub{
 		Destination: destination,
-		HopCount:    0,
 		Path:        make([]string, 0),
 	}
 

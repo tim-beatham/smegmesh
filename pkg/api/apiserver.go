@@ -11,17 +11,7 @@ import (
 	"github.com/tim-beatham/smegmesh/pkg/what8words"
 )
 
-type ApiServer interface {
-	GetMeshes(c *gin.Context)
-	Run(addr string) error
-}
-
-type SmegServer struct {
-	router *gin.Engine
-	client *ipc.SmegmeshIpc
-	words  *what8words.What8Words
-}
-
+// routesToApiRoute: convert the returned type to a JSON object
 func (s *SmegServer) routeToApiRoute(meshNode ctrlserver.MeshNode) []Route {
 	routes := make([]Route, len(meshNode.Routes))
 
@@ -40,6 +30,7 @@ func (s *SmegServer) routeToApiRoute(meshNode ctrlserver.MeshNode) []Route {
 	return routes
 }
 
+// meshNodeToAPImeshNode: convert daemon node to a JSON node
 func (s *SmegServer) meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNode {
 	if meshNode.Routes == nil {
 		meshNode.Routes = make([]ctrlserver.MeshRoute, 0)
@@ -70,6 +61,7 @@ func (s *SmegServer) meshNodeToAPIMeshNode(meshNode ctrlserver.MeshNode) *SmegNo
 	}
 }
 
+// meshToAPIMesh: Convert daemon mesh network to a JSON mesh network
 func (s *SmegServer) meshToAPIMesh(meshId string, nodes []ctrlserver.MeshNode) SmegMesh {
 	var smegMesh SmegMesh
 	smegMesh.MeshId = meshId
@@ -175,6 +167,8 @@ func (s *SmegServer) GetMesh(c *gin.Context) {
 	c.JSON(http.StatusOK, mesh)
 }
 
+// GetMeshes: return all the mesh networks that the
+// user is a part of
 func (s *SmegServer) GetMeshes(c *gin.Context) {
 	listMeshesReply := new(ipc.ListMeshReply)
 
@@ -205,11 +199,14 @@ func (s *SmegServer) GetMeshes(c *gin.Context) {
 	c.JSON(http.StatusOK, meshes)
 }
 
+// Run: run the API server
 func (s *SmegServer) Run(addr string) error {
 	logging.Log.WriteInfof("Running API server")
 	return s.router.Run(addr)
 }
 
+// NewSmegServer: creates an instance of a new API server
+// returns an error if something went wrong
 func NewSmegServer(conf ApiServerConf) (ApiServer, error) {
 	client, err := ipc.NewClientIpc()
 

@@ -6,19 +6,18 @@ import (
 	"errors"
 	"io"
 
-	"github.com/tim-beatham/smegmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/smegmesh/pkg/mesh"
 	"github.com/tim-beatham/smegmesh/pkg/rpc"
 )
 
 type SyncServiceImpl struct {
 	rpc.UnimplementedSyncServiceServer
-	Server *ctrlserver.MeshCtrlServer
+	MeshManager mesh.MeshManager
 }
 
 // GetMesh: Gets a nodes local mesh configuration as a CRDT
 func (s *SyncServiceImpl) GetConf(context context.Context, request *rpc.GetConfRequest) (*rpc.GetConfReply, error) {
-	mesh := s.Server.MeshManager.GetMesh(request.MeshId)
+	mesh := s.MeshManager.GetMesh(request.MeshId)
 
 	if mesh == nil {
 		return nil, errors.New("mesh does not exist")
@@ -56,7 +55,7 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 		if len(meshId) == 0 {
 			meshId = in.MeshId
 
-			mesh := s.Server.MeshManager.GetMesh(meshId)
+			mesh := s.MeshManager.GetMesh(meshId)
 
 			if mesh == nil {
 				return errors.New("mesh does not exist")
@@ -91,8 +90,4 @@ func (s *SyncServiceImpl) SyncMesh(stream rpc.SyncService_SyncMeshServer) error 
 			return nil
 		}
 	}
-}
-
-func NewSyncService(server *ctrlserver.MeshCtrlServer) *SyncServiceImpl {
-	return &SyncServiceImpl{Server: server}
 }

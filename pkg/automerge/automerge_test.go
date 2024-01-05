@@ -83,7 +83,6 @@ func TestAddNodeAddRoute(t *testing.T) {
 	testParams.manager.AddNode(testNode)
 	testParams.manager.AddRoutes(pubKey.String(), &mesh.RouteStub{
 		Destination: destination,
-		HopCount:    0,
 		Path:        make([]string, 0),
 	})
 	updatedNode, err := testParams.manager.GetNode(pubKey.String())
@@ -297,7 +296,6 @@ func TestAddRoutesNodeDoesNotExist(t *testing.T) {
 
 	err := testParams.manager.AddRoutes("AAAAA", &mesh.RouteStub{
 		Destination: destination,
-		HopCount:    0,
 		Path:        make([]string, 0),
 	})
 

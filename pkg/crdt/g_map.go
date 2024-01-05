@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// Bucket: bucket represents a value in the grow only map
 type Bucket[D any] struct {
 	Vector     uint64
 	Contents   D
@@ -19,6 +20,7 @@ type GMap[K cmp.Ordered, D any] struct {
 	clock    *VectorClock[K]
 }
 
+// Put: put a new entry in the grow-only-map
 func (g *GMap[K, D]) Put(key K, value D) {
 	g.lock.Lock()
 
@@ -32,6 +34,8 @@ func (g *GMap[K, D]) Put(key K, value D) {
 	g.lock.Unlock()
 }
 
+// Contains: returns whether or not the key is contained
+// in the g-map
 func (g *GMap[K, D]) Contains(key K) bool {
 	return g.contains(g.clock.hashFunc(key))
 }
@@ -64,6 +68,7 @@ func (g *GMap[K, D]) get(key uint64) Bucket[D] {
 	return bucket
 }
 
+// Get: get the value associated with the given key
 func (g *GMap[K, D]) Get(key K) D {
 	if !g.Contains(key) {
 		var def D
@@ -73,6 +78,8 @@ func (g *GMap[K, D]) Get(key K) D {
 	return g.get(g.clock.hashFunc(key)).Contents
 }
 
+// Mark: marks the node, this means the status of the node
+// is an undefined state
 func (g *GMap[K, D]) Mark(key K) {
 	if !g.Contains(key) {
 		return
@@ -85,7 +92,7 @@ func (g *GMap[K, D]) Mark(key K) {
 	g.lock.Unlock()
 }
 
-// IsMarked: returns true if the node is marked
+// IsMarked: returns true if the node is marked (in an undefined state)
 func (g *GMap[K, D]) IsMarked(key K) bool {
 	marked := false
 
@@ -101,6 +108,7 @@ func (g *GMap[K, D]) IsMarked(key K) bool {
 	return marked
 }
 
+// Keys: return all the keys in the grow-only map
 func (g *GMap[K, D]) Keys() []uint64 {
 	g.lock.RLock()
 
@@ -116,6 +124,7 @@ func (g *GMap[K, D]) Keys() []uint64 {
 	return contents
 }
 
+// Save: saves the grow only map
 func (g *GMap[K, D]) Save() map[uint64]Bucket[D] {
 	buckets := make(map[uint64]Bucket[D])
 	g.lock.RLock()
@@ -128,6 +137,7 @@ func (g *GMap[K, D]) Save() map[uint64]Bucket[D] {
 	return buckets
 }
 
+// SaveWithKeys: get all the values corresponding with the provided keys
 func (g *GMap[K, D]) SaveWithKeys(keys []uint64) map[uint64]Bucket[D] {
 	buckets := make(map[uint64]Bucket[D])
 	g.lock.RLock()
@@ -140,6 +150,7 @@ func (g *GMap[K, D]) SaveWithKeys(keys []uint64) map[uint64]Bucket[D] {
 	return buckets
 }
 
+// GetClock: get all the vector clocks in the g_map
 func (g *GMap[K, D]) GetClock() map[uint64]uint64 {
 	clock := make(map[uint64]uint64)
 	g.lock.RLock()
@@ -152,6 +163,7 @@ func (g *GMap[K, D]) GetClock() map[uint64]uint64 {
 	return clock
 }
 
+// GetHash: get the hash of the g_map representing its state
 func (g *GMap[K, D]) GetHash() uint64 {
 	hash := uint64(0)
 
@@ -165,6 +177,7 @@ func (g *GMap[K, D]) GetHash() uint64 {
 	return hash
 }
 
+// Prune: prune all stale entries
 func (g *GMap[K, D]) Prune() {
 	stale := g.clock.getStale()
 	g.lock.Lock()
