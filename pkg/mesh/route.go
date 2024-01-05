@@ -21,6 +21,11 @@ func (r *RouteManagerImpl) UpdateRoutes() error {
 	meshes := r.meshManager.GetMeshes()
 	routes := make(map[string][]Route)
 
+	for _, mesh := range meshes {
+		// Make empty routes so that routes are retracted
+		routes[mesh.GetMeshId()] = make([]Route, 0)
+	}
+
 	for _, mesh1 := range meshes {
 		if !*mesh1.GetConfiguration().AdvertiseRoutes {
 			continue
