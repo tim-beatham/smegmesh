@@ -74,6 +74,25 @@ func (s *SmegServer) meshToAPIMesh(meshId string, nodes []ctrlserver.MeshNode) S
 	return smegMesh
 }
 
+// putAlias: place an alias in the mesh
+func (s *SmegServer) putAlias(meshId, alias string) error {
+	var reply string
+
+	return s.client.PutAlias(ipc.PutAliasArgs{
+		Alias:  alias,
+		MeshId: meshId,
+	}, &reply)
+}
+
+func (s *SmegServer) putDescription(meshId, description string) error {
+	var reply string
+
+	return s.client.PutDescription(ipc.PutDescriptionArgs{
+		Description: description,
+		MeshId:      meshId,
+	}, &reply)
+}
+
 // CreateMesh: creates a mesh network
 func (s *SmegServer) CreateMesh(c *gin.Context) {
 	var createMesh CreateMeshRequest
@@ -86,9 +105,15 @@ func (s *SmegServer) CreateMesh(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("%+v\n", createMesh)
+
 	ipcRequest := ipc.NewMeshArgs{
 		WgArgs: ipc.WireGuardArgs{
-			WgPort: createMesh.WgPort,
+			WgPort:                createMesh.WgPort,
+			Role:                  createMesh.Role,
+			Endpoint:              createMesh.PublicEndpoint,
+			AdvertiseRoutes:       createMesh.AdvertiseRoutes,
+			AdvertiseDefaultRoute: createMesh.AdvertiseDefaults,
 		},
 	}
 
@@ -101,6 +126,14 @@ func (s *SmegServer) CreateMesh(c *gin.Context) {
 			"error": err.Error(),
 		})
 		return
+	}
+
+	if createMesh.Alias != "" {
+		s.putAlias(reply, createMesh.Alias)
+	}
+
+	if createMesh.Description != "" {
+		s.putDescription(reply, createMesh.Description)
 	}
 
 	c.JSON(http.StatusOK, &gin.H{
@@ -123,7 +156,11 @@ func (s *SmegServer) JoinMesh(c *gin.Context) {
 		MeshId:    joinMesh.MeshId,
 		IpAddress: joinMesh.Bootstrap,
 		WgArgs: ipc.WireGuardArgs{
-			WgPort: joinMesh.WgPort,
+			WgPort:                joinMesh.WgPort,
+			Endpoint:              joinMesh.PublicEndpoint,
+			Role:                  joinMesh.Role,
+			AdvertiseRoutes:       joinMesh.AdvertiseRoutes,
+			AdvertiseDefaultRoute: joinMesh.AdvertiseDefaults,
 		},
 	}
 
@@ -136,6 +173,14 @@ func (s *SmegServer) JoinMesh(c *gin.Context) {
 			"error": err.Error(),
 		})
 		return
+	}
+
+	if joinMesh.Alias != "" {
+		s.putAlias(reply, joinMesh.Alias)
+	}
+
+	if joinMesh.Description != "" {
+		s.putDescription(reply, joinMesh.Description)
 	}
 
 	c.JSON(http.StatusOK, &gin.H{

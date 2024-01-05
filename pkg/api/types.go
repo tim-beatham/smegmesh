@@ -71,6 +71,18 @@ type SmegMesh struct {
 type CreateMeshRequest struct {
 	// WgPort is the WireGuard to create the mesh in
 	WgPort int `json:"port" binding:"omitempty,gte=1024,lt=65535"`
+	// Role is the role to take on in the mesh
+	Role string `json:"role" binding:"required,eq=client|eq=peer"`
+	// AdvertiseRoutes: advertise thi mesh to other meshes
+	AdvertiseRoutes bool `json:"advertiseRoutes"`
+	// AdvertiseDefaults: advertise an exit point
+	AdvertiseDefaults bool `json:"advertiseDefaults"`
+	// Alias: alias of the node in the mesh
+	Alias string `json:"alias"`
+	// Description: description of the node in the mesh
+	Description string `json:"description"`
+	// PublicEndpoint: an alternative public endpoint to advertise
+	PublicEndpoint string `json:"publicEndpoint"`
 }
 
 // JoinMeshRequests encapsulates a request to create a mesh network
@@ -81,6 +93,18 @@ type JoinMeshRequest struct {
 	Bootstrap string `json:"bootstrap" binding:"required"`
 	// MeshId is the ID of the mesh to join
 	MeshId string `json:"meshid" binding:"required"`
+	// Role is the role to take on in the mesh
+	Role string `json:"role" binding:"required,eq=client|eq=peer"`
+	// AdvertiseRoutes: advertise thi mesh to other meshes
+	AdvertiseRoutes bool `json:"advertiseRoutes"`
+	// AdvertiseDefaults: advertise an exit point
+	AdvertiseDefaults bool `json:"advertiseDefaults"`
+	// Alias: alias of the node in the mesh
+	Alias string `json:"alias"`
+	// Description: description of the node in the mesh
+	Description string `json:"description"`
+	// PublicEndpoint: an alternative public endpoint to advertise
+	PublicEndpoint string `json:"publicEndpoint"`
 }
 
 // ApiServerConf configuration to instantiate the API server
