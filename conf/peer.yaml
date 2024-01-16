@@ -1,0 +1,35 @@
+# Paths to the certificates modify
+# if not running from Smegmesh
+certificatePath: "./cert/cert.pem"
+privateKeyPath: "./cert/priv.pem"
+caCertificatePath: "./cert/cacert.pem"
+skipCertVerification: true
+# timeout is the configured grpc timeout
+timeout: 5
+# gRPC port to run the solution
+gRPCPort: 4000
+# whether or not to run go profiler
+profile: false 
+# stubWg: whether to install WireGuard configurations
+# if true just tests the control plane
+stubWg: false
+heartbeatInterval: 60
+branch: 3
+pullInterval: 20
+infectionCount: 3
+interClusterChance: 0.15
+syncInterval: 2
+clusterSize: 64
+logLevel: "info"
+baseConfiguration:
+  # ipDiscovery: specifies how to find your IP address
+  ipDiscovery: "outgoing"
+  # alternative to ipDiscovery specify an actual endpoint yourself with publicEndpoint: "xxxx"
+  # role is the role that you are playing (peer | client)
+  # peers can only bootstrap meshes
+  role: "peer"
+  # advertise meshes to other meshes
+  advertiseRoute: true
+  # advertise default routes
+  advertiseDefaults: true
+
