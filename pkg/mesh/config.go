@@ -345,23 +345,24 @@ func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.C
 
 			peerToClients[pubKey.String()] = append(clients, *n.GetWgHost())
 
+			cfg, err := m.convertMeshNode(convertMeshNodeParams{
+				node:          n,
+				self:          self,
+				mesh:          params.mesh,
+				device:        params.dev,
+				peerToClients: peerToClients,
+				routes:        params.routes,
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
 			if NodeEquals(self, peer) {
-				cfg, err := m.convertMeshNode(convertMeshNodeParams{
-					node:          n,
-					self:          self,
-					mesh:          params.mesh,
-					device:        params.dev,
-					peerToClients: peerToClients,
-					routes:        params.routes,
-				})
-
-				if err != nil {
-					return nil, err
-				}
-
-				installedRoutes = append(installedRoutes, m.getRoutesToInstall(cfg, params.mesh, n)...)
 				peerConfigs = append(peerConfigs, *cfg)
 			}
+
+			installedRoutes = append(installedRoutes, m.getRoutesToInstall(cfg, params.mesh, n)...)
 		}
 	}
 
