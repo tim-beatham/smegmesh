@@ -35,12 +35,12 @@ type routeNode struct {
 }
 
 type convertMeshNodeParams struct {
-	node          MeshNode
-	self          MeshNode
-	mesh          MeshProvider
-	device        *wgtypes.Device
-	peerToClients map[string][]net.IPNet
-	routes        map[string][]routeNode
+	node              MeshNode
+	correspondingPeer MeshNode
+	mesh              MeshProvider
+	device            *wgtypes.Device
+	peerToClients     map[string][]net.IPNet
+	routes            map[string][]routeNode
 }
 
 func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wgtypes.PeerConfig, error) {
@@ -71,7 +71,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wg
 			}
 
 			// Else there is more than one candidate so consistently hash
-			pickedRoute = lib.ConsistentHash(bestRoutes, params.self, bucketFunc, m.hashFunc)
+			pickedRoute = lib.ConsistentHash(bestRoutes, params.correspondingPeer, bucketFunc, m.hashFunc)
 		}
 
 		if pickedRoute.gateway == pubKey.String() {
@@ -346,12 +346,12 @@ func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.C
 			peerToClients[pubKey.String()] = append(clients, *n.GetWgHost())
 
 			cfg, err := m.convertMeshNode(convertMeshNodeParams{
-				node:          n,
-				self:          self,
-				mesh:          params.mesh,
-				device:        params.dev,
-				peerToClients: peerToClients,
-				routes:        params.routes,
+				node:              n,
+				correspondingPeer: peer,
+				mesh:              params.mesh,
+				device:            params.dev,
+				peerToClients:     peerToClients,
+				routes:            params.routes,
 			})
 
 			if err != nil {
@@ -372,12 +372,12 @@ func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.C
 		}
 
 		peer, err := m.convertMeshNode(convertMeshNodeParams{
-			node:          n,
-			self:          self,
-			mesh:          params.mesh,
-			peerToClients: peerToClients,
-			routes:        params.routes,
-			device:        params.dev,
+			node:              n,
+			correspondingPeer: self,
+			mesh:              params.mesh,
+			peerToClients:     peerToClients,
+			routes:            params.routes,
+			device:            params.dev,
 		})
 
 		if err != nil {
