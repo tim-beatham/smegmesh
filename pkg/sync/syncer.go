@@ -99,10 +99,11 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 
 	var wait sync.WaitGroup
 
-	for index, node := range gossipNodes {
+	for index := range gossipNodes {
 		wait.Add(1)
 
 		syncNode := func(i int) {
+			node := gossipNodes[i]
 			correspondingPeer, err := correspondingMesh.GetNode(node)
 
 			defer wait.Done()
