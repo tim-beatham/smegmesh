@@ -35,12 +35,11 @@ type routeNode struct {
 }
 
 type convertMeshNodeParams struct {
-	node              MeshNode
-	correspondingPeer MeshNode
-	mesh              MeshProvider
-	device            *wgtypes.Device
-	peerToClients     map[string][]net.IPNet
-	routes            map[string][]routeNode
+	node          MeshNode
+	mesh          MeshProvider
+	device        *wgtypes.Device
+	peerToClients map[string][]net.IPNet
+	routes        map[string][]routeNode
 }
 
 func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wgtypes.PeerConfig, error) {
@@ -59,8 +58,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wg
 		allowedips = append(allowedips, clients...)
 	}
 
-	for _, route := range params.node.GetRoutes() {
-		bestRoutes := params.routes[route.GetDestination().String()]
+	for _, bestRoutes := range lib.MapValues(params.routes) {
 		var pickedRoute routeNode
 
 		if len(bestRoutes) == 1 {
@@ -70,8 +68,7 @@ func (m *WgMeshConfigApplyer) convertMeshNode(params convertMeshNodeParams) (*wg
 				return lib.HashString(rn.gateway)
 			}
 
-			// Else there is more than one candidate so consistently hash
-			pickedRoute = lib.ConsistentHash(bestRoutes, params.correspondingPeer, bucketFunc, m.hashFunc)
+			pickedRoute = lib.ConsistentHash(bestRoutes, params.node, bucketFunc, m.hashFunc)
 		}
 
 		if pickedRoute.gateway == pubKey.String() {
@@ -346,12 +343,11 @@ func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.C
 			peerToClients[pubKey.String()] = append(clients, *n.GetWgHost())
 
 			cfg, err := m.convertMeshNode(convertMeshNodeParams{
-				node:              n,
-				correspondingPeer: peer,
-				mesh:              params.mesh,
-				device:            params.dev,
-				peerToClients:     peerToClients,
-				routes:            params.routes,
+				node:          n,
+				mesh:          params.mesh,
+				device:        params.dev,
+				peerToClients: peerToClients,
+				routes:        params.routes,
 			})
 
 			if err != nil {
@@ -372,12 +368,11 @@ func (m *WgMeshConfigApplyer) getPeerConfig(params *GetConfigParams) (*wgtypes.C
 		}
 
 		peer, err := m.convertMeshNode(convertMeshNodeParams{
-			node:              n,
-			correspondingPeer: self,
-			mesh:              params.mesh,
-			peerToClients:     peerToClients,
-			routes:            params.routes,
-			device:            params.dev,
+			node:          n,
+			mesh:          params.mesh,
+			peerToClients: peerToClients,
+			routes:        params.routes,
+			device:        params.dev,
 		})
 
 		if err != nil {

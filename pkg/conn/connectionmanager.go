@@ -141,7 +141,14 @@ func (m *ConnectionManagerImpl) HasConnection(endPoint string) bool {
 // RemoveConnection removes the given connection if it exists
 func (m *ConnectionManagerImpl) RemoveConnection(endPoint string) error {
 	m.conLoc.Lock()
-	err := m.clientConnections[endPoint].Close()
+	connection, ok := m.clientConnections[endPoint]
+
+	if !ok {
+		// nothing to do if no connection
+		return nil
+	}
+
+	err := connection.Close()
 
 	delete(m.clientConnections, endPoint)
 	m.conLoc.Unlock()
