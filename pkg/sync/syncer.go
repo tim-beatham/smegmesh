@@ -242,15 +242,14 @@ func (s *SyncerImpl) SyncMeshes() error {
 		if err != nil {
 			logging.Log.WriteErrorf("failed to update config %s", err.Error())
 		}
-
-		err = s.meshManager.GetRouteManager().UpdateRoutes()
-
-		if err != nil {
-			logging.Log.WriteErrorf("update routes failed %s", err.Error())
-		}
 	}
 
-	return err
+	err = s.meshManager.GetRouteManager().UpdateRoutes()
+	if err != nil {
+		logging.Log.WriteErrorf("update routes failed %s", err.Error())
+	}
+
+	return nil
 }
 
 type NewSyncerParams struct {

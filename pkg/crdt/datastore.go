@@ -341,7 +341,7 @@ func (m *TwoPhaseStoreMeshManager) RemoveRoutes(nodeId string, routes ...mesh.Ro
 
 	for _, route := range routes {
 		changes = true
-		logging.Log.WriteInfof("deleting: %s", route.GetDestination().String())
+		logging.Log.WriteInfof("deleting route: %s", route.GetDestination().String())
 		delete(node.Routes, route.GetDestination().String())
 	}
 
