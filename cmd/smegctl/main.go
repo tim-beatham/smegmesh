@@ -55,7 +55,7 @@ func joinMesh(client *ipc.SmegmeshIpc, args ipc.JoinMeshArgs) {
 	err := client.JoinMesh(args, &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Print(err.Error())
 	}
 
 	fmt.Println(reply)
@@ -67,7 +67,7 @@ func leaveMesh(client *ipc.SmegmeshIpc, meshId string) {
 	err := client.LeaveMesh(meshId, &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Print(err.Error())
 		return
 	}
 
@@ -80,7 +80,7 @@ func getGraph(client *ipc.SmegmeshIpc) {
 	err := client.ListMeshes(listMeshesReply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Print(err.Error())
 		return
 	}
 
@@ -154,7 +154,7 @@ func putAlias(client *ipc.SmegmeshIpc, meshid, alias string) {
 	}, &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Print(err.Error())
 		return
 	}
 
@@ -171,7 +171,7 @@ func setService(client *ipc.SmegmeshIpc, meshId, service, value string) {
 	}, &reply)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Print(err.Error())
 		return
 	}
 

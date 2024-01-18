@@ -293,7 +293,10 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 		Peers: peerCfgs,
 	}
 
-	m.routeInstaller.InstallRoutes(params.dev.Name, installedRoutes...)
+	if params.dev != nil {
+		m.routeInstaller.InstallRoutes(params.dev.Name, installedRoutes...)
+	}
+
 	return &cfg, err
 }
 
@@ -400,7 +403,11 @@ func (m *WgMeshConfigApplyer) updateWgConf(mesh MeshProvider, routes map[string]
 	}
 
 	nodes := lib.MapValues(snap.GetNodes())
-	dev, _ := mesh.GetDevice()
+	dev, err := mesh.GetDevice()
+
+	if err != nil {
+		return err
+	}
 
 	slices.SortFunc(nodes, func(a, b MeshNode) int {
 		return strings.Compare(string(a.GetType()), string(b.GetType()))

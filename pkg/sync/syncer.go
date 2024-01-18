@@ -82,7 +82,7 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 			return false, nil
 		}
 
-		// Peer with 2 nodes so that there is redundnacy in
+		// Peer with 2 nodes so that there is redundancy in
 		// the situation the node leaves pre-emptively
 		redundancyLength := min(len(neighbours), 2)
 		gossipNodes = neighbours[:redundancyLength]
@@ -126,13 +126,12 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 		s.infectionCount++
 	}
 
-	changes := correspondingMesh.HasChanges()
 	correspondingMesh.SaveChanges()
 
 	s.lastSyncLock.Lock()
 	s.lastSync[correspondingMesh.GetMeshId()] = time.Now().Unix()
 	s.lastSyncLock.Unlock()
-	return changes, nil
+	return true, nil
 }
 
 // Pull one node in the cluster, if there has not been message dissemination
