@@ -97,37 +97,24 @@ func (s *SyncerImpl) Sync(correspondingMesh mesh.MeshProvider) (bool, error) {
 
 	var succeeded bool = false
 
-	var wait sync.WaitGroup
+	for _, node := range gossipNodes {
+		correspondingPeer, err := correspondingMesh.GetNode(node)
 
-	for index := range gossipNodes {
-		wait.Add(1)
-
-		syncNode := func(i int) {
-			node := gossipNodes[i]
-			correspondingPeer, err := correspondingMesh.GetNode(node)
-
-			defer wait.Done()
-
-			if correspondingPeer == nil || err != nil {
-				logging.Log.WriteErrorf("node %s does not exist", node)
-				return
-			}
-
-			err = s.requester.SyncMesh(correspondingMesh, correspondingPeer)
-
-			if err == nil || err == io.EOF {
-				succeeded = true
-			}
-
-			if err != nil {
-				logging.Log.WriteErrorf(err.Error())
-			}
+		if correspondingPeer == nil || err != nil {
+			logging.Log.WriteErrorf("node %s does not exist", node)
+			continue
 		}
 
-		go syncNode(index)
-	}
+		err = s.requester.SyncMesh(correspondingMesh, correspondingPeer)
 
-	wait.Wait()
+		if err == nil || err == io.EOF {
+			succeeded = true
+		}
+
+		if err != nil {
+			logging.Log.WriteErrorf(err.Error())
+		}
+	}
 
 	s.syncCount++
 	logging.Log.WriteInfof("sync time: %v", time.Since(before))
