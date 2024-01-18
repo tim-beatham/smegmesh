@@ -235,6 +235,11 @@ func (s *SyncerImpl) SyncMeshes() error {
 
 	var err error
 
+	err = s.meshManager.GetRouteManager().UpdateRoutes()
+	if err != nil {
+		logging.Log.WriteErrorf("update routes failed %s", err.Error())
+	}
+
 	if hasChanges {
 		logging.Log.WriteInfof("updating the WireGuard configuration")
 		err = s.meshManager.ApplyConfig()
@@ -242,11 +247,6 @@ func (s *SyncerImpl) SyncMeshes() error {
 		if err != nil {
 			logging.Log.WriteErrorf("failed to update config %s", err.Error())
 		}
-	}
-
-	err = s.meshManager.GetRouteManager().UpdateRoutes()
-	if err != nil {
-		logging.Log.WriteErrorf("update routes failed %s", err.Error())
 	}
 
 	return nil
