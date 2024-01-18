@@ -202,7 +202,7 @@ func (n *IpcHandler) Query(params ipc.QueryMesh, reply *string) error {
 
 // PutDescription: change your description in the mesh
 func (n *IpcHandler) PutDescription(args ipc.PutDescriptionArgs, reply *string) error {
-	err := n.Server.GetMeshManager().SetDescription(args.MeshId, args.Description)z
+	err := n.Server.GetMeshManager().SetDescription(args.MeshId, args.Description)
 
 	if err != nil {
 		return err
