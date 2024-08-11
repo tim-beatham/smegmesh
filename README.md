@@ -32,6 +32,10 @@ Redundant routing is possible to create multiple exit points to the same
 mesh network. In which case consistent hashing is performed to split traffic
 between the exit points.
 
+## Scalability
+
+The prototype has been tested to a scale of 3000 peers.
+
 ## Installation
 
 To build the project do: `go build -v ./...`. A Docker file is provided

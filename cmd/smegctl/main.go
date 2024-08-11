@@ -219,13 +219,11 @@ func main() {
 	})
 
 	var newMeshRole *string = newMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
-			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
-			" protocol",
+		Help: "Role in the mesh network. A peer is publicly route-able, whereas a client sits behind a private endpoint",
 	})
 	var newMeshKeepAliveWg *int = newMeshCmd.Int("k", "KeepAliveWg", &argparse.Options{
 		Default: 0,
-		Help:    "WireGuard KeepAlive value for NAT traversal and firewall holepunching",
+		Help:    "WireGuard KeepAlive value for NAT traversal and firewall hole-punching",
 	})
 
 	var newMeshAdvertiseRoutes *bool = newMeshCmd.Flag("a", "advertise", &argparse.Options{
@@ -251,9 +249,9 @@ func main() {
 	})
 
 	var joinMeshRole *string = joinMeshCmd.Selector("r", "role", []string{"peer", "client"}, &argparse.Options{
-		Help: "Role in the mesh network. A value of peer means that the node is publicly routeable and thus considered" +
-			" in the gossip protocol. Client means that the node is not publicly routeable and is not a candidate in the gossip" +
-			" protocol",
+		Help: "Role in the mesh network. A value of peer means that the node is publicly route-able acting as a router " +
+			"for clients to route packets through. A client sits behind a private endpoint and routes traffic through a single " +
+			"endpoint",
 	})
 
 	var joinMeshPort *int = joinMeshCmd.Int("p", "wgport", &argparse.Options{

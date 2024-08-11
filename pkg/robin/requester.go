@@ -62,7 +62,7 @@ func (n *IpcHandler) CreateMesh(args *ipc.NewMeshArgs, reply *string) error {
 	})
 
 	if err != nil {
-		return errors.New("could not create mesh")
+		return errors.New("could not create mesh: " + err.Error())
 	}
 
 	*reply = meshId
@@ -89,7 +89,7 @@ func (n *IpcHandler) JoinMesh(args *ipc.JoinMeshArgs, reply *string) error {
 	overrideConf := getOverrideConfiguration(&args.WgArgs)
 
 	if n.Server.GetMeshManager().GetMesh(args.MeshId) != nil {
-		return fmt.Errorf("user is already apart of the mesh")
+		return fmt.Errorf("user is already a part of the mesh")
 	}
 
 	peerConnection, err := n.Server.GetConnectionManager().GetConnection(args.IpAddress)

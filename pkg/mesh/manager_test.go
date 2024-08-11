@@ -22,7 +22,6 @@ func getMeshConfiguration() *conf.DaemonConfiguration {
 		CaCertificatePath:    "./somecacertificatepath",
 		SkipCertVerification: true,
 		Timeout:              5,
-		Profile:              false,
 		StubWg:               true,
 		SyncInterval:         2,
 		Heartbeat:            60,
@@ -48,7 +47,7 @@ func getMeshManager() MeshManager {
 		IdGenerator:          &lib.UUIDGenerator{},
 		IPAllocator:          &ip.ULABuilder{},
 		InterfaceManipulator: &wg.WgInterfaceManipulatorStub{},
-		ConfigApplyer:        &MeshConfigApplyerStub{},
+		ConfigApplier:        &MeshConfigApplyerStub{},
 		RouteManager:         &RouteManagerStub{},
 	})
 

@@ -279,7 +279,7 @@ func (m *WgMeshConfigApplyer) getClientConfig(params *GetConfigParams) (*wgtypes
 	installedRoutes := make([]lib.Route, 0)
 
 	for _, route := range peerCfgs[0].AllowedIPs {
-		// Don't install routes that we are directly apart
+		// Don't install routes that we are directly a part
 		// Dont install default route wgctrl handles this for us
 		if !meshNet.Contains(route.IP) {
 			installedRoutes = append(installedRoutes, lib.Route{

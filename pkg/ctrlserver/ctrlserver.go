@@ -15,7 +15,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
-// NewCtrlServerParams are the params requried to create a new ctrl server
+// NewCtrlServerParams are the params required to create a new ctrl server
 type NewCtrlServerParams struct {
 	Conf         *conf.DaemonConfiguration
 	Client       *wgctrl.Client
@@ -52,7 +52,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		IdGenerator:          idGenerator,
 		IPAllocator:          ipAllocator,
 		InterfaceManipulator: interfaceManipulator,
-		ConfigApplyer:        configApplyer,
+		ConfigApplier:        configApplyer,
 		OnDelete: func(mesh mesh.MeshProvider) {
 			_, err := syncer.Sync(mesh)
 

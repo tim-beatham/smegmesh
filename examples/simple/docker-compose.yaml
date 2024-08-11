@@ -1,9 +1,14 @@
 version: '3'
 networks:
   net-1:
+    enable_ipv6: true
+    ipam:
+       driver: default
+       config:
+         - subnet: 2001:db8::/64
 services:
   wg-1:
-    image: localhost/smegmesh-base:latest
+    image: smegmesh-base:latest
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -15,8 +20,9 @@ services:
     command: "smegd /shared/configuration.yaml"
     sysctls:
       - net.ipv6.conf.all.forwarding=1
+      - net.ipv6.conf.all.disable_ipv6=0
   wg-2:
-    image: localhost/smegmesh-base:latest
+    image: smegmesh-base:latest
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -28,8 +34,9 @@ services:
     command: "smegd /shared/configuration.yaml"
     sysctls:
       - net.ipv6.conf.all.forwarding=1
+      - net.ipv6.conf.all.disable_ipv6=0
   wg-3:
-    image: localhost/smegmesh-base:latest
+    image: smegmesh-base:latest
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -41,3 +48,4 @@ services:
     command: "smegd /shared/configuration.yaml"
     sysctls:
       - net.ipv6.conf.all.forwarding=1
+      - net.ipv6.conf.all.disable_ipv6=0

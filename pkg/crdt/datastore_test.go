@@ -31,7 +31,6 @@ func setUpTests() *TestParams {
 			SkipCertVerification: true,
 			GrpcPort:             0,
 			Timeout:              20,
-			Profile:              false,
 			SyncInterval:         2,
 			Heartbeat:            10,
 			ClusterSize:          32,

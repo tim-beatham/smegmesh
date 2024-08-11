@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -35,12 +34,6 @@ func main() {
 	if err != nil {
 		logging.Log.WriteErrorf("Failed to create wgctrl client")
 		return
-	}
-
-	if configuration.Profile {
-		go func() {
-			http.ListenAndServe("localhost:6060", nil)
-		}()
 	}
 
 	var robinRpc robin.WgRpc

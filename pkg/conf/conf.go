@@ -77,8 +77,6 @@ type DaemonConfiguration struct {
 	GrpcPort int `yaml:"gRPCPort" validate:"required"`
 	// Timeout number of seconds without response that a node is considered unreachable by gRPC
 	Timeout int `yaml:"timeout" validate:"required,gte=1"`
-	// Profile whether or not to include a http server that profiles the code
-	Profile bool `yaml:"profile"`
 	// StubWg whether or not to stub the WireGuard types
 	StubWg bool `yaml:"stubWg"`
 	// SyncInterval specifies how long the minimum time should be between synchronisation

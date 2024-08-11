@@ -19,7 +19,6 @@ func getExampleConfiguration() *DaemonConfiguration {
 		SkipCertVerification: true,
 		GrpcPort:             25,
 		Timeout:              5,
-		Profile:              false,
 		StubWg:               false,
 		SyncInterval:         2,
 		Heartbeat:            2,
