@@ -1,5 +1,9 @@
 # smegmesh
 
+## Disclaimer
+
+Submitted to fill the requirements of Msci (Hons) Computer Science at the School of Computer Science, University of St Andrews.
+
 ## License
 
 This repository is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more details.
