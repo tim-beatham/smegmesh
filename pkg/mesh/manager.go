@@ -49,7 +49,7 @@ type MeshManagerImpl struct {
 	conf                 *conf.DaemonConfiguration
 	meshProviderFactory  MeshProviderFactory
 	nodeFactory          MeshNodeFactory
-	configApplyer        MeshConfigApplyer
+	configApplier        MeshConfigApplier
 	idGenerator          lib.IdGenerator
 	ipAllocator          ip.IPAllocator
 	interfaceManipulator wg.WgInterfaceManipulator
@@ -411,7 +411,7 @@ func (s *MeshManagerImpl) ApplyConfig() error {
 	if s.conf.StubWg {
 		return nil
 	}
-	return s.configApplyer.ApplyConfig()
+	return s.configApplier.ApplyConfig()
 }
 
 func (s *MeshManagerImpl) SetDescription(meshId, description string) error {
@@ -513,7 +513,7 @@ type NewMeshManagerParams struct {
 	IdGenerator          lib.IdGenerator
 	IPAllocator          ip.IPAllocator
 	InterfaceManipulator wg.WgInterfaceManipulator
-	ConfigApplyer        MeshConfigApplyer
+	ConfigApplier        MeshConfigApplier
 	RouteManager         RouteManager
 	CommandRunner        cmd.CmdRunner
 	OnDelete             func(MeshProvider)
@@ -535,7 +535,7 @@ func NewMeshManager(params *NewMeshManagerParams) MeshManager {
 		conf:                &params.Conf,
 	}
 
-	m.configApplyer = params.ConfigApplyer
+	m.configApplier = params.ConfigApplier
 	m.RouteManager = params.RouteManager
 
 	if m.RouteManager == nil {

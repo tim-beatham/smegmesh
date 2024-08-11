@@ -40,7 +40,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 
 	ctrlServer.timers = make([]*lib.Timer, 0)
 
-	configApplyer := mesh.NewWgMeshConfigApplyer()
+	configApplier := mesh.NewWgMeshConfigApplier()
 
 	var syncer sync.Syncer
 
@@ -52,7 +52,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 		IdGenerator:          idGenerator,
 		IPAllocator:          ipAllocator,
 		InterfaceManipulator: interfaceManipulator,
-		ConfigApplier:        configApplyer,
+		ConfigApplier:        configApplier,
 		OnDelete: func(mesh mesh.MeshProvider) {
 			_, err := syncer.Sync(mesh)
 
@@ -63,7 +63,7 @@ func NewCtrlServer(params *NewCtrlServerParams) (*MeshCtrlServer, error) {
 	}
 
 	ctrlServer.MeshManager = mesh.NewMeshManager(meshManagerParams)
-	configApplyer.SetMeshManager(ctrlServer.MeshManager)
+	configApplier.SetMeshManager(ctrlServer.MeshManager)
 
 	ctrlServer.Conf = params.Conf
 	connManagerParams := conn.NewConnectionManagerParams{

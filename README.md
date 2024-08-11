@@ -32,9 +32,31 @@ Redundant routing is possible to create multiple exit points to the same
 mesh network. In which case consistent hashing is performed to split traffic
 between the exit points.
 
-## Scalability
+## Message Dissemination
 
-The prototype has been tested to a scale of 3000 peers.
+A variant of the gossip protocol is used for message dissemination. Each peer
+in the network is ordered lexicographically ordered by their public key.
+The node with the lexicographically lowest public key is used as the leader
+of the mesh. Every `heartBeatInterval` disseminates a refresh message
+throughout the entirety of the group in order to prune nodes that may
+have prematurely died.
+
+If after `3 * heartBeatInterval` a node has not received a dissemination
+message then the node prunes the leader and expects one from the next
+lexicographically lowest public key.
+
+To 'merge' updates and reconcile any conflicts a Conflict Free Replicated
+Data Type (CRDT) is implemented. Consisting of an add and remove set.
+Where a node is in the group if it is in the add set and there is either
+no entry in the remove set or the timestamp in the remove set has a lower
+vector clock value.
+
+## Performance
+
+This prototype has been tested to a scale of 3000 peers in the network.
+Furthermore, the fault-tolerance has been tested to a scale 3000 nodes
+to the order of 20 seconds for the entire network and 12 seconds
+for the 99 percentile.
 
 ## Installation
 

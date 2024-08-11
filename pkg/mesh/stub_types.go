@@ -253,17 +253,17 @@ func (s *StubNodeFactory) Build(params *MeshNodeFactoryParams) MeshNode {
 	}
 }
 
-type MeshConfigApplyerStub struct{}
+type MeshConfigApplierStub struct{}
 
-func (a *MeshConfigApplyerStub) ApplyConfig() error {
+func (a *MeshConfigApplierStub) ApplyConfig() error {
 	return nil
 }
 
-func (a *MeshConfigApplyerStub) RemovePeers(meshId string) error {
+func (a *MeshConfigApplierStub) RemovePeers(meshId string) error {
 	return nil
 }
 
-func (a *MeshConfigApplyerStub) SetMeshManager(manager MeshManager) {
+func (a *MeshConfigApplierStub) SetMeshManager(manager MeshManager) {
 }
 
 type MeshManagerStub struct {

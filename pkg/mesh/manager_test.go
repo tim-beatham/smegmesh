@@ -47,7 +47,7 @@ func getMeshManager() MeshManager {
 		IdGenerator:          &lib.UUIDGenerator{},
 		IPAllocator:          &ip.ULABuilder{},
 		InterfaceManipulator: &wg.WgInterfaceManipulatorStub{},
-		ConfigApplier:        &MeshConfigApplyerStub{},
+		ConfigApplier:        &MeshConfigApplierStub{},
 		RouteManager:         &RouteManagerStub{},
 	})
 
