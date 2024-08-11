@@ -6,10 +6,10 @@ import (
 	"os/signal"
 
 	"github.com/tim-beatham/smegmesh/pkg/conf"
+	robin "github.com/tim-beatham/smegmesh/pkg/cplane"
 	ctrlserver "github.com/tim-beatham/smegmesh/pkg/ctrlserver"
 	"github.com/tim-beatham/smegmesh/pkg/ipc"
 	logging "github.com/tim-beatham/smegmesh/pkg/log"
-	"github.com/tim-beatham/smegmesh/pkg/robin"
 	"github.com/tim-beatham/smegmesh/pkg/sync"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
